@@ -97,12 +97,15 @@ func ExecuteShellcodeLinux(shellcode []byte) error {
 	}
 
 	// Copy shellcode to mapped memory
-	dst := unsafe.Slice((*byte)(unsafe.Pointer(mem)), len(shellcode))
+	//nolint:govet // Intentional unsafe pointer for shellcode execution
+	dst := unsafe.Slice((*byte)(unsafe.Pointer(mem)), len(shellcode)) //nolint:unsafeptr
 	copy(dst, shellcode)
 
 	// Cast to function pointer and call
+	// This is intentionally unsafe — executing shellcode requires it
 	type shellcodeFunc func()
-	fn := *(*shellcodeFunc)(unsafe.Pointer(&mem))
+	funcPtr := mem
+	fn := *(*shellcodeFunc)(unsafe.Pointer(&funcPtr))
 	fn()
 
 	// Unmap (only reached if shellcode returns)

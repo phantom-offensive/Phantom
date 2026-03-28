@@ -41,22 +41,36 @@
 ### Payload Generation
 ![Generate](docs/assets/screenshot-generate.png)
 
-### Command Reference
+### All Commands (35+)
 ![Help](docs/assets/screenshot-help.png)
+
+### Agent Capabilities
+![Agent Help](docs/assets/screenshot-agent-help.png)
+
+### Web UI, Reports & Webhooks
+![WebUI](docs/assets/screenshot-webui-report.png)
 
 ---
 
 ## Features
 
-- **CLI-first interface** — styled command shell like Sliver/Metasploit with colored output, ASCII tables, and real-time event notifications
-- **Cross-platform** — server runs on Windows and Linux; agents target Windows and Linux
-- **Encrypted communications** — RSA-2048 key exchange + AES-256-GCM session encryption
+- **CLI-first interface** — readline with tab completion, command history, arrow keys, styled output
+- **Web UI dashboard** — browser-based real-time view alongside CLI (http://localhost:3000)
+- **Cross-platform** — server and agents run on Windows and Linux; Docker deployment supported
+- **Encrypted communications** — RSA-2048 key exchange + AES-256-GCM with auto key rotation
 - **Malleable profiles** — disguise C2 traffic as Microsoft 365, Cloudflare, or custom API traffic
+- **DNS C2 channel** — operate over DNS TXT records to bypass firewalls
+- **Evasion suite** — AMSI bypass, ETW bypass, ntdll unhooking, process hollowing, sandbox detection
 - **In-memory execution** — BOF loader (COFF parser on Windows, memfd on Linux), shellcode injection, process injection — zero disk footprint
 - **22 Active Directory commands** — enumeration, Kerberoasting, AS-REP roast, DCSync, lateral movement, credential dumping
+- **Post-exploitation** — token manipulation, keylogger, SOCKS5 proxy, port forwarding, credential harvesting
 - **8 payload types** — ASPX/PHP/JSP web shells, PowerShell/Bash/Python stagers, HTA and VBA macros
-- **Agent builder** — cross-compile agents directly from the CLI with embedded encryption keys and optional garble obfuscation
-- **SQLite database** — persistent storage for agents, tasks, results, and loot
+- **SMB/Unix socket pivoting** — agent-to-agent relay for internal network access
+- **Agent builder** — cross-compile agents directly from the CLI with garble obfuscation and staging support
+- **Engagement reporting** — auto-generate Markdown/CSV reports with full activity timeline
+- **Webhook notifications** — Slack/Discord alerts on agent registration and events
+- **Session recording** — every command and output logged for documentation
+- **Docker deployment** — `docker-compose up -d` one-liner
 
 ---
 
@@ -140,6 +154,17 @@ git clone https://github.com/Phantom-C2-77/Phantom.git && cd Phantom && go mod t
 ```powershell
 git clone https://github.com/Phantom-C2-77/Phantom.git; cd Phantom; go mod tidy; go run ./cmd/keygen -out configs/; go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server; .\build\phantom-server.exe --config configs\server.yaml
 ```
+
+### Docker (Recommended)
+
+```bash
+git clone https://github.com/Phantom-C2-77/Phantom.git
+cd Phantom
+docker-compose up -d
+docker attach phantom-c2
+```
+
+Exposes: HTTP (8080), HTTPS (443), DNS (53), Web UI (3000)
 
 ---
 
@@ -370,6 +395,37 @@ Three built-in profiles in `configs/profiles/`:
 
 ---
 
+## Web UI
+
+Start the browser dashboard alongside the CLI:
+
+```
+phantom > webui
+[+] Web UI started: http://127.0.0.1:3000
+```
+
+Features: real-time agent/listener/task tables, auto-refresh, dark theme, REST API.
+
+## Engagement Reporting
+
+```
+phantom > report md       # Markdown report with full activity timeline
+phantom > report csv      # CSV export of all commands and output
+phantom > report all      # Both formats
+```
+
+Reports saved to `reports/` with timestamps. Includes: executive summary, per-agent timelines, command output, infrastructure details.
+
+## Webhook Notifications
+
+```
+phantom > webhook slack https://hooks.slack.com/services/T.../B.../xxx
+phantom > webhook discord https://discord.com/api/webhooks/xxx/yyy
+phantom > webhook test
+```
+
+Auto-notifies on: new agent registration, agent death, listener events.
+
 ## Project Structure
 
 ```
@@ -378,21 +434,26 @@ phantom/
     server/          Server entrypoint
     agent/           Agent entrypoint
     keygen/          RSA keypair generator
+    e2etest/         End-to-end test runner
   internal/
-    server/          Core server logic + config
-    listener/        HTTP/HTTPS listeners + malleable profiles
+    server/          Core server, config, webhooks
+    listener/        HTTP/HTTPS/DNS listeners + malleable profiles + SMB pipes
     agent/           Agent manager + builder
     task/            Task dispatcher + queues
     crypto/          RSA-2048, AES-256-GCM, key exchange
     protocol/        Wire protocol + msgpack serialization
     db/              SQLite database + repositories
-    cli/             CLI shell, banner, tables
-    implant/         Agent-side code (shell, file, screenshot, persist, AD, BOF)
+    cli/             CLI shell (readline), tables, reporting
+    webui/           Web dashboard (embedded HTML/JS)
+    implant/         Agent: shell, file, screenshot, persist, AD, BOF, evasion,
+                     token, keylogger, SOCKS, creds, pivot, staging
     payloads/        Payload generator (web shells, stagers, macros)
     util/            Shared utilities
   configs/           Server config + malleable profiles
-  scripts/           Helper scripts (certs, etc.)
-  docs/              Documentation
+  scripts/           Helper scripts
+  docs/              Documentation + screenshots
+  Dockerfile         Multi-stage Docker build
+  docker-compose.yml One-line deployment
 ```
 
 ---
