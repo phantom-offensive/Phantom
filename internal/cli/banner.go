@@ -23,6 +23,13 @@ const (
 
 	colorBgRed   = "\033[41m"
 	colorBgGreen = "\033[42m"
+
+	// Exported for use in cmd/server
+	ColorReset  = colorReset
+	ColorPurple = colorPurple
+	ColorCyan   = colorCyan
+	ColorBold   = colorBold
+	ColorDim    = colorDim
 )
 
 // PrintBanner displays the startup banner.

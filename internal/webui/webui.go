@@ -3,6 +3,7 @@ package webui
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -12,8 +13,8 @@ import (
 	"github.com/phantom-c2/phantom/internal/util"
 )
 
-// WebUI serves a browser-based dashboard for Phantom C2.
-// It runs alongside the CLI — both can be used simultaneously.
+// WebUI serves a full interactive browser-based interface for Phantom C2.
+// Operators can choose CLI or Web UI — both have full capabilities.
 type WebUI struct {
 	server   *server.Server
 	bindAddr string
@@ -28,26 +29,30 @@ func New(srv *server.Server, bindAddr string) *WebUI {
 func (w *WebUI) Start() error {
 	mux := http.NewServeMux()
 
-	// Dashboard page
+	// Pages
 	mux.HandleFunc("/", w.handleDashboard)
 
-	// API endpoints
+	// Read API
 	mux.HandleFunc("/api/agents", w.handleAPIAgents)
 	mux.HandleFunc("/api/listeners", w.handleAPIListeners)
 	mux.HandleFunc("/api/tasks", w.handleAPITasks)
 	mux.HandleFunc("/api/events", w.handleAPIEvents)
+	mux.HandleFunc("/api/agent/", w.handleAPIAgentDetail)
+
+	// Action API (interactive — send commands, manage listeners)
+	mux.HandleFunc("/api/cmd", w.handleAPICommand)
 
 	httpServer := &http.Server{
 		Addr:         w.bindAddr,
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
 	}
 
 	return httpServer.ListenAndServe()
 }
 
-// ──────── API Handlers ────────
+// ──────── Read API ────────
 
 func (w *WebUI) handleAPIAgents(rw http.ResponseWriter, r *http.Request) {
 	agents, _ := w.server.AgentMgr.List()
@@ -68,7 +73,7 @@ func (w *WebUI) handleAPIAgents(rw http.ResponseWriter, r *http.Request) {
 	var resp []agentResp
 	for _, a := range agents {
 		resp = append(resp, agentResp{
-			ID:       util.ShortID(a.ID),
+			ID:       a.ID,
 			Name:     a.Name,
 			OS:       a.OS,
 			Hostname: a.Hostname,
@@ -79,9 +84,80 @@ func (w *WebUI) handleAPIAgents(rw http.ResponseWriter, r *http.Request) {
 			Status:   a.Status,
 		})
 	}
+	if resp == nil {
+		resp = []agentResp{}
+	}
+	writeJSON(rw, resp)
+}
 
-	rw.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(resp)
+func (w *WebUI) handleAPIAgentDetail(rw http.ResponseWriter, r *http.Request) {
+	// /api/agent/<name-or-id>
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 {
+		http.Error(rw, "missing agent id", 400)
+		return
+	}
+	agentRef := parts[3]
+
+	a, _ := w.server.AgentMgr.Get(agentRef)
+	if a == nil {
+		http.Error(rw, "agent not found", 404)
+		return
+	}
+
+	tasks, _ := w.server.TaskDisp.GetTaskHistory(a.ID)
+
+	type taskItem struct {
+		ID     string `json:"id"`
+		Type   string `json:"type"`
+		Args   string `json:"args"`
+		Status string `json:"status"`
+		Time   string `json:"time"`
+		Output string `json:"output"`
+		Error  string `json:"error"`
+	}
+
+	var taskList []taskItem
+	for _, t := range tasks {
+		output := ""
+		errStr := ""
+		result, _ := w.server.TaskDisp.GetResult(t.ID)
+		if result != nil {
+			if len(result.Output) > 0 {
+				output = string(result.Output)
+			}
+			errStr = result.Error
+		}
+		taskList = append(taskList, taskItem{
+			ID:     util.ShortID(t.ID),
+			Type:   protocol.TaskTypeName(uint8(t.Type)),
+			Args:   strings.Join(t.Args, " "),
+			Status: protocol.StatusName(uint8(t.Status)),
+			Time:   util.TimeAgo(t.CreatedAt),
+			Output: output,
+			Error:  errStr,
+		})
+	}
+
+	resp := map[string]interface{}{
+		"id":           a.ID,
+		"name":         a.Name,
+		"os":           a.OS,
+		"arch":         a.Arch,
+		"hostname":     a.Hostname,
+		"username":     a.Username,
+		"internal_ip":  a.InternalIP,
+		"external_ip":  a.ExternalIP,
+		"pid":          a.PID,
+		"process_name": a.ProcessName,
+		"sleep":        a.Sleep,
+		"jitter":       a.Jitter,
+		"first_seen":   util.FormatTimestamp(a.FirstSeen),
+		"last_seen":    util.FormatTimestamp(a.LastSeen),
+		"status":       a.Status,
+		"tasks":        taskList,
+	}
+	writeJSON(rw, resp)
 }
 
 func (w *WebUI) handleAPIListeners(rw http.ResponseWriter, r *http.Request) {
@@ -101,28 +177,26 @@ func (w *WebUI) handleAPIListeners(rw http.ResponseWriter, r *http.Request) {
 			status = "running"
 		}
 		resp = append(resp, listenerResp{
-			Name:   l.Name,
-			Type:   strings.ToUpper(l.Type),
-			Bind:   l.BindAddr,
-			Status: status,
+			Name: l.Name, Type: strings.ToUpper(l.Type), Bind: l.BindAddr, Status: status,
 		})
 	}
-
-	rw.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(resp)
+	if resp == nil {
+		resp = []listenerResp{}
+	}
+	writeJSON(rw, resp)
 }
 
 func (w *WebUI) handleAPITasks(rw http.ResponseWriter, r *http.Request) {
 	agents, _ := w.server.AgentMgr.List()
 
 	type taskResp struct {
-		ID      string `json:"id"`
-		Agent   string `json:"agent"`
-		Type    string `json:"type"`
-		Args    string `json:"args"`
-		Status  string `json:"status"`
-		Created string `json:"created"`
-		Output  string `json:"output"`
+		ID     string `json:"id"`
+		Agent  string `json:"agent"`
+		Type   string `json:"type"`
+		Args   string `json:"args"`
+		Status string `json:"status"`
+		Time   string `json:"time"`
+		Output string `json:"output"`
 	}
 
 	var resp []taskResp
@@ -133,196 +207,134 @@ func (w *WebUI) handleAPITasks(rw http.ResponseWriter, r *http.Request) {
 			result, _ := w.server.TaskDisp.GetResult(t.ID)
 			if result != nil && len(result.Output) > 0 {
 				output = string(result.Output)
-				if len(output) > 500 {
-					output = output[:500] + "..."
+				if len(output) > 2000 {
+					output = output[:2000] + "..."
 				}
 			}
-
 			resp = append(resp, taskResp{
-				ID:      util.ShortID(t.ID),
-				Agent:   a.Name,
-				Type:    protocol.TaskTypeName(uint8(t.Type)),
-				Args:    strings.Join(t.Args, " "),
-				Status:  protocol.StatusName(uint8(t.Status)),
-				Created: util.TimeAgo(t.CreatedAt),
-				Output:  output,
+				ID: util.ShortID(t.ID), Agent: a.Name,
+				Type: protocol.TaskTypeName(uint8(t.Type)), Args: strings.Join(t.Args, " "),
+				Status: protocol.StatusName(uint8(t.Status)), Time: util.TimeAgo(t.CreatedAt),
+				Output: output,
 			})
 		}
 	}
-
-	rw.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(resp)
+	if resp == nil {
+		resp = []taskResp{}
+	}
+	writeJSON(rw, resp)
 }
 
 func (w *WebUI) handleAPIEvents(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(w.server.EventLog)
+	writeJSON(rw, w.server.EventLog)
 }
 
-// ──────── Dashboard HTML ────────
+// ──────── Action API (Interactive) ────────
+
+func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "POST required", 405)
+		return
+	}
+
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+
+	var req struct {
+		Agent   string `json:"agent"`
+		Command string `json:"command"`
+		Args    string `json:"args"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(rw, map[string]string{"error": "invalid JSON"})
+		return
+	}
+
+	// Resolve agent
+	agent, _ := w.server.AgentMgr.Get(req.Agent)
+	if agent == nil {
+		writeJSON(rw, map[string]string{"error": "agent not found: " + req.Agent})
+		return
+	}
+
+	// Parse command and queue task
+	var taskType uint8
+	var args []string
+
+	if req.Args != "" {
+		args = strings.Fields(req.Args)
+	}
+
+	switch strings.ToLower(req.Command) {
+	case "shell":
+		taskType = protocol.TaskShell
+		if req.Args != "" {
+			args = []string{req.Args} // Keep full command as one arg
+		}
+	case "sysinfo":
+		taskType = protocol.TaskSysinfo
+	case "ps":
+		taskType = protocol.TaskProcessList
+	case "screenshot":
+		taskType = protocol.TaskScreenshot
+	case "download":
+		taskType = protocol.TaskDownload
+	case "persist":
+		taskType = protocol.TaskPersist
+	case "sleep":
+		taskType = protocol.TaskSleep
+	case "cd":
+		taskType = protocol.TaskCd
+	case "kill":
+		taskType = protocol.TaskKill
+	case "evasion":
+		taskType = protocol.TaskEvasion
+	case "token":
+		taskType = protocol.TaskToken
+	case "keylog":
+		taskType = protocol.TaskKeylog
+	case "socks":
+		taskType = protocol.TaskSocks
+	case "portfwd":
+		taskType = protocol.TaskPortFwd
+	case "creds":
+		taskType = protocol.TaskCreds
+	case "pivot":
+		taskType = protocol.TaskPivot
+	default:
+		// Check for AD commands
+		if strings.HasPrefix(req.Command, "ad-") {
+			taskType = protocol.TaskAD
+			args = append([]string{req.Command}, args...)
+		} else {
+			// Treat as shell command
+			taskType = protocol.TaskShell
+			args = []string{req.Command + " " + req.Args}
+		}
+	}
+
+	task, err := w.server.TaskDisp.CreateTask(agent.ID, taskType, args, nil)
+	if err != nil {
+		writeJSON(rw, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(rw, map[string]string{
+		"status":  "queued",
+		"task_id": task.ID,
+		"agent":   agent.Name,
+		"type":    protocol.TaskTypeName(taskType),
+	})
+}
+
+// ──────── Dashboard ────────
 
 func (w *WebUI) handleDashboard(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 	rw.Write([]byte(dashboardHTML))
 }
 
-const dashboardHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Phantom C2 — Dashboard</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
-
-  .header { background: #1e293b; padding: 20px 30px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; }
-  .header h1 { color: #a78bfa; font-size: 24px; }
-  .header h1 span { color: #64748b; font-size: 14px; font-weight: normal; }
-  .status-dot { width: 10px; height: 10px; background: #4ade80; border-radius: 50%; display: inline-block; margin-right: 8px; }
-
-  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-  .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
-  .stat-card .label { color: #94a3b8; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
-  .stat-card .value { color: #f8fafc; font-size: 36px; font-weight: bold; margin-top: 4px; }
-  .stat-card .value.green { color: #4ade80; }
-  .stat-card .value.purple { color: #a78bfa; }
-  .stat-card .value.yellow { color: #fbbf24; }
-  .stat-card .value.blue { color: #60a5fa; }
-
-  .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; margin-bottom: 20px; }
-  .panel-header { padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-  .panel-header h2 { font-size: 16px; color: #a78bfa; }
-  .panel-body { padding: 0; }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { background: #0f172a; padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
-  td { padding: 12px 16px; border-top: 1px solid #1a2332; font-size: 14px; }
-  tr:hover td { background: #172033; }
-
-  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-  .badge-active { background: #065f46; color: #6ee7b7; }
-  .badge-dormant { background: #78350f; color: #fcd34d; }
-  .badge-dead { background: #7f1d1d; color: #fca5a5; }
-  .badge-running { background: #065f46; color: #6ee7b7; }
-  .badge-stopped { background: #7f1d1d; color: #fca5a5; }
-  .badge-complete { background: #1e3a5f; color: #93c5fd; }
-  .badge-pending { background: #78350f; color: #fcd34d; }
-  .badge-sent { background: #4a1d96; color: #c4b5fd; }
-
-  .os-icon { font-size: 16px; margin-right: 6px; }
-  .refresh-btn { background: #334155; border: none; color: #94a3b8; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
-  .refresh-btn:hover { background: #475569; color: #e2e8f0; }
-
-  .output-cell { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: #94a3b8; }
-
-  @media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <h1>
-    <span class="status-dot"></span>
-    Phantom C2 <span>— Dashboard</span>
-  </h1>
-  <button class="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
-</div>
-
-<div class="container">
-  <div class="stats">
-    <div class="stat-card"><div class="label">Total Agents</div><div class="value green" id="stat-agents">-</div></div>
-    <div class="stat-card"><div class="label">Active Listeners</div><div class="value purple" id="stat-listeners">-</div></div>
-    <div class="stat-card"><div class="label">Tasks Completed</div><div class="value blue" id="stat-tasks">-</div></div>
-    <div class="stat-card"><div class="label">Events</div><div class="value yellow" id="stat-events">-</div></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header"><h2>Agents</h2></div>
-    <div class="panel-body"><table>
-      <thead><tr><th>Name</th><th>OS</th><th>Hostname</th><th>User</th><th>IP</th><th>Sleep</th><th>Last Seen</th><th>Status</th></tr></thead>
-      <tbody id="agents-table"></tbody>
-    </table></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header"><h2>Listeners</h2></div>
-    <div class="panel-body"><table>
-      <thead><tr><th>Name</th><th>Type</th><th>Bind Address</th><th>Status</th></tr></thead>
-      <tbody id="listeners-table"></tbody>
-    </table></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header"><h2>Recent Tasks</h2></div>
-    <div class="panel-body"><table>
-      <thead><tr><th>ID</th><th>Agent</th><th>Type</th><th>Command</th><th>Status</th><th>Time</th><th>Output</th></tr></thead>
-      <tbody id="tasks-table"></tbody>
-    </table></div>
-  </div>
-</div>
-
-<script>
-function badge(status) {
-  const cls = 'badge-' + status.toLowerCase();
-  return '<span class="badge ' + cls + '">' + status + '</span>';
+func writeJSON(rw http.ResponseWriter, data interface{}) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(rw).Encode(data)
 }
-function osIcon(os) {
-  return os === 'windows' ? '<span class="os-icon">🪟</span>' : '<span class="os-icon">🐧</span>';
-}
-
-async function fetchJSON(url) {
-  const r = await fetch(url);
-  return r.json();
-}
-
-async function refreshAgents() {
-  const agents = await fetchJSON('/api/agents') || [];
-  document.getElementById('stat-agents').textContent = agents.length;
-  const tbody = document.getElementById('agents-table');
-  tbody.innerHTML = agents.map(a =>
-    '<tr><td><strong>' + a.name + '</strong></td><td>' + osIcon(a.os) + a.os + '</td><td>' + a.hostname +
-    '</td><td>' + a.username + '</td><td>' + a.ip + '</td><td>' + a.sleep + '</td><td>' + a.last_seen +
-    '</td><td>' + badge(a.status) + '</td></tr>'
-  ).join('');
-}
-
-async function refreshListeners() {
-  const listeners = await fetchJSON('/api/listeners') || [];
-  document.getElementById('stat-listeners').textContent = listeners.length;
-  const tbody = document.getElementById('listeners-table');
-  tbody.innerHTML = listeners.map(l =>
-    '<tr><td>' + l.name + '</td><td>' + l.type + '</td><td>' + l.bind + '</td><td>' + badge(l.status) + '</td></tr>'
-  ).join('');
-}
-
-async function refreshTasks() {
-  const tasks = await fetchJSON('/api/tasks') || [];
-  document.getElementById('stat-tasks').textContent = tasks.filter(t => t.status === 'complete').length;
-  const tbody = document.getElementById('tasks-table');
-  tbody.innerHTML = tasks.slice(0, 50).map(t =>
-    '<tr><td>' + t.id + '</td><td>' + t.agent + '</td><td>' + t.type + '</td><td><code>' + (t.args || '-') +
-    '</code></td><td>' + badge(t.status) + '</td><td>' + t.created + '</td><td class="output-cell">' +
-    (t.output || '-') + '</td></tr>'
-  ).join('');
-}
-
-async function refreshEvents() {
-  const events = await fetchJSON('/api/events') || [];
-  document.getElementById('stat-events').textContent = events.length;
-}
-
-function refreshAll() {
-  refreshAgents();
-  refreshListeners();
-  refreshTasks();
-  refreshEvents();
-}
-
-refreshAll();
-setInterval(refreshAll, 5000);
-</script>
-</body>
-</html>`
