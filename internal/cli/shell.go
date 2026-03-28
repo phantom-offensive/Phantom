@@ -134,7 +134,16 @@ func (sh *Shell) Run() {
 // No tab completion or arrow keys, but reliable on all terminals.
 func (sh *Shell) runBasicMode() {
 	Info("Basic mode: no tab completion (type 'help' for commands)")
-	scanner := bufio.NewScanner(os.Stdin)
+
+	// Open /dev/tty directly as a fresh input source
+	// This bypasses the corrupted os.Stdin from term.ReadPassword
+	input := os.Stdin
+	tty, err := os.Open("/dev/tty")
+	if err == nil {
+		input = tty
+		defer tty.Close()
+	}
+	scanner := bufio.NewScanner(input)
 
 	for sh.running {
 		prompt := sh.getPrompt()
