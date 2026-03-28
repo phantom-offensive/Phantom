@@ -110,16 +110,25 @@
 - **Mobile** — Android APK builder (30+ fake app templates), iOS MDM + phishing
 - **Mobile evasion auto-included** — all generated apps bypass security analysis
 
+**Web UI**
+- **Authenticated dashboard** — login required, session-based auth
+- **Payload generator** — build any payload from the browser with auto-download
+- **Beacon graphs** — Cobalt Strike-style activity charts and network topology
+- **Interactive terminal** — send commands to agents from the browser
+- **Multi-operator** — multiple pentesters on same server simultaneously
+
 **Operations**
+- **Agent notes** — add per-agent notes (creds found, pivot paths, etc.)
+- **Task output search** — search across ALL command output from all agents
+- **File browser** — request directory listings from agents
+- **Screenshot/process viewer** — request captures from agents via Web UI
 - **Engagement reporting** — Markdown + CSV with full activity timeline
 - **Webhook notifications** — Slack/Discord alerts on events
 - **Session recording** — every command logged for documentation
 - **Built-in diagnostics** — `--doctor` flag checks 25+ system requirements
+- **Redirector support** — generate Nginx/Caddy/Cloudflare/iptables configs
 - **Docker deployment** — `docker-compose up -d` one-liner
 - **Versioning** — CHANGELOG.md, git tags, `--version` flag
-- **Engagement reporting** — auto-generate Markdown/CSV reports with full activity timeline
-- **Webhook notifications** — Slack/Discord alerts on agent registration and events
-- **Session recording** — every command and output logged for documentation
 - **Docker deployment** — `docker-compose up -d` one-liner
 
 ---
@@ -527,7 +536,58 @@ phantom > webui
 [+] Web UI started: http://127.0.0.1:3000
 ```
 
-Features: real-time agent/listener/task tables, auto-refresh, dark theme, REST API.
+### Web UI Login
+
+The Web UI requires authentication. Default credentials:
+
+```
+Username: admin
+Password: phantom
+```
+
+All pages and API endpoints are protected — no anonymous access.
+
+### Web UI Features
+
+- **Dashboard** — real-time stats, beacon activity graph, network topology, agent cards
+- **Agents** — table view with interact buttons, status badges
+- **Terminal** — interactive command terminal with quick-action buttons
+- **Payloads** — generate any payload type from the browser (auto-downloads to your machine)
+- **Listeners** — view running listeners
+- **Tasks** — full task history with output
+- **Events** — event log
+- **Scoreboard** — agent count badges
+
+### Web UI API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/login` | GET/POST | Login page and authentication |
+| `/logout` | GET | End session |
+| `/api/agents` | GET | List all agents |
+| `/api/agent/{name}` | GET | Agent detail with task history |
+| `/api/listeners` | GET | List all listeners |
+| `/api/tasks` | GET | All tasks across agents |
+| `/api/events` | GET | Event log |
+| `/api/cmd` | POST | Send command to an agent |
+| `/api/payload/generate` | POST | Generate any payload type |
+| `/api/payload/download` | GET | Download generated payload |
+| `/api/payload/types` | GET | List available payload types |
+| `/api/payload/apps` | GET | List mobile app templates |
+| `/api/notes?agent=` | GET/POST | Read/add agent notes |
+| `/api/search?q=` | GET | Search all task output |
+| `/api/operators` | GET | List online operators |
+| `/api/filebrowser` | GET | Request directory listing from agent |
+| `/api/screenshot` | GET | Request screenshot from agent |
+| `/api/processlist` | GET | Request process list from agent |
+
+### Multi-Operator Support
+
+Multiple pentesters can use the same server simultaneously:
+- Each operator logs in with their own credentials
+- Agent notes show which operator added them
+- `/api/operators` shows who's currently online
+- CLI and Web UI can be used at the same time
 
 ## Engagement Reporting
 

@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] — 2026-03-28
+
+### 🔒 Web UI Auth, Payload Generator, Multi-Operator
+
+**Web UI Authentication**
+- Login page required for all dashboard access
+- Default credentials: admin / phantom
+- Session cookies with 24-hour expiry
+- All API endpoints protected by auth middleware
+- Dark themed login page matching dashboard
+
+**Payload Generator (Web UI)**
+- Generate any payload type from the browser
+- 15 payload types: EXE, ELF, ASPX, PHP, JSP, PowerShell, Bash, Python, HTA, VBA, Android, iOS, Fake Apps
+- Configure listener URL, sleep, jitter from the form
+- Auto-download to browser after generation
+- Download button for re-download
+- Mobile app template selector (30+ templates)
+
+**Multi-Operator Support**
+- Multiple pentesters login simultaneously
+- /api/operators shows who's online
+- Agent notes track which operator added them
+
+**Agent Notes**
+- Add notes per agent (creds found, target info, pivot paths)
+- GET/POST /api/notes?agent=<name>
+- Timestamped with author name
+
+**Task Output Search**
+- Search across ALL command output from all agents
+- GET /api/search?q=<query>
+- Find passwords, hashes, or specific strings
+
+**File Browser / Screenshot / Process List**
+- Request directory listings, screenshots, process lists from Web UI
+- Results appear in agent task history on next check-in
+
+**Redirector Support**
+- Generate configs for: Nginx, Apache, Cloudflare Worker, Caddy, socat, iptables
+- Host header validation in HTTP profiles
+- Redirector setup guide with OPSEC checklist
+
+---
+
 ## [1.0.1] — 2026-03-28
 
 ### 🎨 Web UI Redesign + Stability Fixes

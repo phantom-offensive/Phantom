@@ -213,7 +213,7 @@ body{background:#0a0e1a;color:#e8ecf4;font-family:'Segoe UI',system-ui,sans-seri
 <div class="field"><label>Password</label><input type="password" name="password" required></div>
 <button type="submit" class="btn">Sign In</button>
 </form>
-<p style="margin-top:16px;font-size:11px;color:#4b5563;text-align:center">Default: admin / phantom</p>
+<p style="margin-top:16px;font-size:11px;color:#4b5563;text-align:center">Phantom C2 Framework</p>
 </div></body></html>`
 
 const loginPageHTMLError = `<!DOCTYPE html><html><head>
