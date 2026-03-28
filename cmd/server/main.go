@@ -42,9 +42,6 @@ func main() {
 	}
 
 	// ── Authentication ──
-	// Save terminal state before password prompts (restored after auth)
-	cli.SaveTerminalState()
-
 	auth := server.NewAuthManager()
 	if !auth.IsSetup() {
 		// First run — create credentials
@@ -102,8 +99,9 @@ func main() {
 		fmt.Println()
 	}
 
-	// Restore terminal state after password prompts (critical for liner/readline)
-	cli.RestoreTerminalState()
+	// Fix terminal after password prompts — reopen stdin from /dev/tty
+	// This is required because term.ReadPassword corrupts stdin on WSL
+	cli.ReopenStdin()
 
 	// Load configuration
 	cli.Info("Loading configuration from %s", *configPath)
