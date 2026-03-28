@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/phantom-c2/phantom/internal/cli"
@@ -12,16 +13,30 @@ import (
 	"github.com/phantom-c2/phantom/internal/webui"
 )
 
-var version = "dev"
+const phantomVersion = "1.0.0"
 
 func main() {
 	configPath := flag.String("config", "configs/server.yaml", "Path to server configuration file")
 	mode := flag.String("mode", "", "Interface mode: cli, web, or both (default: asks on startup)")
 	webAddr := flag.String("web-addr", "0.0.0.0:3000", "Web UI bind address")
+	runDoctor := flag.Bool("doctor", false, "Run diagnostics and troubleshooting checks")
+	showVersion := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
 
+	// Version flag
+	if *showVersion {
+		fmt.Printf("Phantom C2 v%s (%s/%s, %s)\n", phantomVersion, runtime.GOOS, runtime.GOARCH, runtime.Version())
+		return
+	}
+
 	// Print banner
-	cli.PrintBanner(version)
+	cli.PrintBanner("1.0.0")
+
+	// Doctor flag — run diagnostics without starting server
+	if *runDoctor {
+		cli.RunDiagnostics(nil)
+		return
+	}
 
 	// ── Authentication ──
 	auth := server.NewAuthManager()

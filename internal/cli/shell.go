@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -26,7 +27,8 @@ const historyFile = ".phantom_history"
 // Global commands available at the main prompt.
 var globalCommands = []string{
 	"agents", "interact", "listeners", "tasks", "generate",
-	"remove", "loot", "report", "webui", "webhook", "events", "clear", "help", "exit",
+	"remove", "loot", "report", "webui", "webhook", "doctor", "diagnostics",
+	"troubleshoot", "version", "events", "clear", "help", "exit",
 	"build", "payload",
 }
 
@@ -358,6 +360,10 @@ func (sh *Shell) execute(line string) {
 		sh.cmdRemoveAgent(args)
 	case "loot":
 		sh.cmdLoot(args)
+	case "doctor", "diag", "diagnostics", "troubleshoot":
+		RunDiagnostics(sh.server)
+	case "version":
+		sh.cmdVersion()
 	case "report":
 		sh.cmdReport(args)
 	case "webui":
@@ -459,6 +465,8 @@ func (sh *Shell) cmdHelp() {
 		{"report [md|csv|all]", "Generate engagement report"},
 		{"webui [addr]", "Start web dashboard (default: 127.0.0.1:3000)"},
 		{"webhook <slack|discord> <url>", "Set webhook notifications"},
+		{"doctor", "Run diagnostics / troubleshooting"},
+		{"version", "Show version info"},
 		{"events", "View event log"},
 		{"clear", "Clear screen"},
 		{"help", "Show this help"},
@@ -940,6 +948,19 @@ func (sh *Shell) cmdWebhook(args []string) {
 	default:
 		Error("Unknown webhook type: %s (use: slack, discord, test)", args[0])
 	}
+}
+
+func (sh *Shell) cmdVersion() {
+	fmt.Println()
+	fmt.Printf("  %s%sPhantom C2 Framework%s\n", colorBold, colorPurple, colorReset)
+	fmt.Printf("  %s─────────────────────────────────%s\n", colorDim, colorReset)
+	fmt.Printf("  %-15s %s\n", "Version:", "1.0.0")
+	fmt.Printf("  %-15s %s\n", "Go:", runtime.Version())
+	fmt.Printf("  %-15s %s/%s\n", "Platform:", runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("  %-15s %s\n", "Repo:", "github.com/Phantom-C2-77/Phantom")
+	fmt.Printf("  %-15s %s\n", "Author:", "Opeyemi Kolawole")
+	fmt.Printf("  %-15s %s\n", "License:", "BSD 3-Clause")
+	fmt.Println()
 }
 
 func (sh *Shell) cmdEvents() {
