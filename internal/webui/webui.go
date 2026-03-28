@@ -14,39 +14,51 @@ import (
 )
 
 // WebUI serves a full interactive browser-based interface for Phantom C2.
-// Operators can choose CLI or Web UI — both have full capabilities.
 type WebUI struct {
 	server   *server.Server
 	bindAddr string
+	auth     *WebAuth
 }
 
 // New creates a new WebUI instance.
 func New(srv *server.Server, bindAddr string) *WebUI {
-	return &WebUI{server: srv, bindAddr: bindAddr}
+	return &WebUI{server: srv, bindAddr: bindAddr, auth: NewWebAuth()}
 }
 
 // Start launches the web UI HTTP server.
 func (w *WebUI) Start() error {
 	mux := http.NewServeMux()
 
-	// Pages
-	mux.HandleFunc("/", w.handleDashboard)
+	// Auth pages (no auth required)
+	mux.HandleFunc("/login", w.auth.HandleLogin)
+	mux.HandleFunc("/logout", w.auth.HandleLogout)
 
-	// Read API
-	mux.HandleFunc("/api/agents", w.handleAPIAgents)
-	mux.HandleFunc("/api/listeners", w.handleAPIListeners)
-	mux.HandleFunc("/api/tasks", w.handleAPITasks)
-	mux.HandleFunc("/api/events", w.handleAPIEvents)
-	mux.HandleFunc("/api/agent/", w.handleAPIAgentDetail)
+	// Dashboard (auth required)
+	mux.HandleFunc("/", w.auth.AuthMiddleware(w.handleDashboard))
 
-	// Action API (interactive — send commands, manage listeners)
-	mux.HandleFunc("/api/cmd", w.handleAPICommand)
+	// Read API (auth required)
+	mux.HandleFunc("/api/agents", w.auth.AuthMiddleware(w.handleAPIAgents))
+	mux.HandleFunc("/api/listeners", w.auth.AuthMiddleware(w.handleAPIListeners))
+	mux.HandleFunc("/api/tasks", w.auth.AuthMiddleware(w.handleAPITasks))
+	mux.HandleFunc("/api/events", w.auth.AuthMiddleware(w.handleAPIEvents))
+	mux.HandleFunc("/api/agent/", w.auth.AuthMiddleware(w.handleAPIAgentDetail))
 
-	// Payload generation API
-	mux.HandleFunc("/api/payload/generate", w.handlePayloadGenerate)
-	mux.HandleFunc("/api/payload/types", w.handlePayloadTypes)
-	mux.HandleFunc("/api/payload/apps", w.handlePayloadAppTemplates)
-	mux.HandleFunc("/api/payload/download", w.handlePayloadDownload)
+	// Action API (auth required)
+	mux.HandleFunc("/api/cmd", w.auth.AuthMiddleware(w.handleAPICommand))
+
+	// Payload generation API (auth required)
+	mux.HandleFunc("/api/payload/generate", w.auth.AuthMiddleware(w.handlePayloadGenerate))
+	mux.HandleFunc("/api/payload/types", w.auth.AuthMiddleware(w.handlePayloadTypes))
+	mux.HandleFunc("/api/payload/apps", w.auth.AuthMiddleware(w.handlePayloadAppTemplates))
+	mux.HandleFunc("/api/payload/download", w.auth.AuthMiddleware(w.handlePayloadDownload))
+
+	// New features (auth required)
+	mux.HandleFunc("/api/notes", w.auth.AuthMiddleware(w.handleAgentNotes))
+	mux.HandleFunc("/api/search", w.auth.AuthMiddleware(w.handleSearchOutput))
+	mux.HandleFunc("/api/operators", w.auth.AuthMiddleware(w.handleOperators))
+	mux.HandleFunc("/api/filebrowser", w.auth.AuthMiddleware(w.handleFileBrowser))
+	mux.HandleFunc("/api/screenshot", w.auth.AuthMiddleware(w.handleScreenshotRequest))
+	mux.HandleFunc("/api/processlist", w.auth.AuthMiddleware(w.handleProcessList))
 
 	httpServer := &http.Server{
 		Addr:         w.bindAddr,
