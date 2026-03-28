@@ -23,6 +23,67 @@ func main() {
 	// Print banner
 	cli.PrintBanner(version)
 
+	// ── Authentication ──
+	auth := server.NewAuthManager()
+	if !auth.IsSetup() {
+		// First run — create credentials
+		fmt.Println()
+		fmt.Printf("  %s%sFirst-Time Setup — Create Operator Account%s\n", cli.ColorBold, cli.ColorPurple, cli.ColorReset)
+		fmt.Printf("  %s─────────────────────────────────────────────%s\n", cli.ColorDim, cli.ColorReset)
+		fmt.Println()
+
+		var username, password, confirm string
+		fmt.Printf("  %sUsername:%s ", cli.ColorCyan, cli.ColorReset)
+		fmt.Scanln(&username)
+		fmt.Printf("  %sPassword:%s ", cli.ColorCyan, cli.ColorReset)
+		fmt.Scanln(&password)
+		fmt.Printf("  %sConfirm:%s  ", cli.ColorCyan, cli.ColorReset)
+		fmt.Scanln(&confirm)
+
+		if password != confirm {
+			cli.Error("Passwords do not match")
+			os.Exit(1)
+		}
+		if len(password) < 6 {
+			cli.Error("Password must be at least 6 characters")
+			os.Exit(1)
+		}
+		if username == "" {
+			username = "operator"
+		}
+
+		if err := auth.Setup(username, password); err != nil {
+			cli.Error("Failed to create credentials: %v", err)
+			os.Exit(1)
+		}
+		cli.Success("Operator account created: %s", username)
+		fmt.Println()
+	} else {
+		// Login required
+		if err := auth.LoadCredentials(); err != nil {
+			cli.Error("Failed to load credentials: %v", err)
+			os.Exit(1)
+		}
+
+		fmt.Println()
+		fmt.Printf("  %s%sOperator Login%s\n", cli.ColorBold, cli.ColorPurple, cli.ColorReset)
+		fmt.Printf("  %s─────────────────────%s\n", cli.ColorDim, cli.ColorReset)
+
+		var username, password string
+		fmt.Printf("  %sUsername:%s ", cli.ColorCyan, cli.ColorReset)
+		fmt.Scanln(&username)
+		fmt.Printf("  %sPassword:%s ", cli.ColorCyan, cli.ColorReset)
+		fmt.Scanln(&password)
+
+		_, err := auth.Authenticate(username, password)
+		if err != nil {
+			cli.Error("Authentication failed")
+			os.Exit(1)
+		}
+		cli.Success("Authenticated as %s", username)
+		fmt.Println()
+	}
+
 	// Load configuration
 	cli.Info("Loading configuration from %s", *configPath)
 	cfg, err := server.LoadConfig(*configPath)

