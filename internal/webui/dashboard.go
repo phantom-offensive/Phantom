@@ -283,6 +283,7 @@ tr.clickable { cursor: pointer; }
     <div class="tab" onclick="nav('listeners')">Listeners</div>
     <div class="tab" onclick="nav('tasks')">Tasks</div>
     <div class="tab" onclick="nav('terminal')">Terminal</div>
+    <div class="tab" onclick="nav('payloads')">Payloads</div>
     <div class="tab" onclick="nav('events')">Events</div>
   </div>
   <div class="topbar-right">
@@ -302,6 +303,7 @@ tr.clickable { cursor: pointer; }
     <button class="sidebar-btn" onclick="nav('tasks')" title="Tasks">📋</button>
     <div class="sidebar-divider"></div>
     <button class="sidebar-btn" onclick="nav('terminal')" title="Terminal">💻</button>
+    <button class="sidebar-btn" onclick="nav('payloads')" title="Payloads">🔧</button>
     <div class="sidebar-divider"></div>
     <button class="sidebar-btn" onclick="nav('events')" title="Events">📜</button>
   </div>
@@ -438,6 +440,118 @@ tr.clickable { cursor: pointer; }
         <div class="term-input-row">
           <span class="term-prompt" id="term-prompt">phantom &gt;</span>
           <input class="term-input" id="term-input" placeholder="Type a command..." onkeydown="if(event.key==='Enter')sendTermCmd()" autofocus>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PAYLOADS ══════ -->
+    <div id="p-payloads" class="page">
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:16px;">
+        <div class="stat-card purple"><div class="stat-label">Agent Binaries</div><div class="stat-value purple">4</div></div>
+        <div class="stat-card blue"><div class="stat-label">Web Shells & Stagers</div><div class="stat-value blue">8</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Mobile Payloads</div><div class="stat-value yellow">3+</div></div>
+      </div>
+
+      <!-- Generator Form -->
+      <div class="card">
+        <div class="card-header"><h3><span>🔧</span> Payload Generator</h3></div>
+        <div class="card-body padded">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+            <!-- Left: Config -->
+            <div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Payload Type</label>
+                <select id="pl-type" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;" onchange="onPayloadTypeChange()">
+                  <optgroup label="Agent Binaries">
+                    <option value="exe">🪟 Windows EXE (amd64)</option>
+                    <option value="exe-garble">🪟 Windows EXE (Obfuscated)</option>
+                    <option value="elf">🐧 Linux ELF (amd64)</option>
+                    <option value="elf-garble">🐧 Linux ELF (Obfuscated)</option>
+                  </optgroup>
+                  <optgroup label="Web Shells">
+                    <option value="aspx">🌐 ASPX Web Shell (IIS)</option>
+                    <option value="php">🌐 PHP Web Shell</option>
+                    <option value="jsp">🌐 JSP Web Shell (Tomcat)</option>
+                  </optgroup>
+                  <optgroup label="Stagers">
+                    <option value="powershell">💻 PowerShell Stager</option>
+                    <option value="bash">💻 Bash Stager</option>
+                    <option value="python">🐍 Python Stager</option>
+                  </optgroup>
+                  <optgroup label="Phishing">
+                    <option value="hta">📧 HTA Application</option>
+                    <option value="vba">📧 VBA Macro</option>
+                  </optgroup>
+                  <optgroup label="Mobile">
+                    <option value="android">📱 Android Payload Pack</option>
+                    <option value="ios">🍎 iOS Payload Pack</option>
+                    <option value="app">📲 Fake Mobile App (30+ templates)</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Listener URL (Callback)</label>
+                <input type="text" id="pl-url" value="https://127.0.0.1:443" placeholder="https://your-c2:443" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;">
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Sleep (seconds)</label>
+                  <input type="number" id="pl-sleep" value="10" min="1" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;">
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Jitter (%)</label>
+                  <input type="number" id="pl-jitter" value="20" min="0" max="50" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;">
+                </div>
+              </div>
+
+              <!-- App template selector (hidden by default) -->
+              <div id="pl-app-row" style="margin-bottom:12px; display:none;">
+                <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">App Template</label>
+                <select id="pl-app-template" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;">
+                  <option value="">Loading templates...</option>
+                </select>
+              </div>
+
+              <button onclick="generatePayload()" class="btn" style="width:100%;padding:12px;font-size:14px;" id="pl-btn">
+                Generate Payload
+              </button>
+            </div>
+
+            <!-- Right: Output -->
+            <div>
+              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-height:280px;" id="pl-output">
+                <div style="color:var(--text-muted);text-align:center;padding:40px 0;">
+                  <div style="font-size:40px;margin-bottom:12px;opacity:0.3;">🔧</div>
+                  <p>Select a payload type and click Generate</p>
+                  <p style="font-size:12px;margin-top:8px;">Output will appear here</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Reference -->
+      <div class="card">
+        <div class="card-header"><h3><span>📖</span> Quick Reference</h3></div>
+        <div class="card-body padded">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+            <div>
+              <h4 style="color:var(--accent-light);font-size:12px;margin-bottom:6px;">AGENT BINARIES</h4>
+              <p style="font-size:12px;color:var(--text-muted);">Cross-compiled Go agents with embedded encryption keys. Run on target, calls back to your listener.</p>
+            </div>
+            <div>
+              <h4 style="color:var(--accent-light);font-size:12px;margin-bottom:6px;">WEB SHELLS</h4>
+              <p style="font-size:12px;color:var(--text-muted);">Token-protected shells with 404 decoy. Upload to web server, access with X-Debug-Token header.</p>
+            </div>
+            <div>
+              <h4 style="color:var(--accent-light);font-size:12px;margin-bottom:6px;">MOBILE PAYLOADS</h4>
+              <p style="font-size:12px;color:var(--text-muted);">Android APK projects with evasion suite. iOS MDM profiles and phishing pages. 30+ fake app templates.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -934,6 +1048,79 @@ refreshAll = async function() {
   drawNetworkGraph(agents);
   updateSessionHealth(agents);
 };
+
+// ──── Payload Generator ────
+function onPayloadTypeChange() {
+  const type = document.getElementById('pl-type').value;
+  const appRow = document.getElementById('pl-app-row');
+  if (type === 'app') {
+    appRow.style.display = 'block';
+    loadAppTemplates();
+  } else {
+    appRow.style.display = 'none';
+  }
+}
+
+async function loadAppTemplates() {
+  const sel = document.getElementById('pl-app-template');
+  try {
+    const templates = await fetchJ('/api/payload/apps');
+    sel.innerHTML = templates.map(t =>
+      '<option value="'+t.name+'">'+t.icon+' '+t.display+' ('+t.category+', '+t.perms+' perms)</option>'
+    ).join('');
+  } catch(e) {
+    sel.innerHTML = '<option>Failed to load templates</option>';
+  }
+}
+
+async function generatePayload() {
+  const btn = document.getElementById('pl-btn');
+  const output = document.getElementById('pl-output');
+  const type = document.getElementById('pl-type').value;
+  const url = document.getElementById('pl-url').value;
+  const sleep = parseInt(document.getElementById('pl-sleep').value) || 10;
+  const jitter = parseInt(document.getElementById('pl-jitter').value) || 20;
+  const appTemplate = document.getElementById('pl-app-template').value;
+
+  btn.textContent = 'Generating...';
+  btn.disabled = true;
+  output.innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-light);">Generating payload...</div>';
+
+  try {
+    const resp = await fetch('/api/payload/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        type: type,
+        listener_url: url,
+        sleep: sleep,
+        jitter: jitter,
+        app_template: appTemplate
+      })
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      let details = '<div style="color:var(--green);font-weight:600;font-size:14px;margin-bottom:12px;">Payload Generated Successfully</div>';
+      if (data.filename) details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">FILE:</span> <code style="color:var(--accent-light);">'+data.filename+'</code></div>';
+      if (data.filepath) details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">PATH:</span> <code style="color:var(--text-primary);">'+data.filepath+'</code></div>';
+      if (data.size) details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">SIZE:</span> <span style="color:var(--blue);">'+data.size+'</span></div>';
+      details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">TYPE:</span> <span>'+data.type+'</span></div>';
+      details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">CALLBACK:</span> <span>'+url+'</span></div>';
+      if (data.message) {
+        details += '<div style="margin-top:12px;padding:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:6px;font-size:12px;color:var(--green);white-space:pre-wrap;">'+data.message+'</div>';
+      }
+      output.innerHTML = details;
+    } else {
+      output.innerHTML = '<div style="color:var(--red);font-weight:600;">Generation Failed</div><div style="margin-top:8px;color:var(--text-muted);font-size:12px;">'+data.message+'</div>';
+    }
+  } catch(e) {
+    output.innerHTML = '<div style="color:var(--red);">Error: '+e.message+'</div>';
+  }
+
+  btn.textContent = 'Generate Payload';
+  btn.disabled = false;
+}
 
 // ──── Init ────
 refreshAll();

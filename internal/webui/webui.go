@@ -42,6 +42,11 @@ func (w *WebUI) Start() error {
 	// Action API (interactive — send commands, manage listeners)
 	mux.HandleFunc("/api/cmd", w.handleAPICommand)
 
+	// Payload generation API
+	mux.HandleFunc("/api/payload/generate", w.handlePayloadGenerate)
+	mux.HandleFunc("/api/payload/types", w.handlePayloadTypes)
+	mux.HandleFunc("/api/payload/apps", w.handlePayloadAppTemplates)
+
 	httpServer := &http.Server{
 		Addr:         w.bindAddr,
 		Handler:      mux,
