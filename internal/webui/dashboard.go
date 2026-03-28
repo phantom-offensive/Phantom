@@ -1203,6 +1203,68 @@ function fbGoUp() {
   browseFiles();
 }
 
+function parseDirOutput(raw, basePath) {
+  // Parse Windows dir output into clickable entries
+  const lines = raw.split('\n');
+  let html = '';
+  const sep = fbCurrentOS === 'windows' ? '\\' : '/';
+  const normBase = basePath.replace(/[\\\/]+$/, '');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { html += '\n'; continue; }
+
+    if (fbCurrentOS === 'windows') {
+      // Match: 07/06/2025  06:11 PM    <DIR>          FolderName
+      const dirMatch = trimmed.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s+[AP]M)\s+<DIR>\s+(.+)$/);
+      if (dirMatch && dirMatch[2] !== '.' && dirMatch[2] !== '..') {
+        const name = dirMatch[2];
+        const fullPath = normBase + sep + name;
+        html += '<span style="color:var(--text-muted)">' + dirMatch[1] + '  &lt;DIR&gt;  </span>' +
+          '<a href="#" onclick="browseDir(\'' + fullPath.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\');return false;" ' +
+          'style="color:var(--cyan);cursor:pointer;text-decoration:none;font-weight:600;" ' +
+          'onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">' +
+          '📁 ' + name + '</a>\n';
+        continue;
+      }
+      // Match: file lines with size
+      const fileMatch = trimmed.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s+[AP]M)\s+([\d,]+)\s+(.+)$/);
+      if (fileMatch) {
+        html += '<span style="color:var(--text-muted)">' + fileMatch[1] + '  ' + fileMatch[2].padStart(14) + '  </span>' +
+          '<span style="color:var(--text-primary);">📄 ' + fileMatch[3] + '</span>\n';
+        continue;
+      }
+    } else {
+      // Parse ls -la output: drwxr-xr-x 2 root root 4096 Jan 1 12:00 dirname
+      const lsMatch = trimmed.match(/^([d\-lrwxsStT]{10})\s+\d+\s+\S+\s+\S+\s+[\d,]+\s+\w+\s+\d+\s+[\d:]+\s+(.+)$/);
+      if (lsMatch && lsMatch[2] !== '.' && lsMatch[2] !== '..') {
+        const perms = lsMatch[1];
+        const name = lsMatch[2];
+        if (perms.startsWith('d')) {
+          const fullPath = (normBase === '' ? '/' : normBase) + '/' + name;
+          html += '<span style="color:var(--text-muted)">' + perms + '  </span>' +
+            '<a href="#" onclick="browseDir(\'' + fullPath.replace(/'/g,"\\'") + '\');return false;" ' +
+            'style="color:var(--cyan);cursor:pointer;text-decoration:none;font-weight:600;" ' +
+            'onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">' +
+            '📁 ' + name + '</a>\n';
+          continue;
+        } else if (perms.startsWith('l')) {
+          html += '<span style="color:var(--text-muted)">' + perms + '  </span>' +
+            '<span style="color:var(--accent-light);">🔗 ' + name + '</span>\n';
+          continue;
+        } else {
+          html += '<span style="color:var(--text-muted)">' + perms + '  </span>' +
+            '<span style="color:var(--text-primary);">📄 ' + name + '</span>\n';
+          continue;
+        }
+      }
+    }
+    // Default: render line as-is (volume info, summary lines, etc.)
+    html += '<span style="color:var(--text-muted)">' + trimmed.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>\n';
+  }
+  return html;
+}
+
 async function browseFiles() {
   const agent = getSelectedFBAgent(); if (!agent) return;
   fbCurrentOS = getAgentOS(agent);
@@ -1226,7 +1288,10 @@ async function browseFiles() {
       if (detail.tasks && detail.tasks.length > 0) {
         const task = detail.tasks.find(t => data.task_id.startsWith(t.id) || t.id.startsWith(data.task_id.substring(0,8)));
         if (task && task.output && task.status !== 'pending' && task.status !== 'sent') {
-          output.innerHTML = '<span style="color:var(--green)">' + cmdLabel + '</span>\n\n' + task.output;
+          const parsed = parseDirOutput(task.output, path);
+          output.innerHTML = '<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">' +
+            '<span style="color:var(--green);font-weight:600;">' + cmdLabel + '</span>' +
+            '<span style="color:var(--text-muted);font-size:11px;margin-left:12px;">Click folders to navigate</span></div>' + parsed;
           return;
         }
       }
