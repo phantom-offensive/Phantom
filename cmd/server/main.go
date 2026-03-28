@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
+	"time"
 	"syscall"
 
 	"github.com/phantom-c2/phantom/internal/cli"
@@ -176,12 +179,21 @@ func main() {
 
 		// Start Web UI in background
 		ui := webui.New(srv, *webAddr)
+		webReady := make(chan bool, 1)
 		go func() {
+			// Signal that we're about to start
+			webReady <- true
 			if err := ui.Start(); err != nil {
 				cli.Error("Web UI error: %v", err)
 			}
 		}()
-		cli.Success("Web UI started at http://%s", *webAddr)
+
+		// Wait for Web UI goroutine to start
+		<-webReady
+		time.Sleep(500 * time.Millisecond) // Give HTTP server time to bind
+
+		cli.Success("Web UI running at http://%s", *webAddr)
+		cli.Info("Open the URL above in your browser for the dashboard")
 		cli.Info("Type 'help' for available CLI commands")
 		fmt.Println()
 
@@ -206,8 +218,12 @@ func promptMode() string {
 	fmt.Println()
 	fmt.Printf("  %sChoice [1/2/3]:%s ", cli.ColorPurple, cli.ColorReset)
 
+	// Use bufio.Scanner for reliable input after password masking
+	scanner := bufio.NewScanner(os.Stdin)
 	var choice string
-	fmt.Scanln(&choice)
+	if scanner.Scan() {
+		choice = strings.TrimSpace(scanner.Text())
+	}
 
 	switch choice {
 	case "1", "cli":
