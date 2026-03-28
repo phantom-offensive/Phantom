@@ -1,0 +1,21 @@
+# Phantom C2 — Docker Compose
+# Usage: docker-compose up -d
+version: '3.8'
+
+services:
+  phantom:
+    build: .
+    container_name: phantom-c2
+    ports:
+      - "443:443"      # HTTPS listener
+      - "8080:8080"    # HTTP listener
+      - "53:53/udp"    # DNS listener
+      - "3000:3000"    # Web UI
+    volumes:
+      - ./data:/phantom/data              # Persistent database
+      - ./logs:/phantom/logs              # Session logs
+      - ./reports:/phantom/reports        # Generated reports
+      - ./build/agents:/phantom/build/agents  # Agent binaries
+    stdin_open: true   # Keep stdin open for interactive CLI
+    tty: true          # Allocate TTY
+    restart: unless-stopped

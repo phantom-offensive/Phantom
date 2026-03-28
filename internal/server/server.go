@@ -24,6 +24,7 @@ type Server struct {
 	ListenerMgr *listener.Manager
 	EventLog    []string
 	OnEvent     func(string, ...interface{})
+	Webhook     *WebhookNotifier
 }
 
 // New creates and initializes a new Phantom server.

@@ -13,6 +13,7 @@ import (
 
 	"github.com/peterh/liner"
 	"github.com/phantom-c2/phantom/internal/agent"
+	"github.com/phantom-c2/phantom/internal/webui"
 	"github.com/phantom-c2/phantom/internal/db"
 	"github.com/phantom-c2/phantom/internal/payloads"
 	"github.com/phantom-c2/phantom/internal/protocol"
@@ -25,7 +26,7 @@ const historyFile = ".phantom_history"
 // Global commands available at the main prompt.
 var globalCommands = []string{
 	"agents", "interact", "listeners", "tasks", "generate",
-	"remove", "loot", "events", "clear", "help", "exit",
+	"remove", "loot", "report", "webui", "webhook", "events", "clear", "help", "exit",
 	"build", "payload",
 }
 
@@ -357,6 +358,12 @@ func (sh *Shell) execute(line string) {
 		sh.cmdRemoveAgent(args)
 	case "loot":
 		sh.cmdLoot(args)
+	case "report":
+		sh.cmdReport(args)
+	case "webui":
+		sh.cmdWebUI(args)
+	case "webhook":
+		sh.cmdWebhook(args)
 	case "clear", "cls":
 		fmt.Print("\033[H\033[2J")
 	case "exit", "quit":
@@ -449,6 +456,9 @@ func (sh *Shell) cmdHelp() {
 		{"generate <type> [url]", "Build agent or generate payload"},
 		{"remove <name|id>", "Remove a dead agent"},
 		{"loot [agent]", "View captured loot"},
+		{"report [md|csv|all]", "Generate engagement report"},
+		{"webui [addr]", "Start web dashboard (default: 127.0.0.1:3000)"},
+		{"webhook <slack|discord> <url>", "Set webhook notifications"},
 		{"events", "View event log"},
 		{"clear", "Clear screen"},
 		{"help", "Show this help"},
@@ -802,6 +812,87 @@ func (sh *Shell) cmdLoot(args []string) {
 	}
 	fmt.Println()
 	t.Render()
+}
+
+func (sh *Shell) cmdReport(args []string) {
+	format := "md"
+	if len(args) > 0 {
+		format = strings.ToLower(args[0])
+	}
+
+	rg := NewReportGenerator(sh.server)
+
+	switch format {
+	case "md", "markdown":
+		err := rg.GenerateReport("")
+		if err != nil {
+			Error("Failed to generate report: %v", err)
+			return
+		}
+		Success("Markdown report generated in reports/ directory")
+	case "csv":
+		err := rg.GenerateCSV("")
+		if err != nil {
+			Error("Failed to generate CSV: %v", err)
+			return
+		}
+		Success("CSV report generated in reports/ directory")
+	case "all":
+		rg.GenerateReport("")
+		rg.GenerateCSV("")
+		Success("Markdown + CSV reports generated in reports/ directory")
+	default:
+		Error("Unknown format: %s (use: md, csv, all)", format)
+	}
+}
+
+func (sh *Shell) cmdWebUI(args []string) {
+	addr := "127.0.0.1:3000"
+	if len(args) > 0 {
+		addr = args[0]
+	}
+
+	ui := webui.New(sh.server, addr)
+	go func() {
+		if err := ui.Start(); err != nil {
+			Error("Web UI failed: %v", err)
+		}
+	}()
+
+	Success("Web UI started: http://%s", addr)
+	Info("Open in your browser to view the dashboard")
+}
+
+func (sh *Shell) cmdWebhook(args []string) {
+	if len(args) < 2 {
+		Info("Webhook notification setup:")
+		fmt.Printf("    %swebhook slack <webhook_url>%s     Set Slack notifications\n", colorCyan, colorReset)
+		fmt.Printf("    %swebhook discord <webhook_url>%s   Set Discord notifications\n", colorCyan, colorReset)
+		fmt.Printf("    %swebhook test%s                    Send a test notification\n", colorCyan, colorReset)
+		return
+	}
+
+	switch args[0] {
+	case "slack":
+		notifier := server.NewWebhookNotifier(args[1], "")
+		sh.server.Webhook = notifier
+		Success("Slack webhook configured")
+		Info("Notifications will be sent for: agent registration, agent death, listener events")
+	case "discord":
+		notifier := server.NewWebhookNotifier("", args[1])
+		sh.server.Webhook = notifier
+		Success("Discord webhook configured")
+		Info("Notifications will be sent for: agent registration, agent death, listener events")
+	case "test":
+		if sh.server.Webhook != nil {
+			sh.server.Webhook.NotifyAgentRegistered("test-agent", "windows", "TEST-PC", "admin", "10.0.0.1")
+			Success("Test notification sent")
+		} else {
+			Error("No webhook configured — use: webhook slack <url> or webhook discord <url>")
+		}
+	default:
+		Error("Unknown webhook type: %s (use: slack, discord, test)", args[0])
+	}
 }
 
 func (sh *Shell) cmdEvents() {
