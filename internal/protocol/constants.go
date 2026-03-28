@@ -26,6 +26,8 @@ const (
 	TaskCd          uint8 = 10
 	TaskAD          uint8 = 11  // Active Directory commands
 	TaskBOF         uint8 = 12  // Beacon Object File execution
+	TaskShellcode   uint8 = 13  // In-memory shellcode execution
+	TaskInject      uint8 = 14  // Remote process injection
 )
 
 // Task status
@@ -70,6 +72,10 @@ func TaskTypeName(t uint8) string {
 		return "ad"
 	case TaskBOF:
 		return "bof"
+	case TaskShellcode:
+		return "shellcode"
+	case TaskInject:
+		return "inject"
 	default:
 		return "unknown"
 	}

