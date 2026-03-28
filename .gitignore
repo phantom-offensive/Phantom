@@ -34,3 +34,4 @@ vendor/
 # Loot and logs
 loot/
 *.log
+configs/server.key
