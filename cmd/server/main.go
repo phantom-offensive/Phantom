@@ -42,6 +42,9 @@ func main() {
 	}
 
 	// ── Authentication ──
+	// Save terminal state before password prompts (restored after auth)
+	cli.SaveTerminalState()
+
 	auth := server.NewAuthManager()
 	if !auth.IsSetup() {
 		// First run — create credentials
@@ -98,6 +101,9 @@ func main() {
 		cli.Success("Authenticated as %s", username)
 		fmt.Println()
 	}
+
+	// Restore terminal state after password prompts (critical for liner/readline)
+	cli.RestoreTerminalState()
 
 	// Load configuration
 	cli.Info("Loading configuration from %s", *configPath)

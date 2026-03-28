@@ -1,76 +1,58 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
 )
 
-// ReadPassword reads a password from stdin with asterisk masking.
-// Falls back to plain text if terminal raw mode is not available.
+// savedTermState holds the original terminal state before any password prompts.
+// It's used to restore the terminal after all auth is complete.
+var savedTermState *term.State
+
+// SaveTerminalState saves the current terminal state before password prompts.
+func SaveTerminalState() {
+	fd := int(syscall.Stdin)
+	if term.IsTerminal(fd) {
+		state, err := term.GetState(fd)
+		if err == nil {
+			savedTermState = state
+		}
+	}
+}
+
+// RestoreTerminalState restores the terminal to its original state.
+// Call this after all password prompts are done, before starting liner/readline.
+func RestoreTerminalState() {
+	if savedTermState != nil {
+		fd := int(syscall.Stdin)
+		term.Restore(fd, savedTermState)
+		savedTermState = nil
+	}
+}
+
+// ReadPassword reads a password from stdin showing * for each character.
+// Uses golang.org/x/term which properly saves and restores terminal state.
 func ReadPassword(prompt string) string {
 	fmt.Print(prompt)
 
-	// Try using x/term for proper password masking
 	fd := int(syscall.Stdin)
 	if term.IsTerminal(fd) {
 		password, err := term.ReadPassword(fd)
-		fmt.Println() // New line after password entry
+		fmt.Println() // New line after password
 		if err == nil {
 			return string(password)
 		}
 	}
 
-	// Fallback: read with asterisk display (manual raw mode)
-	password := readPasswordManual()
-	fmt.Println()
-	return password
-}
-
-// readPasswordManual reads password character by character, displaying * for each.
-func readPasswordManual() string {
-	// Try to set terminal to raw mode
-	fd := int(os.Stdin.Fd())
-	oldState, err := term.MakeRaw(fd)
-	if err != nil {
-		// Can't do raw mode — fall back to plain text
-		var pass string
-		fmt.Scanln(&pass)
-		return pass
+	// Fallback for non-terminal (piped input, etc.)
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text())
 	}
-	defer term.Restore(fd, oldState)
-
-	var password []byte
-	buf := make([]byte, 1)
-
-	for {
-		n, err := os.Stdin.Read(buf)
-		if err != nil || n == 0 {
-			break
-		}
-
-		char := buf[0]
-
-		switch char {
-		case '\n', '\r': // Enter
-			return string(password)
-		case 127, '\b': // Backspace
-			if len(password) > 0 {
-				password = password[:len(password)-1]
-				fmt.Print("\b \b") // Erase the asterisk
-			}
-		case 3: // Ctrl+C
-			fmt.Println()
-			os.Exit(0)
-		default:
-			if char >= 32 && char < 127 { // Printable character
-				password = append(password, char)
-				fmt.Print("*")
-			}
-		}
-	}
-
-	return string(password)
+	return ""
 }
