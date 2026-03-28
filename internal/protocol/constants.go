@@ -32,6 +32,11 @@ const (
 	TaskEvasion     uint8 = 16  // Run/re-run evasion techniques
 	TaskPivot       uint8 = 17  // Start/stop/list pivot relays
 	TaskKeyRotate   uint8 = 18  // Session key rotation
+	TaskToken       uint8 = 19  // Token steal/make/revert/info
+	TaskKeylog      uint8 = 20  // Keylogger
+	TaskSocks       uint8 = 21  // SOCKS5 proxy
+	TaskPortFwd     uint8 = 22  // Port forwarding
+	TaskCreds       uint8 = 23  // Credential harvesting
 )
 
 // Task status
@@ -88,6 +93,16 @@ func TaskTypeName(t uint8) string {
 		return "pivot"
 	case TaskKeyRotate:
 		return "keyrotate"
+	case TaskToken:
+		return "token"
+	case TaskKeylog:
+		return "keylog"
+	case TaskSocks:
+		return "socks"
+	case TaskPortFwd:
+		return "portfwd"
+	case TaskCreds:
+		return "creds"
 	default:
 		return "unknown"
 	}
