@@ -219,7 +219,7 @@ Always:
 
 ## Author
 
-**Opeyemi Kolawole** - [GitHub](https://github.com/phantom-c2)
+**Opeyemi Kolawole** - [GitHub](https://github.com/phantom-c2) | ckkolawole77@gmail.com
 
 ## License
 
