@@ -384,6 +384,33 @@ make agent-linux LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
 make agent-garble-windows LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
 ```
 
+### Make Targets Reference
+
+```bash
+make help                # Show all available targets
+make server              # Build the server binary
+make run                 # Build + start the server
+make restart             # Kill running server, rebuild, and start fresh
+make agent-windows       # Cross-compile Windows/amd64 agent
+make agent-linux         # Cross-compile Linux/amd64 agent
+make agent-garble-windows # Obfuscated Windows agent via garble
+make agent-all           # Build all agent variants
+make keygen              # Generate RSA keypair for server
+make certs               # Generate self-signed TLS certificates
+make deps                # Install dependencies (Go modules + garble)
+make test                # Run all tests
+make clean               # Remove all build artifacts
+```
+
+**Common workflow after code changes:**
+```bash
+# Restart the server with latest changes
+make restart
+
+# If you changed implant/agent code, rebuild the agent too
+make agent-windows LISTENER_URL=http://YOUR-IP:8080
+```
+
 ---
 
 ## Payload Generation

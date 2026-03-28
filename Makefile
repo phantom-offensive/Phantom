@@ -104,6 +104,14 @@ test-protocol: ## Run protocol tests
 run: server ## Build and run the server
 	./$(BUILD_DIR)/$(SERVER_BIN) --config configs/server.yaml
 
+.PHONY: restart
+restart: ## Kill running server, rebuild, and start
+	@echo "[*] Stopping Phantom server..."
+	@-pkill -f "$(SERVER_BIN)" 2>/dev/null; sleep 1
+	@$(MAKE) server
+	@echo "[*] Starting Phantom server..."
+	./$(BUILD_DIR)/$(SERVER_BIN) --config configs/server.yaml
+
 # ──────────────── Cleanup ───────────────
 
 .PHONY: clean
