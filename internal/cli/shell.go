@@ -878,7 +878,49 @@ func (sh *Shell) onEvent(event string, args ...interface{}) {
 		fmt.Printf("\r  %s[%s]%s %s%s New agent: %v%s\n", colorGreen, timestamp, colorReset, colorBold, colorGreen, args, colorReset)
 		sh.printPrompt()
 	case "task_result":
-		fmt.Printf("\r  %s[%s]%s Task result received from %v\n", colorCyan, timestamp, colorReset, args[0])
+		if len(args) >= 2 {
+			taskID, _ := args[1].(string)
+			agentID, _ := args[0].(string)
+
+			// Look up the task result
+			result, _ := sh.server.TaskDisp.GetResult(taskID)
+			if result != nil && (len(result.Output) > 0 || result.Error != "") {
+				// Get agent name for display
+				agentName := util.ShortID(agentID)
+				a, _ := sh.server.AgentMgr.Get(agentID)
+				if a != nil {
+					agentName = a.Name
+				}
+
+				// Get the task to show what command was run
+				tasks, _ := sh.server.TaskDisp.GetTaskHistory(agentID)
+				taskDesc := ""
+				for _, t := range tasks {
+					if t.ID == taskID {
+						taskDesc = protocol.TaskTypeName(uint8(t.Type))
+						if len(t.Args) > 0 {
+							taskDesc += " " + strings.Join(t.Args, " ")
+						}
+						break
+					}
+				}
+
+				fmt.Printf("\r\n")
+				fmt.Printf("  %s[%s]%s %sResult from %s%s — %s\n", colorGreen, timestamp, colorReset, colorBold, agentName, colorReset, taskDesc)
+
+				if result.Error != "" {
+					fmt.Printf("  %s[-] Error: %s%s\n", colorRed, result.Error, colorReset)
+				} else {
+					output := string(result.Output)
+					lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+					for _, line := range lines {
+						fmt.Printf("  %s%s%s\n", colorWhite, line, colorReset)
+					}
+				}
+			} else {
+				fmt.Printf("\r  %s[%s]%s Task result received (ID: %s)\n", colorCyan, timestamp, colorReset, util.ShortID(taskID))
+			}
+		}
 		sh.printPrompt()
 	case "listener_start":
 		fmt.Printf("\r  %s[%s]%s Listener %v started (%v on %v)\n", colorGreen, timestamp, colorReset, args[0], args[1], args[2])
