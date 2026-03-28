@@ -47,13 +47,11 @@ func main() {
 		fmt.Printf("  %s─────────────────────────────────────────────%s\n", cli.ColorDim, cli.ColorReset)
 		fmt.Println()
 
-		var username, password, confirm string
+		var username string
 		fmt.Printf("  %sUsername:%s ", cli.ColorCyan, cli.ColorReset)
 		fmt.Scanln(&username)
-		fmt.Printf("  %sPassword:%s ", cli.ColorCyan, cli.ColorReset)
-		fmt.Scanln(&password)
-		fmt.Printf("  %sConfirm:%s  ", cli.ColorCyan, cli.ColorReset)
-		fmt.Scanln(&confirm)
+		password := cli.ReadPassword(fmt.Sprintf("  %sPassword:%s ", cli.ColorCyan, cli.ColorReset))
+		confirm := cli.ReadPassword(fmt.Sprintf("  %sConfirm:%s  ", cli.ColorCyan, cli.ColorReset))
 
 		if password != confirm {
 			cli.Error("Passwords do not match")
@@ -84,11 +82,10 @@ func main() {
 		fmt.Printf("  %s%sOperator Login%s\n", cli.ColorBold, cli.ColorPurple, cli.ColorReset)
 		fmt.Printf("  %s─────────────────────%s\n", cli.ColorDim, cli.ColorReset)
 
-		var username, password string
+		var username string
 		fmt.Printf("  %sUsername:%s ", cli.ColorCyan, cli.ColorReset)
 		fmt.Scanln(&username)
-		fmt.Printf("  %sPassword:%s ", cli.ColorCyan, cli.ColorReset)
-		fmt.Scanln(&password)
+		password := cli.ReadPassword(fmt.Sprintf("  %sPassword:%s ", cli.ColorCyan, cli.ColorReset))
 
 		_, err := auth.Authenticate(username, password)
 		if err != nil {
