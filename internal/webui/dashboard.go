@@ -317,6 +317,41 @@ tr.clickable { cursor: pointer; }
         <div class="stat-card yellow"><div class="stat-label">Events</div><div class="stat-value yellow" id="s-events">0</div><div class="stat-sub" id="s-events-sub">—</div></div>
       </div>
 
+      <!-- Beacon Graphs Row -->
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:14px; margin-bottom:16px;">
+        <!-- Beacon Timeline Graph -->
+        <div class="card">
+          <div class="card-header"><h3><span>📈</span> Beacon Activity</h3><span style="font-size:11px;color:var(--text-muted)">Last 60 minutes</span></div>
+          <div class="card-body" style="padding:16px;">
+            <canvas id="beacon-chart" height="140"></canvas>
+          </div>
+        </div>
+        <!-- OS Distribution -->
+        <div class="card">
+          <div class="card-header"><h3><span>🎯</span> Targets by OS</h3></div>
+          <div class="card-body" style="padding:20px;">
+            <canvas id="os-chart" height="150"></canvas>
+          </div>
+        </div>
+        <!-- Session Status -->
+        <div class="card">
+          <div class="card-header"><h3><span>⚡</span> Session Health</h3></div>
+          <div class="card-body" style="padding:20px;" id="session-health">
+            <div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:28px">📊</div><div class="empty-sub">No sessions yet</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network Topology (Cobalt Strike graph view) -->
+      <div class="card">
+        <div class="card-header"><h3><span>🌐</span> Network Graph</h3><span style="font-size:11px;color:var(--text-muted)">Beacon topology</span></div>
+        <div class="card-body" style="padding:0; background:#080c16;">
+          <canvas id="network-graph" height="200" style="width:100%;"></canvas>
+        </div>
+      </div>
+
+      <div style="height:14px"></div>
+
       <div class="card">
         <div class="card-header"><h3><span>🖥️</span> Connected Agents</h3></div>
         <div class="card-body" id="dash-agents-wrap">
@@ -601,6 +636,304 @@ document.getElementById('term-input').addEventListener('keydown', function(e) {
   if (e.key==='ArrowUp' && cmdHistory.length>0) { historyIdx=Math.max(0,historyIdx-1); this.value=cmdHistory[historyIdx]||''; e.preventDefault(); }
   else if (e.key==='ArrowDown') { historyIdx=Math.min(cmdHistory.length,historyIdx+1); this.value=cmdHistory[historyIdx]||''; e.preventDefault(); }
 });
+
+// ──── Charts ────
+let beaconHistory = [];
+
+function drawBeaconChart(agents) {
+  const canvas = document.getElementById('beacon-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.clientWidth;
+  const h = canvas.height = 140;
+
+  // Track check-ins over time
+  const now = Date.now();
+  beaconHistory.push({ time: now, count: agents.filter(a=>a.status==='active').length });
+  if (beaconHistory.length > 60) beaconHistory.shift();
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(42,48,80,0.4)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const y = (h / 5) * i + 10;
+    ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(w - 10, y); ctx.stroke();
+  }
+
+  if (beaconHistory.length < 2) return;
+
+  const maxVal = Math.max(...beaconHistory.map(b=>b.count), 1);
+  const stepX = (w - 50) / (beaconHistory.length - 1);
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(124,58,237,0.3)');
+  grad.addColorStop(1, 'rgba(124,58,237,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(40, h - 10);
+  beaconHistory.forEach((b, i) => {
+    const x = 40 + i * stepX;
+    const y = h - 10 - ((b.count / maxVal) * (h - 30));
+    if (i === 0) ctx.lineTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.lineTo(40 + (beaconHistory.length - 1) * stepX, h - 10);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  beaconHistory.forEach((b, i) => {
+    const x = 40 + i * stepX;
+    const y = h - 10 - ((b.count / maxVal) * (h - 30));
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#7c3aed';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Dots on line
+  beaconHistory.forEach((b, i) => {
+    if (i % 5 === 0 || i === beaconHistory.length - 1) {
+      const x = 40 + i * stepX;
+      const y = h - 10 - ((b.count / maxVal) * (h - 30));
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#a78bfa';
+      ctx.fill();
+    }
+  });
+
+  // Y-axis labels
+  ctx.fillStyle = '#5a6580';
+  ctx.font = '10px Inter, sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const val = Math.round((maxVal / 4) * (4 - i));
+    const y = (h / 5) * i + 14;
+    ctx.fillText(val, 34, y);
+  }
+
+  // Current value label
+  const lastVal = beaconHistory[beaconHistory.length - 1].count;
+  const lastX = 40 + (beaconHistory.length - 1) * stepX;
+  const lastY = h - 10 - ((lastVal / maxVal) * (h - 30));
+  ctx.fillStyle = '#a78bfa';
+  ctx.font = 'bold 11px Inter';
+  ctx.textAlign = 'left';
+  ctx.fillText(lastVal + ' active', lastX + 8, lastY + 4);
+}
+
+function drawOSChart(agents) {
+  const canvas = document.getElementById('os-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.clientWidth;
+  const h = canvas.height = 150;
+
+  ctx.clearRect(0, 0, w, h);
+
+  if (agents.length === 0) {
+    ctx.fillStyle = '#5a6580';
+    ctx.font = '12px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data', w/2, h/2);
+    return;
+  }
+
+  // Count by OS
+  const osCounts = {};
+  agents.forEach(a => { osCounts[a.os] = (osCounts[a.os] || 0) + 1; });
+  const osColors = { windows: '#3b82f6', linux: '#10b981', android: '#f59e0b', ios: '#8b5cf6', mobile: '#06b6d4' };
+  const osIcons = { windows: '🪟', linux: '🐧', android: '📱', ios: '🍎' };
+  const entries = Object.entries(osCounts).sort((a,b) => b[1] - a[1]);
+  const total = agents.length;
+
+  // Donut chart
+  const cx = w / 2, cy = 55, r = 40, rInner = 24;
+  let startAngle = -Math.PI / 2;
+
+  entries.forEach(([os, count]) => {
+    const sliceAngle = (count / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, startAngle + sliceAngle);
+    ctx.arc(cx, cy, rInner, startAngle + sliceAngle, startAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = osColors[os] || '#64748b';
+    ctx.fill();
+    startAngle += sliceAngle;
+  });
+
+  // Center text
+  ctx.fillStyle = '#e8ecf4';
+  ctx.font = 'bold 18px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText(total, cx, cy + 3);
+  ctx.fillStyle = '#5a6580';
+  ctx.font = '9px Inter';
+  ctx.fillText('TOTAL', cx, cy + 14);
+
+  // Legend
+  let ly = 110;
+  entries.forEach(([os, count]) => {
+    const icon = osIcons[os] || '💻';
+    const pct = Math.round((count / total) * 100);
+    ctx.fillStyle = osColors[os] || '#64748b';
+    ctx.beginPath();
+    ctx.roundRect(10, ly - 8, 8, 8, 2);
+    ctx.fill();
+    ctx.fillStyle = '#8892b0';
+    ctx.font = '11px Inter';
+    ctx.textAlign = 'left';
+    ctx.fillText(icon + ' ' + os + '  ' + count + ' (' + pct + '%)', 24, ly);
+    ly += 16;
+  });
+}
+
+function drawNetworkGraph(agents) {
+  const canvas = document.getElementById('network-graph');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.clientWidth;
+  const h = canvas.height = 200;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw C2 server node in center-top
+  const serverX = w / 2, serverY = 40;
+
+  // Server node
+  ctx.beginPath();
+  ctx.arc(serverX, serverY, 20, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(124,58,237,0.2)';
+  ctx.fill();
+  ctx.strokeStyle = '#7c3aed';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#a78bfa';
+  ctx.font = 'bold 11px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText('C2', serverX, serverY + 4);
+
+  // Server label
+  ctx.fillStyle = '#5a6580';
+  ctx.font = '10px Inter';
+  ctx.fillText('Phantom Server', serverX, serverY + 35);
+
+  if (agents.length === 0) {
+    ctx.fillStyle = '#3a4060';
+    ctx.font = '12px Inter';
+    ctx.fillText('Deploy agents to see the network graph', w/2, h/2 + 20);
+    return;
+  }
+
+  // Agent nodes in a row below
+  const agentY = 140;
+  const agentSpacing = Math.min(120, (w - 80) / agents.length);
+  const startX = (w - (agents.length - 1) * agentSpacing) / 2;
+
+  agents.forEach((a, i) => {
+    const ax = startX + i * agentSpacing;
+    const statusColor = a.status === 'active' ? '#10b981' : a.status === 'dormant' ? '#f59e0b' : '#ef4444';
+    const osIcon = a.os === 'windows' ? '🪟' : a.os === 'linux' ? '🐧' : a.os === 'android' ? '📱' : '💻';
+
+    // Connection line (server → agent)
+    ctx.beginPath();
+    ctx.moveTo(serverX, serverY + 20);
+    // Curved line
+    const cpY = (serverY + agentY) / 2;
+    ctx.quadraticCurveTo(ax, cpY - 10, ax, agentY - 18);
+    ctx.strokeStyle = statusColor;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Animated dash for active agents
+    if (a.status === 'active') {
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(serverX, serverY + 20);
+      ctx.quadraticCurveTo(ax, cpY - 10, ax, agentY - 18);
+      ctx.strokeStyle = statusColor;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.8;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+    }
+
+    // Agent node — circle with glow
+    ctx.beginPath();
+    ctx.arc(ax, agentY, 16, 0, Math.PI * 2);
+    ctx.fillStyle = a.status === 'active' ? 'rgba(16,185,129,0.15)' : a.status === 'dormant' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = statusColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Agent icon
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(osIcon, ax, agentY + 5);
+
+    // Agent name
+    ctx.fillStyle = '#8892b0';
+    ctx.font = '9px Inter';
+    ctx.fillText(a.name.length > 12 ? a.name.substring(0, 10) + '..' : a.name, ax, agentY + 32);
+
+    // IP
+    ctx.fillStyle = '#5a6580';
+    ctx.font = '8px JetBrains Mono';
+    ctx.fillText(a.ip, ax, agentY + 43);
+  });
+}
+
+function updateSessionHealth(agents) {
+  const el = document.getElementById('session-health');
+  if (!el) return;
+
+  if (agents.length === 0) {
+    el.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:28px">📊</div><div class="empty-sub">No sessions yet</div></div>';
+    return;
+  }
+
+  const active = agents.filter(a => a.status === 'active').length;
+  const dormant = agents.filter(a => a.status === 'dormant').length;
+  const dead = agents.filter(a => a.status === 'dead').length;
+  const total = agents.length;
+
+  const activePct = total > 0 ? Math.round((active/total)*100) : 0;
+  const dormantPct = total > 0 ? Math.round((dormant/total)*100) : 0;
+  const deadPct = total > 0 ? Math.round((dead/total)*100) : 0;
+
+  el.innerHTML =
+    '<div style="margin-bottom:14px;">' +
+    '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--green)">Active</span><span style="color:var(--text-muted)">'+active+'/'+total+'</span></div>' +
+    '<div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+activePct+'%;background:var(--green);border-radius:3px;transition:width 0.5s;"></div></div></div>' +
+    '<div style="margin-bottom:14px;">' +
+    '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--yellow)">Dormant</span><span style="color:var(--text-muted)">'+dormant+'/'+total+'</span></div>' +
+    '<div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+dormantPct+'%;background:var(--yellow);border-radius:3px;transition:width 0.5s;"></div></div></div>' +
+    '<div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--red)">Dead</span><span style="color:var(--text-muted)">'+dead+'/'+total+'</span></div>' +
+    '<div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+deadPct+'%;background:var(--red);border-radius:3px;transition:width 0.5s;"></div></div></div>';
+}
+
+// Hook charts into refresh
+const _origRefresh = refreshAll;
+refreshAll = async function() {
+  await _origRefresh();
+  const agents = await fetchJ('/api/agents');
+  drawBeaconChart(agents);
+  drawOSChart(agents);
+  drawNetworkGraph(agents);
+  updateSessionHealth(agents);
+};
 
 // ──── Init ────
 refreshAll();
