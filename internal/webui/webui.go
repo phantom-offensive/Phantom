@@ -45,6 +45,7 @@ func (w *WebUI) Start() error {
 
 	// Action API (auth required)
 	mux.HandleFunc("/api/cmd", w.auth.AuthMiddleware(w.handleAPICommand))
+	mux.HandleFunc("/api/agent/remove", w.auth.AuthMiddleware(w.handleAgentRemove))
 
 	// Payload generation API (auth required)
 	mux.HandleFunc("/api/payload/generate", w.auth.AuthMiddleware(w.handlePayloadGenerate))
@@ -351,6 +352,26 @@ func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
 }
 
 // ──────── Dashboard ────────
+
+func (w *WebUI) handleAgentRemove(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "POST required", 405)
+		return
+	}
+	var req struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.ID == "" {
+		writeJSON(rw, map[string]string{"error": "agent id required"})
+		return
+	}
+	if err := w.server.AgentMgr.Remove(req.ID); err != nil {
+		writeJSON(rw, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(rw, map[string]string{"status": "removed"})
+}
 
 func (w *WebUI) handleDashboard(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")

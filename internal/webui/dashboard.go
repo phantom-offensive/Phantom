@@ -7,7 +7,7 @@ const dashboardHTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Phantom C2</title>
 <style>
-:root {
+:root, [data-theme="dark"] {
   --bg-primary: #0a0e1a;
   --bg-secondary: #111827;
   --bg-card: #1a1f35;
@@ -33,6 +33,31 @@ const dashboardHTML = `<!DOCTYPE html>
   --radius: 8px;
   --radius-lg: 12px;
   --shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+[data-theme="light"] {
+  --bg-primary: #f0f2f5;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #e8eaed;
+  --bg-input: #f8f9fa;
+  --border: #d1d5db;
+  --border-light: #e5e7eb;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --accent: #7c3aed;
+  --accent-light: #6d28d9;
+  --accent-glow: rgba(124, 58, 237, 0.1);
+  --green: #059669;
+  --green-dim: rgba(5, 150, 105, 0.1);
+  --red: #dc2626;
+  --red-dim: rgba(220, 38, 38, 0.1);
+  --yellow: #d97706;
+  --yellow-dim: rgba(217, 119, 6, 0.1);
+  --blue: #2563eb;
+  --blue-dim: rgba(37, 99, 235, 0.1);
+  --cyan: #0891b2;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -83,23 +108,27 @@ body { background: var(--bg-primary); color: var(--text-primary); font-family: '
 /* ══════ LAYOUT ══════ */
 .app { display: flex; height: calc(100vh - 52px); }
 .sidebar {
-  width: 56px; background: var(--bg-secondary); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px;
+  width: 82px; background: var(--bg-secondary); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 2px;
+  overflow-y: auto;
 }
 .sidebar-btn {
-  width: 40px; height: 40px; border-radius: 10px; border: none; cursor: pointer;
-  background: transparent; color: var(--text-muted); font-size: 18px;
-  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-  position: relative;
+  width: 68px; padding: 8px 4px 6px; border-radius: 10px; border: none; cursor: pointer;
+  background: transparent; color: var(--text-muted); font-size: 24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; transition: all 0.2s; position: relative;
+}
+.sidebar-btn .sb-label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
 }
 .sidebar-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .sidebar-btn.active { background: var(--accent-glow); color: var(--accent-light); }
 .sidebar-btn .badge-count {
-  position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
+  position: absolute; top: 2px; right: 6px; width: 18px; height: 18px;
   background: var(--red); color: white; border-radius: 50%; font-size: 9px;
   display: flex; align-items: center; justify-content: center; font-weight: 700;
 }
-.sidebar-divider { width: 28px; height: 1px; background: var(--border); margin: 4px 0; }
+.sidebar-divider { width: 48px; height: 1px; background: var(--border); margin: 6px 0; }
 .content { flex: 1; overflow-y: auto; padding: 20px; }
 .page { display: none; } .page.active { display: block; }
 
@@ -296,18 +325,20 @@ tr.clickable { cursor: pointer; }
 <div class="app">
   <!-- SIDEBAR ICONS -->
   <div class="sidebar">
-    <button class="sidebar-btn active" onclick="nav('dashboard')" title="Dashboard">📊</button>
+    <button class="sidebar-btn active" onclick="nav('dashboard')" title="Dashboard">📊<span class="sb-label">Dashboard</span></button>
     <button class="sidebar-btn" onclick="nav('agents')" title="Agents">
-      🖥️<span class="badge-count" id="sb-agents" style="display:none">0</span>
+      🖥️<span class="sb-label">Agents</span><span class="badge-count" id="sb-agents" style="display:none">0</span>
     </button>
-    <button class="sidebar-btn" onclick="nav('listeners')" title="Listeners">📡</button>
-    <button class="sidebar-btn" onclick="nav('tasks')" title="Tasks">📋</button>
+    <button class="sidebar-btn" onclick="nav('listeners')" title="Listeners">📡<span class="sb-label">Listeners</span></button>
+    <button class="sidebar-btn" onclick="nav('tasks')" title="Tasks">📋<span class="sb-label">Tasks</span></button>
     <div class="sidebar-divider"></div>
-    <button class="sidebar-btn" onclick="nav('terminal')" title="Terminal">💻</button>
-    <button class="sidebar-btn" onclick="nav('payloads')" title="Payloads">🔧</button>
-    <button class="sidebar-btn" onclick="nav('files')" title="Files / Screenshots / Processes">📂</button>
+    <button class="sidebar-btn" onclick="nav('terminal')" title="Terminal">💻<span class="sb-label">Terminal</span></button>
+    <button class="sidebar-btn" onclick="nav('payloads')" title="Payloads">🔧<span class="sb-label">Payloads</span></button>
+    <button class="sidebar-btn" onclick="nav('files')" title="Files">📂<span class="sb-label">Files</span></button>
     <div class="sidebar-divider"></div>
-    <button class="sidebar-btn" onclick="nav('events')" title="Events">📜</button>
+    <button class="sidebar-btn" onclick="nav('events')" title="Events">📜<span class="sb-label">Events</span></button>
+    <div style="flex:1"></div>
+    <button class="sidebar-btn" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">🌙<span class="sb-label">Theme</span></button>
   </div>
 
   <div class="content">
@@ -789,9 +820,11 @@ async function refreshAll() {
   }
 
   // All agents table
-  document.getElementById('all-agents').innerHTML = agents.map(a =>
-    '<tr><td><strong style="color:var(--accent-light)">'+a.name+'</strong></td><td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td><td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td><td>'+a.last_seen+'</td><td>'+badge(a.status)+'</td><td><button class="qbtn" onclick="selectAgent(\''+a.name+'\')">Interact</button></td></tr>'
-  ).join('') || '<tr><td colspan="9" class="empty">No agents</td></tr>';
+  document.getElementById('all-agents').innerHTML = agents.map(a => {
+    const actions = '<button class="qbtn" onclick="selectAgent(\''+a.name+'\')" style="margin-right:4px">Interact</button>' +
+      (a.status === 'dead' ? '<button class="qbtn" onclick="removeAgent(\''+a.id+'\')" style="color:var(--red);font-size:11px" title="Remove dead agent">Remove</button>' : '');
+    return '<tr><td><strong style="color:var(--accent-light)">'+a.name+'</strong></td><td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td><td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td><td>'+a.last_seen+'</td><td>'+badge(a.status)+'</td><td>'+actions+'</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="empty">No agents</td></tr>';
 
   // Listeners
   document.getElementById('all-listeners').innerHTML = listeners.map(l => {
@@ -1721,6 +1754,39 @@ async function generatePayload() {
 
   btn.textContent = 'Generate Payload';
   btn.disabled = false;
+}
+
+// ──── Theme Toggle ────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('phantom-theme', next);
+  document.getElementById('theme-btn').firstChild.textContent = next === 'dark' ? '🌙' : '☀️';
+}
+// Load saved theme
+(function() {
+  const saved = localStorage.getItem('phantom-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.firstChild.textContent = saved === 'dark' ? '🌙' : '☀️';
+})();
+
+// ──── Remove Agent ────
+async function removeAgent(agentId) {
+  if (!confirm('Remove this dead agent?')) return;
+  try {
+    const TOKEN = document.cookie.split('phantom_session=')[1]?.split(';')[0] || '';
+    const resp = await fetch('/api/agent/remove', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Cookie': 'phantom_session=' + TOKEN},
+      body: JSON.stringify({id: agentId})
+    });
+    const data = await resp.json();
+    if (data.error) { alert('Error: ' + data.error); return; }
+    refreshAll();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ──── Init ────
