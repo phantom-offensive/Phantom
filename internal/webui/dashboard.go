@@ -335,6 +335,7 @@ tr.clickable { cursor: pointer; }
     <button class="sidebar-btn" onclick="nav('templates')" title="Command Templates">📑<span class="sb-label">Templates</span></button>
     <button class="sidebar-btn" onclick="nav('audit')" title="Audit Log">📝<span class="sb-label">Audit</span></button>
     <button class="sidebar-btn" onclick="nav('events')" title="Events">📜<span class="sb-label">Events</span></button>
+    <button class="sidebar-btn" onclick="nav('settings')" title="Settings">⚙️<span class="sb-label">Settings</span></button>
     <div style="flex:1"></div>
     <button class="sidebar-btn" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">🌙<span class="sb-label">Theme</span></button>
   </div>
@@ -979,6 +980,72 @@ tr.clickable { cursor: pointer; }
       </div>
     </div>
 
+    <!-- ══════ SETTINGS ══════ -->
+    <div id="p-settings" class="page">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+        <!-- API Keys -->
+        <div class="card">
+          <div class="card-header"><h3><span>🔐</span> API Keys</h3></div>
+          <div class="card-body padded">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Generate API keys for scripting and automation. Use with <code>X-API-Key</code> header or <code>Authorization: Bearer</code>.</p>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <input id="apikey-name" placeholder="Key name (e.g., automation)" style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+              <button class="qbtn" onclick="createAPIKey()" style="font-size:12px;padding:8px 14px">Generate Key</button>
+            </div>
+            <div id="apikey-result" style="margin-bottom:12px"></div>
+            <div id="apikey-list"></div>
+          </div>
+        </div>
+
+        <!-- Task Queue -->
+        <div class="card">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3><span>⏳</span> Task Queue</h3>
+            <button class="qbtn" onclick="loadTaskQueue()" style="font-size:11px">Refresh</button>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>Agent</th><th>Type</th><th>Args</th><th>Status</th><th>Created</th></tr></thead>
+              <tbody id="taskqueue-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- File Upload to Agent -->
+        <div class="card">
+          <div class="card-header"><h3><span>📤</span> Upload File to Agent</h3></div>
+          <div class="card-body padded">
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Target Agent</label>
+              <select id="upload-agent" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+                <option value="">Select agent...</option>
+              </select>
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">Remote Path (optional)</label>
+              <input id="upload-path" placeholder="Auto: /tmp/filename or C:\Users\Public\filename" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+            </div>
+            <div style="margin-bottom:10px;padding:20px;border:2px dashed var(--border);border-radius:var(--radius);text-align:center;cursor:pointer" onclick="document.getElementById('upload-file').click()" id="upload-dropzone">
+              <div style="font-size:24px;margin-bottom:6px">📂</div>
+              <div style="font-size:12px;color:var(--text-muted)">Click or drag file here</div>
+              <input type="file" id="upload-file" style="display:none" onchange="updateDropzone(this)">
+            </div>
+            <button class="btn" onclick="uploadToAgent()" style="width:100%;padding:10px;font-size:13px">📤 Upload</button>
+            <div id="upload-result" style="margin-top:8px;font-size:12px"></div>
+          </div>
+        </div>
+
+        <!-- Agent Health -->
+        <div class="card">
+          <div class="card-header"><h3><span>💓</span> Agent Health</h3></div>
+          <div class="card-body">
+            <canvas id="health-chart" height="200" style="width:100%"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════ EVENTS ══════ -->
     <div id="p-events" class="page">
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
@@ -1560,6 +1627,8 @@ refreshAll = async function() {
   drawNetworkGraph(agents);
   updateSessionHealth(agents);
   updateFBAgentSelector(agents);
+  updateUploadAgents(agents);
+  drawHealthChart(agents);
 };
 
 // ──── Files / Screenshot / Process / Notes / Search ────
@@ -2524,6 +2593,156 @@ function saveEngagementNotes() {
   }
 }
 
+// ──── API Key Management ────
+async function createAPIKey() {
+  const name = document.getElementById('apikey-name').value.trim() || 'api-key';
+  const resp = await fetch('/api/keys', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'create', name:name})});
+  const data = await resp.json();
+  if (data.key) {
+    document.getElementById('apikey-result').innerHTML =
+      '<div style="background:var(--bg-input);border:1px solid var(--green);border-radius:var(--radius);padding:12px;margin-bottom:8px">' +
+      '<div style="font-size:11px;color:var(--green);margin-bottom:4px">Key created — copy it now (shown only once)</div>' +
+      '<code style="font-size:13px;word-break:break-all;color:var(--text-primary)">' + data.key + '</code>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">Usage: curl -H "X-API-Key: ' + data.key + '" http://localhost:3000/api/agents</div></div>';
+    document.getElementById('apikey-name').value = '';
+    loadAPIKeys();
+  }
+}
+async function loadAPIKeys() {
+  const list = document.getElementById('apikey-list');
+  if (!list) return;
+  const keys = await fetchJ('/api/keys');
+  if (!keys || keys.length === 0) { list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">No API keys</div>'; return; }
+  list.innerHTML = keys.map(k =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;margin-bottom:4px">' +
+    '<div><span style="font-weight:600;font-size:12px">'+k.name+'</span> <code style="font-size:10px;color:var(--text-muted)">'+k.key+'</code>' +
+    '<div style="font-size:10px;color:var(--text-muted)">Created: '+k.created_at+' | Last used: '+(k.last_used||'never')+' | Requests: '+k.requests+'</div></div>' +
+    '<button class="qbtn" onclick="revokeAPIKey(\''+k.key+'\')" style="color:var(--red);font-size:10px;padding:3px 8px">Revoke</button></div>'
+  ).join('');
+}
+async function revokeAPIKey(key) {
+  if (!confirm('Revoke this API key?')) return;
+  await fetch('/api/keys', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'revoke', key:key})});
+  loadAPIKeys();
+}
+
+// ──── Task Queue ────
+async function loadTaskQueue() {
+  const table = document.getElementById('taskqueue-table');
+  if (!table) return;
+  const tasks = await fetchJ('/api/taskqueue');
+  if (!tasks || tasks.length === 0) {
+    table.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">No pending tasks — all commands have been executed</td></tr>';
+    return;
+  }
+  table.innerHTML = tasks.map(t =>
+    '<tr><td style="font-weight:600">'+t.agent+'</td><td style="color:var(--cyan)">'+t.type+'</td>' +
+    '<td style="font-family:monospace;font-size:11px">'+t.args+'</td>' +
+    '<td>'+badge(t.status)+'</td><td style="color:var(--text-muted);font-size:11px">'+t.created+'</td></tr>'
+  ).join('');
+}
+
+// ──── File Upload to Agent ────
+function updateDropzone(input) {
+  const dz = document.getElementById('upload-dropzone');
+  if (input.files.length > 0) {
+    const f = input.files[0];
+    dz.innerHTML = '<div style="color:var(--green);font-size:13px">📄 ' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)</div>';
+  }
+}
+async function uploadToAgent() {
+  const agent = document.getElementById('upload-agent').value;
+  const file = document.getElementById('upload-file').files[0];
+  const remotePath = document.getElementById('upload-path').value;
+  const result = document.getElementById('upload-result');
+
+  if (!agent) { alert('Select an agent'); return; }
+  if (!file) { alert('Select a file'); return; }
+
+  result.innerHTML = '<span style="color:var(--yellow)">Uploading...</span>';
+
+  const formData = new FormData();
+  formData.append('agent', agent);
+  formData.append('file', file);
+  if (remotePath) formData.append('remote_path', remotePath);
+
+  try {
+    const resp = await fetch('/api/upload-to-agent', {method:'POST', body:formData});
+    const data = await resp.json();
+    if (data.error) { result.innerHTML = '<span style="color:var(--red)">'+data.error+'</span>'; return; }
+    result.innerHTML = '<span style="color:var(--green)">Uploaded: '+data.remote_path+' ('+data.size+' bytes, task: '+data.task_id.substring(0,8)+')</span>';
+  } catch(e) { result.innerHTML = '<span style="color:var(--red)">'+e.message+'</span>'; }
+}
+// Populate upload agent selector
+function updateUploadAgents(agents) {
+  const sel = document.getElementById('upload-agent');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select agent...</option>' + agents.filter(a=>a.status==='active').map(a =>
+    '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+a.name+' ('+a.hostname+')</option>'
+  ).join('');
+}
+
+// ──── Agent Health Chart ────
+let healthHistory = {};
+function drawHealthChart(agents) {
+  const canvas = document.getElementById('health-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.parentElement.clientWidth;
+  const h = 200;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+
+  // Track check-in counts over time
+  const now = Date.now();
+  agents.forEach(a => {
+    if (!healthHistory[a.name]) healthHistory[a.name] = [];
+    const isActive = a.status === 'active' ? 1 : 0;
+    healthHistory[a.name].push({t:now, v:isActive});
+    if (healthHistory[a.name].length > 30) healthHistory[a.name].shift();
+  });
+
+  // Draw axes
+  ctx.strokeStyle = 'rgba(42,48,80,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(40,10); ctx.lineTo(40,h-30); ctx.lineTo(w-10,h-30); ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#5a6580'; ctx.font = '9px Inter'; ctx.textAlign = 'center';
+  ctx.fillText('Agent Check-in Health (last 2 minutes)', w/2, h-5);
+  ctx.textAlign = 'right';
+  ctx.fillText('Active', 38, 20);
+  ctx.fillText('Dead', 38, h-35);
+
+  // Plot each agent
+  const names = Object.keys(healthHistory);
+  const lineColors = ['#10b981','#3b82f6','#f59e0b','#ef4444','#a78bfa','#06b6d4','#ec4899','#84cc16'];
+
+  names.forEach((name, ni) => {
+    const points = healthHistory[name];
+    if (points.length < 2) return;
+    const color = lineColors[ni % lineColors.length];
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    points.forEach((p, pi) => {
+      const x = 45 + (pi / Math.max(points.length-1,1)) * (w-60);
+      const y = p.v ? 20 : h-35;
+      pi === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Legend dot
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(50+ni*80, h-15, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#8892b0'; ctx.font = '8px Inter'; ctx.textAlign = 'left';
+    ctx.fillText(name.substring(0,10), 58+ni*80, h-12);
+  });
+}
+
 // ──── Bulk Agent Actions ────
 function bulkToggleAll(cb) {
   document.querySelectorAll('.bulk-cb').forEach(c => c.checked = cb.checked);
@@ -2808,6 +3027,9 @@ async function removeAgent(agentId) {
 }
 
 // ──── Init ────
+loadAPIKeys();
+loadTaskQueue();
+setInterval(loadTaskQueue, 8000);
 // Load engagement notes
 const notesEl = document.getElementById('engagement-notes-text');
 if (notesEl) notesEl.value = engagementNotes;

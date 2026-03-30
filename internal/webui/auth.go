@@ -89,18 +89,26 @@ func (wa *WebAuth) ValidateRequest(r *http.Request) *WebSession {
 }
 
 // AuthMiddleware wraps handlers requiring authentication.
+// Supports both cookie-based sessions and API key authentication.
 func (wa *WebAuth) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check session cookie first
 		session := wa.ValidateRequest(r)
-		if session == nil {
-			if r.URL.Path == "/login" || r.URL.Path == "/api/login" {
-				next(w, r)
-				return
-			}
-			http.Redirect(w, r, "/login", 302)
+		if session != nil {
+			next(w, r)
 			return
 		}
-		next(w, r)
+		// Check API key (for scripting/automation)
+		if ValidateAPIKey(r) {
+			next(w, r)
+			return
+		}
+		// Login pages don't need auth
+		if r.URL.Path == "/login" || r.URL.Path == "/api/login" {
+			next(w, r)
+			return
+		}
+		http.Redirect(w, r, "/login", 302)
 	}
 }
 

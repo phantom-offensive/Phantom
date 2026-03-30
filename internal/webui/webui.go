@@ -74,6 +74,15 @@ func (w *WebUI) Start() error {
 	mux.HandleFunc("/api/auditlog", w.auth.AuthMiddleware(w.handleAuditLog))
 	mux.HandleFunc("/api/templates", w.auth.AuthMiddleware(w.handleCmdTemplates))
 
+	// API keys
+	mux.HandleFunc("/api/keys", w.auth.AuthMiddleware(w.handleAPIKeys))
+
+	// Task queue
+	mux.HandleFunc("/api/taskqueue", w.auth.AuthMiddleware(w.handleTaskQueue))
+
+	// File upload to agent
+	mux.HandleFunc("/api/upload-to-agent", w.auth.AuthMiddleware(w.handleUploadToAgent))
+
 	// New features (auth required)
 	mux.HandleFunc("/api/notes", w.auth.AuthMiddleware(w.handleAgentNotes))
 	mux.HandleFunc("/api/search", w.auth.AuthMiddleware(w.handleSearchOutput))
