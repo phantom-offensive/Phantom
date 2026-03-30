@@ -73,13 +73,17 @@ body { background: var(--bg-primary); color: var(--text-primary); font-family: '
   padding: 0 20px;
   height: 52px;
   width: 100%;
+  min-height: 52px;
+  max-height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: nowrap;
-  position: sticky; top: 0; z-index: 200;
+  flex-shrink: 0;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  overflow: hidden;
 }
-.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-left { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .brand {
   display: flex; align-items: center; gap: 10px;
   font-size: 17px; font-weight: 700; color: var(--accent-light);
@@ -91,13 +95,13 @@ body { background: var(--bg-primary); color: var(--text-primary); font-family: '
 .brand-icon svg { width: 36px; height: 36px; filter: drop-shadow(0 0 6px rgba(124,58,237,0.5)); }
 .brand small { font-size: 10px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
 .topbar-center { display: flex; flex: 1; }
-.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; white-space: nowrap; }
 .pulse { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .top-label { font-size: 11px; color: var(--text-muted); }
 
 /* ══════ LAYOUT ══════ */
-.app { display: flex; height: calc(100vh - 52px); }
+.app { display: flex; height: calc(100vh - 52px); margin-top: 52px; }
 .sidebar {
   width: 82px; background: var(--bg-secondary); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 2px;
