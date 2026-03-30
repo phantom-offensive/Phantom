@@ -360,6 +360,15 @@ func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
 		if req.Command != "lateral" {
 			args = append([]string{req.Command}, args...)
 		}
+	case "exfil":
+		taskType = protocol.TaskExfil
+	case "assembly":
+		taskType = protocol.TaskAssembly
+	case "initaccess", "portscan", "spray", "netdiscover":
+		taskType = protocol.TaskInitAccess
+		if req.Command != "initaccess" {
+			args = append([]string{req.Command}, args...)
+		}
 	default:
 		// Check for AD commands
 		if strings.HasPrefix(req.Command, "ad-") {

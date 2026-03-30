@@ -38,6 +38,9 @@ const (
 	TaskPortFwd     uint8 = 22  // Port forwarding
 	TaskCreds       uint8 = 23  // Credential harvesting
 	TaskLateral     uint8 = 24  // Lateral movement (wmiexec, winrm, ssh, pth)
+	TaskExfil       uint8 = 25  // Data exfiltration (DNS, HTTP, ICMP, SMB)
+	TaskAssembly    uint8 = 26  // .NET assembly execution (in-memory)
+	TaskInitAccess  uint8 = 27  // Initial access commands (phish, spray, exploit)
 )
 
 // Task status
@@ -106,6 +109,12 @@ func TaskTypeName(t uint8) string {
 		return "creds"
 	case TaskLateral:
 		return "lateral"
+	case TaskExfil:
+		return "exfil"
+	case TaskAssembly:
+		return "assembly"
+	case TaskInitAccess:
+		return "initaccess"
 	default:
 		return "unknown"
 	}

