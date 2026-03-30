@@ -39,9 +39,9 @@ type PayloadResponse struct {
 func (w *WebUI) handlePayloadTypes(rw http.ResponseWriter, r *http.Request) {
 	types := []map[string]interface{}{
 		{"id": "exe", "name": "Windows EXE", "icon": "🪟", "category": "Agent Binary", "desc": "Windows executable agent (amd64)"},
-		{"id": "exe-garble", "name": "Windows EXE (Obfuscated)", "icon": "🪟", "category": "Agent Binary", "desc": "Garble-obfuscated Windows agent"},
+		{"id": "exe-garble", "name": "Windows EXE (Stripped+UPX)", "icon": "🪟", "category": "Agent Binary", "desc": "Stripped symbols + UPX compressed (~2.6MB, 60% smaller)"},
 		{"id": "elf", "name": "Linux ELF", "icon": "🐧", "category": "Agent Binary", "desc": "Linux executable agent (amd64)"},
-		{"id": "elf-garble", "name": "Linux ELF (Obfuscated)", "icon": "🐧", "category": "Agent Binary", "desc": "Garble-obfuscated Linux agent"},
+		{"id": "elf-garble", "name": "Linux ELF (Stripped+UPX)", "icon": "🐧", "category": "Agent Binary", "desc": "Stripped symbols + UPX compressed (~2.4MB, 60% smaller)"},
 		{"id": "aspx", "name": "ASPX Web Shell", "icon": "🌐", "category": "Web Shell", "desc": "ASP.NET web shell for IIS servers"},
 		{"id": "php", "name": "PHP Web Shell", "icon": "🌐", "category": "Web Shell", "desc": "PHP web shell with 5 exec fallbacks"},
 		{"id": "jsp", "name": "JSP Web Shell", "icon": "🌐", "category": "Web Shell", "desc": "Java web shell for Tomcat servers"},
