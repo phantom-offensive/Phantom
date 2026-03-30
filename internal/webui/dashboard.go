@@ -549,15 +549,18 @@ tr.clickable { cursor: pointer; }
         <div class="card">
           <div class="card-header"><h3><span>⚡</span> Upload & Execute .NET Assembly</h3></div>
           <div class="card-body padded">
-            <input type="file" id="term-asm-file" style="display:none" accept=".exe,.dll" onchange="termAsmFileSelected(this)">
-            <div style="padding:12px;border:2px dashed var(--border);border-radius:var(--radius);text-align:center;cursor:pointer;margin-bottom:8px" onclick="document.getElementById('term-asm-file').click()" id="term-asm-dropzone">
-              <span style="font-size:11px;color:var(--text-muted)">Click to select .NET assembly (.exe/.dll)</span>
+            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:end">
+              <div style="flex:1">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">.NET Assembly File</label>
+                <input type="file" id="term-asm-file" style="width:100%;padding:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+              </div>
+              <div style="flex:1">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Arguments</label>
+                <input id="term-asm-args" placeholder="-group=all" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+              </div>
+              <button class="btn" onclick="termExecuteAssembly()" style="padding:6px 16px;font-size:12px;white-space:nowrap">⚡ Run</button>
             </div>
-            <div style="display:flex;gap:6px">
-              <input id="term-asm-args" placeholder="Arguments (e.g. -group=all)" style="flex:1;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
-              <button class="btn" onclick="termExecuteAssembly()" style="padding:7px 16px;font-size:12px">⚡ Run</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
               <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-group=all'" style="font-size:9px;padding:3px 8px">Seatbelt -group=all</button>
               <button class="qbtn" onclick="document.getElementById('term-asm-args').value='kerberoast'" style="font-size:9px;padding:3px 8px">Rubeus kerberoast</button>
               <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-c All'" style="font-size:9px;padding:3px 8px">SharpHound -c All</button>
@@ -568,13 +571,16 @@ tr.clickable { cursor: pointer; }
         <div class="card">
           <div class="card-header"><h3><span>📤</span> Upload File to Agent</h3></div>
           <div class="card-body padded">
-            <input type="file" id="term-upload-file" style="display:none" onchange="termUploadFileSelected(this)">
-            <div style="padding:12px;border:2px dashed var(--border);border-radius:var(--radius);text-align:center;cursor:pointer;margin-bottom:8px" onclick="document.getElementById('term-upload-file').click()" id="term-upload-dropzone">
-              <span style="font-size:11px;color:var(--text-muted)">Click to select file to upload</span>
-            </div>
-            <div style="display:flex;gap:6px">
-              <input id="term-upload-path" placeholder="Remote path (auto if empty)" style="flex:1;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
-              <button class="btn" onclick="termUploadFile()" style="padding:7px 16px;font-size:12px">📤 Upload</button>
+            <div style="display:flex;gap:6px;align-items:end">
+              <div style="flex:1">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">File</label>
+                <input type="file" id="term-upload-file" style="width:100%;padding:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+              </div>
+              <div style="flex:1">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Remote Path (auto if empty)</label>
+                <input id="term-upload-path" placeholder="C:\Users\Public\file.exe" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+              </div>
+              <button class="btn" onclick="termUploadFile()" style="padding:6px 16px;font-size:12px;white-space:nowrap">📤 Upload</button>
             </div>
           </div>
         </div>
