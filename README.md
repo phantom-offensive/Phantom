@@ -77,7 +77,7 @@
 - **Keyboard shortcuts** — Alt+1-9 tab switching, `/` to focus terminal
 
 **Communications**
-- **HTTP/HTTPS/DNS listeners** with malleable communication profiles
+- **HTTP/HTTPS/DNS/TCP/SMB listeners** with malleable communication profiles
 - **Encrypted comms** — RSA-2048 key exchange + AES-256-GCM with auto key rotation
 - **4 malleable profiles** — Default, Microsoft 365, Cloudflare Workers, Redirector
 - **SMB/Unix socket pivoting** — agent-to-agent relay for lateral access
@@ -115,7 +115,10 @@
 - **C2-tunneled SOCKS5 proxy** — runs on operator's machine, proxychains-compatible
 - **Port forwarding** — forward local ports to remote targets through agents
 - **Credential harvesting** — browser, WiFi, clipboard, SSH, RDP, vault
-- **5 persistence methods** — registry, schtask, cron, systemd, bashrc
+- **12 persistence methods** — registry, schtask, startup folder, WMI event (fileless), Windows service, logon script, COM hijack, cron, systemd, bashrc, profile, rc.local
+- **Persistence management** — `persist list` to check installed, `persist remove` to clean all
+- **Lateral movement** — wmiexec, winrm, psexec, ssh, pth, wmi-spawn, winrm-spawn
+- **55+ BOF catalog** — AD enum, ADCS, credentials, kerberos, evasion, privesc, networking
 
 **Payload Generation (26+ types)**
 - **Agent binaries** — Windows EXE, Linux ELF, garble-obfuscated
@@ -130,7 +133,10 @@
 - **WMI event subscription** — fileless persistence (no files on disk)
 - **Office template macro** — VBA in Normal.dotm (runs on every new document)
 - **Registry/scheduled task/startup folder** — multiple persistence generators
-- **Obfuscation options** — None, Strip, or Garble from Web UI
+- **Obfuscation options** — None, Strip+UPX (60% size reduction), or Garble from Web UI
+- **Plugin system** — extensible plugins directory (.py, .sh, .ps1) with auto-discovery
+- **Resumable file transfers** — 4MB chunked transfers with SHA-256 checksums
+- **API key authentication** — generate keys for scripting/automation (X-API-Key header)
 
 **Web UI (Full Feature Parity with CLI)**
 - **Light/dark theme** — toggle with persistence, professional light theme
@@ -352,17 +358,58 @@ You will see:
 | `screenshot` | Capture screenshot |
 | `ps` | List running processes |
 | `sysinfo` | Get system information |
-| `persist <method>` | Install persistence (registry/schtask/cron/service/bashrc) |
 | `sleep <sec> [jitter%]` | Change sleep interval |
 | `cd <path>` | Change working directory |
 | `bof <file> [args]` | Execute Beacon Object File (in-memory) |
 | `shellcode <file>` | Execute raw shellcode in-memory |
 | `inject <pid> <file>` | Inject shellcode into remote process |
 | `ad-*` | Active Directory commands (type `ad-help`) |
+| `token <cmd>` | Token manipulation (steal/make/revert/impersonate) |
+| `keylog <seconds>` | Start keylogger |
+| `creds <target>` | Credential harvesting (browser/wifi/clipboard/ssh) |
+| `socks start [port]` | Start C2-tunneled SOCKS5 proxy |
+| `portfwd <local> <remote>` | Port forwarding through agent |
+| `evasion` | Run evasion (AMSI/ETW/ntdll unhook) |
+| `evasion timestomp <f> <r>` | Match file timestamps |
+| `evasion clearlogs` | Clear Windows/Linux event logs |
+| `persist <method>` | Install persistence (see below) |
+| `persist list` | Show installed persistence |
+| `persist remove` | Remove all persistence |
+| `lateral <method> <args>` | Lateral movement (wmiexec/winrm/psexec/ssh/pth) |
+| `pivot <cmd>` | SMB named pipe pivoting |
 | `kill` | Terminate the agent |
 | `info` | Show agent details |
 | `tasks` | Show task history |
 | `back` | Return to main menu |
+
+### Persistence Methods
+
+| Method | Platform | Description |
+|--------|----------|-------------|
+| `registry` | Windows | HKCU Run key (no admin needed) |
+| `schtask` | Windows | Scheduled task on logon |
+| `startup` | Windows | Copy to Startup folder |
+| `wmi` | Windows | WMI event subscription (fileless) |
+| `winservice` | Windows | Windows service as SYSTEM |
+| `logonscript` | Windows | UserInitMprLogonScript (before Explorer) |
+| `comhijack` | Windows | COM object hijack (loads with Explorer) |
+| `cron` | Linux | Cron job every 5 minutes |
+| `service` | Linux | Systemd user service (auto-restart) |
+| `bashrc` | Linux | .bashrc backdoor |
+| `profile` | Linux | .profile backdoor (login shells) |
+| `rc.local` | Linux | /etc/rc.local boot script (root required) |
+
+### Lateral Movement
+
+```
+lateral wmiexec <target> <user> <pass> <command>
+lateral winrm <target> <user> <pass> <command>
+lateral psexec <target> <user> <pass> <command>
+lateral ssh <target> <user> <pass> <command>
+lateral pth <target> <user> <ntlm_hash> <command>
+lateral wmi-spawn <target> <user> <pass> <stager_url>
+lateral winrm-spawn <target> <user> <pass> <stager_url>
+```
 
 ---
 
