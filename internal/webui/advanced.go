@@ -150,7 +150,7 @@ func (w *WebUI) handleUploadToAgent(rw http.ResponseWriter, r *http.Request) {
 
 	if remotePath == "" {
 		if agent.OS == "windows" {
-			remotePath = "C:\\Users\\Public\\" + header.Filename
+			remotePath = "C:\\Windows\\Temp\\" + header.Filename
 		} else {
 			remotePath = "/tmp/" + header.Filename
 		}

@@ -494,6 +494,11 @@ tr.clickable { cursor: pointer; }
 
     <!-- ══════ TERMINAL ══════ -->
     <div id="p-terminal" class="page">
+      <!-- Agent session tabs -->
+      <div id="agent-tabs" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:8px">
+        <span style="color:var(--text-muted);font-size:11px;padding:6px 0;margin-right:6px">SESSIONS:</span>
+      </div>
+
       <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;">
         <span style="color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px;">Target</span>
         <div class="select-wrap">
@@ -553,6 +558,10 @@ tr.clickable { cursor: pointer; }
               <div style="flex:1">
                 <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">.NET Assembly File</label>
                 <input type="file" id="term-asm-file" style="width:100%;padding:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+              </div>
+              <div style="flex:1">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Upload To (remote path)</label>
+                <input id="term-asm-path" placeholder="C:\Windows\Temp\" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
               </div>
               <div style="flex:1">
                 <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Arguments</label>
@@ -1793,6 +1802,7 @@ refreshAll = async function() {
   updateFBAgentSelector(agents);
   updateUploadAgents(agents);
   updateAsmAgents(agents);
+  updateAgentTabs(agents);
   drawHealthChart(agents);
 };
 
@@ -2772,6 +2782,55 @@ function saveEngagementNotes() {
   }
 }
 
+// ──── Agent Session Tabs ────
+var agentTerminals = {}; // agentName → {html: termBody HTML}
+
+function updateAgentTabs(agents) {
+  var tabs = document.getElementById('agent-tabs');
+  if (!tabs) return;
+  var activeAgents = agents.filter(function(a) { return a.status === 'active'; });
+  var currentAgent = document.getElementById('agent-select').value;
+
+  var html = '<span style="color:var(--text-muted);font-size:11px;padding:6px 0;margin-right:6px">SESSIONS:</span>';
+  activeAgents.forEach(function(a) {
+    var isActive = a.name === currentAgent;
+    var bgColor = isActive ? 'var(--accent-glow)' : 'var(--bg-input)';
+    var textColor = isActive ? 'var(--accent-light)' : 'var(--text-secondary)';
+    var border = isActive ? '1px solid var(--accent)' : '1px solid var(--border)';
+    var osIcon = a.os === 'windows' ? '🪟' : '🐧';
+    html += '<button onclick="switchAgentTab(\'' + a.name + '\')" style="background:' + bgColor + ';color:' + textColor + ';border:' + border + ';border-radius:6px;padding:4px 12px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px">' +
+      osIcon + ' ' + a.name + ' <span style="font-size:9px;color:var(--text-muted)">(' + a.hostname + ')</span></button>';
+  });
+
+  if (activeAgents.length === 0) {
+    html += '<span style="color:var(--text-muted);font-size:11px;padding:6px">No active agents</span>';
+  }
+
+  tabs.innerHTML = html;
+}
+
+function switchAgentTab(agentName) {
+  // Save current terminal content
+  var currentAgent = document.getElementById('agent-select').value;
+  if (currentAgent) {
+    agentTerminals[currentAgent] = { html: document.getElementById('term-body').innerHTML };
+  }
+
+  // Switch agent
+  document.getElementById('agent-select').value = agentName;
+  onAgentSelect();
+
+  // Restore terminal content for this agent
+  if (agentTerminals[agentName]) {
+    document.getElementById('term-body').innerHTML = agentTerminals[agentName].html;
+  } else {
+    document.getElementById('term-body').innerHTML = '<div class="term-info">Session started with ' + agentName + '</div>';
+  }
+
+  // Update tabs highlight
+  if (window._cachedAgents) updateAgentTabs(window._cachedAgents);
+}
+
 // ──── Terminal Assembly & Upload (below terminal) ────
 function termAsmFileSelected(input) {
   var dz = document.getElementById('term-asm-dropzone');
@@ -2791,12 +2850,18 @@ async function termExecuteAssembly() {
   var agent = document.getElementById('agent-select').value;
   var fileInput = document.getElementById('term-asm-file');
   var args = document.getElementById('term-asm-args').value.trim();
+  var customPath = document.getElementById('term-asm-path').value.trim();
 
   if (!agent) { termLog('error', '✗ Select an agent first'); return; }
   if (!fileInput || !fileInput.files || !fileInput.files[0]) { termLog('error', '✗ Select a .NET assembly file first'); return; }
 
   var file = fileInput.files[0];
-  var remotePath = 'C:\\Users\\Public\\' + file.name;
+  var remotePath;
+  if (customPath) {
+    remotePath = customPath.endsWith('\\') || customPath.endsWith('/') ? customPath + file.name : customPath + '\\' + file.name;
+  } else {
+    remotePath = 'C:\\Windows\\Temp\\' + file.name;
+  }
 
   termLog('system', '⚡ Uploading ' + file.name + ' (' + Math.round(file.size/1024) + 'KB) to ' + agent + '...');
 
@@ -2852,7 +2917,7 @@ async function termUploadFile() {
   if (!fileInput || !fileInput.files || !fileInput.files[0]) { termLog('error', '✗ Select a file first'); return; }
 
   var file = fileInput.files[0];
-  if (!remotePath) { remotePath = 'C:\\Users\\Public\\' + file.name; }
+  if (!remotePath) { remotePath = 'C:\\Windows\\Temp\\' + file.name; }
 
   termLog('system', '📤 Uploading ' + file.name + ' → ' + remotePath);
 
