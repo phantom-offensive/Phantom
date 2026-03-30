@@ -173,6 +173,39 @@ func (w *WebUI) handleUploadToAgent(rw http.ResponseWriter, r *http.Request) {
 }
 
 // ══════════════════════════════════════════
+//  PLUGINS
+// ══════════════════════════════════════════
+
+func (w *WebUI) handlePlugins(rw http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.server.PluginMgr.Scan()
+		writeJSON(rw, w.server.PluginMgr.List())
+		return
+	}
+	var req struct {
+		Action string   `json:"action"` // execute, reload
+		Name   string   `json:"name"`
+		Args   []string `json:"args"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	switch req.Action {
+	case "execute":
+		output, err := w.server.PluginMgr.Execute(req.Name, req.Args)
+		if err != nil {
+			writeJSON(rw, map[string]string{"error": err.Error(), "output": output})
+			return
+		}
+		writeJSON(rw, map[string]string{"status": "ok", "output": output})
+	case "reload":
+		w.server.PluginMgr.Scan()
+		writeJSON(rw, map[string]string{"status": "reloaded"})
+	default:
+		writeJSON(rw, map[string]string{"error": "action must be execute or reload"})
+	}
+}
+
+// ══════════════════════════════════════════
 //  BOF CATALOG & FILE TRANSFERS
 // ══════════════════════════════════════════
 

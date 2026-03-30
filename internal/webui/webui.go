@@ -75,8 +75,9 @@ func (w *WebUI) Start() error {
 	mux.HandleFunc("/api/auditlog", w.auth.AuthMiddleware(w.handleAuditLog))
 	mux.HandleFunc("/api/templates", w.auth.AuthMiddleware(w.handleCmdTemplates))
 
-	// BOF catalog & lateral movement
+	// BOF catalog, plugins & lateral movement
 	mux.HandleFunc("/api/bof/catalog", w.auth.AuthMiddleware(w.handleBOFCatalog))
+	mux.HandleFunc("/api/plugins", w.auth.AuthMiddleware(w.handlePlugins))
 	mux.HandleFunc("/api/transfers", w.auth.AuthMiddleware(w.handleTransfers))
 
 	// API keys
