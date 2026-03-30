@@ -731,6 +731,18 @@ tr.clickable { cursor: pointer; }
           </div>
         </div>
       </div>
+
+      <!-- Payload History (like Mythic) -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+          <h3><span>📦</span> Payload History</h3>
+          <button class="qbtn" onclick="loadPayloadHistory()" style="font-size:11px">Refresh</button>
+        </div>
+        <div class="card-body"><table>
+          <thead><tr><th>ID</th><th>Type</th><th>Filename</th><th>Size</th><th>Listener</th><th>Created</th><th></th></tr></thead>
+          <tbody id="payload-history-table"></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- ══════ FILES / SCREENSHOTS / PROCESSES ══════ -->
@@ -2084,6 +2096,27 @@ async function loadAppTemplates() {
   }
 }
 
+async function loadPayloadHistory() {
+  const table = document.getElementById('payload-history-table');
+  if (!table) return;
+  try {
+    const history = await fetchJ('/api/payload/history');
+    if (!history || history.length === 0) {
+      table.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">No payloads generated yet</td></tr>';
+      return;
+    }
+    table.innerHTML = history.slice().reverse().map(p =>
+      '<tr><td style="color:var(--accent-light);font-size:11px">'+p.id+'</td>' +
+      '<td style="color:var(--cyan)">'+p.type+'</td>' +
+      '<td style="font-family:monospace;font-size:11px">'+p.filename+'</td>' +
+      '<td>'+p.size+'</td>' +
+      '<td style="font-size:11px;color:var(--text-muted)">'+p.listener+'</td>' +
+      '<td style="font-size:11px;color:var(--text-muted)">'+p.created_at+'</td>' +
+      '<td><a href="/api/payload/download?file='+encodeURIComponent(p.filepath)+'" class="qbtn" style="font-size:11px;padding:4px 10px;text-decoration:none">⬇ Download</a></td></tr>'
+    ).join('');
+  } catch(e) {}
+}
+
 async function generatePayload() {
   const btn = document.getElementById('pl-btn');
   const output = document.getElementById('pl-output');
@@ -2129,15 +2162,8 @@ async function generatePayload() {
       }
       output.innerHTML = details;
 
-      // Auto-download the file
-      if (data.filepath) {
-        const a = document.createElement('a');
-        a.href = '/api/payload/download?file=' + encodeURIComponent(data.filepath);
-        a.download = data.filename || 'payload';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+      // Refresh payload history
+      loadPayloadHistory();
     } else {
       output.innerHTML = '<div style="color:var(--red);font-weight:600;">Generation Failed</div><div style="margin-top:8px;color:var(--text-muted);font-size:12px;">'+data.message+'</div>';
     }
@@ -3029,6 +3055,7 @@ async function removeAgent(agentId) {
 // ──── Init ────
 loadAPIKeys();
 loadTaskQueue();
+loadPayloadHistory();
 setInterval(loadTaskQueue, 8000);
 // Load engagement notes
 const notesEl = document.getElementById('engagement-notes-text');

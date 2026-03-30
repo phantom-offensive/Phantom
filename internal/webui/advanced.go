@@ -2,6 +2,7 @@ package webui
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -168,6 +169,44 @@ func (w *WebUI) handleUploadToAgent(rw http.ResponseWriter, r *http.Request) {
 		"remote_path": remotePath,
 		"size":        header.Size,
 	})
+}
+
+// ══════════════════════════════════════════
+//  PAYLOAD HISTORY
+// ══════════════════════════════════════════
+
+var (
+	payloadHistory   []PayloadRecord
+	payloadHistoryMu sync.Mutex
+)
+
+type PayloadRecord struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`
+	Filename  string `json:"filename"`
+	FilePath  string `json:"filepath"`
+	Size      string `json:"size"`
+	Listener  string `json:"listener"`
+	CreatedAt string `json:"created_at"`
+}
+
+func AddPayloadRecord(ptype, filename, filepath, size, listener string) {
+	payloadHistoryMu.Lock()
+	defer payloadHistoryMu.Unlock()
+	id := fmt.Sprintf("pl-%d", len(payloadHistory)+1)
+	payloadHistory = append(payloadHistory, PayloadRecord{
+		ID: id, Type: ptype, Filename: filename, FilePath: filepath,
+		Size: size, Listener: listener, CreatedAt: time.Now().Format("2006-01-02 15:04:05"),
+	})
+}
+
+func (w *WebUI) handlePayloadHistory(rw http.ResponseWriter, r *http.Request) {
+	payloadHistoryMu.Lock()
+	defer payloadHistoryMu.Unlock()
+	if payloadHistory == nil {
+		payloadHistory = []PayloadRecord{}
+	}
+	writeJSON(rw, payloadHistory)
 }
 
 // ══════════════════════════════════════════

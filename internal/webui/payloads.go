@@ -250,6 +250,9 @@ func (w *WebUI) generateWebPayload(req PayloadRequest) PayloadResponse {
 		size = fmt.Sprintf("%d bytes", info.Size())
 	}
 
+	// Record in payload history
+	AddPayloadRecord(req.Type, filepath.Base(outPath), outPath, size, req.ListenerURL)
+
 	return PayloadResponse{
 		Success:  true,
 		Message:  fmt.Sprintf("Payload generated: %s", outPath),
