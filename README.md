@@ -99,6 +99,13 @@
 - **Stack spoofing framework** — fake call stack during sleep
 - **Timestomping** — modify file timestamps to match reference files
 - **Log cleanup** — clear Windows event logs (Security, System, PowerShell) and Linux syslogs
+- **Unhook ALL DLLs** — ntdll + kernel32 + kernelbase + advapi32 (not just ntdll)
+- **Remove PE headers** — wipe MZ/PE signatures from memory (invisible to scanners)
+- **Patch all ETW providers** — EtwEventWrite, EtwEventWriteEx, EtwEventWriteFull, EtwEventWriteTransfer, NtTraceEvent
+- **BlockDLLs policy** — spawn processes that block EDR DLL injection (BLOCK_NON_MICROSOFT_BINARIES)
+- **Module stomping** — overwrite legitimate DLL .text with implant code
+- **Hardware breakpoint hooks** — debug register-based hooking (no code modification)
+- **Advanced evasion init** — single command runs all bypass techniques at once
 - **Self-cleanup** — removes binary and clears environment on kill/kill-date
 - **Sandbox detection** — uptime, CPU, hostname, environment checks
 - **Mobile evasion** — anti-emulator, anti-Frida, anti-debug, anti-AV (25+ packages)

