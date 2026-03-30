@@ -1081,7 +1081,7 @@ tr.clickable { cursor: pointer; }
                 <div style="padding:14px;border:2px dashed var(--border);border-radius:var(--radius);text-align:center;cursor:pointer" onclick="document.getElementById('asm-file').click()" id="asm-dropzone">
                   <div style="font-size:20px;margin-bottom:4px">⚡</div>
                   <div style="font-size:11px;color:var(--text-muted)">Drop .NET assembly here</div>
-                  <input type="file" id="asm-file" style="display:none" accept=".exe,.dll" onchange="document.getElementById('asm-dropzone').innerHTML='<div style=color:var(--green)>'+this.files[0].name+' ('+Math.round(this.files[0].size/1024)+'KB)</div>'">
+                  <input type="file" id="asm-file" style="display:none" accept=".exe,.dll" onchange="asmFileSelected(this)">
                 </div>
               </div>
               <div style="margin-bottom:8px">
@@ -2695,6 +2695,14 @@ function saveEngagementNotes() {
 }
 
 // ──── .NET Assembly Execution ────
+function asmFileSelected(input) {
+  var dz = document.getElementById('asm-dropzone');
+  if (input.files && input.files[0]) {
+    var f = input.files[0];
+    dz.innerHTML = '<div style="color:#10b981;font-size:13px">⚡ ' + f.name + ' (' + Math.round(f.size/1024) + 'KB)</div>';
+  }
+}
+
 function setAsmArgs(args) {
   document.getElementById('asm-args').value = args;
   document.getElementById('asm-inline-args').value = args;
