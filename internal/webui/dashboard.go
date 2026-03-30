@@ -88,17 +88,7 @@ body { background: var(--bg-primary); color: var(--text-primary); font-family: '
 }
 .brand-icon svg { width: 36px; height: 36px; filter: drop-shadow(0 0 6px rgba(124,58,237,0.5)); }
 .brand small { font-size: 10px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
-.topbar-center { display: flex; gap: 2px; }
-.tab {
-  padding: 8px 16px; border-radius: 6px; cursor: pointer;
-  color: var(--text-secondary); font-size: 12px; font-weight: 500;
-  transition: all 0.2s; border: 1px solid transparent;
-}
-.tab:hover { color: var(--text-primary); background: var(--bg-hover); }
-.tab.active {
-  color: var(--accent-light); background: var(--accent-glow);
-  border-color: rgba(124,58,237,0.3);
-}
+.topbar-center { display: flex; flex: 1; }
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 .pulse { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -311,22 +301,7 @@ tr.clickable { cursor: pointer; }
       Phantom <small>C2</small>
     </div>
   </div>
-  <div class="topbar-center">
-    <div class="tab active" onclick="nav('dashboard')">Dashboard</div>
-    <div class="tab" onclick="nav('agents')">Agents</div>
-    <div class="tab" onclick="nav('listeners')">Listeners</div>
-    <div class="tab" onclick="nav('tasks')">Tasks</div>
-    <div class="tab" onclick="nav('terminal')">Terminal</div>
-    <div class="tab" onclick="nav('payloads')">Payloads</div>
-    <div class="tab" onclick="nav('files')">Files</div>
-    <div class="tab" onclick="nav('creds')">Creds</div>
-    <div class="tab" onclick="nav('loot')">Loot</div>
-    <div class="tab" onclick="nav('pivotgraph')">Pivot Map</div>
-    <div class="tab" onclick="nav('ioc')">IOC</div>
-    <div class="tab" onclick="nav('templates')">Templates</div>
-    <div class="tab" onclick="nav('audit')">Audit</div>
-    <div class="tab" onclick="nav('events')">Events</div>
-  </div>
+  <div class="topbar-center"></div>
   <div class="topbar-right">
     <span class="top-label" id="engagement-timer" title="Engagement duration">⏱ 00:00:00</span>
     <button onclick="toggleNotifications()" style="background:none;border:none;cursor:pointer;font-size:16px;position:relative" id="notif-btn" title="Toggle browser notifications">🔔</button>
@@ -335,6 +310,7 @@ tr.clickable { cursor: pointer; }
     <button onclick="configureWebhook()" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted)" title="Configure webhook">🔗</button>
     <div class="pulse"></div>
     <span class="top-label">Online</span>
+    <a href="/logout" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--red);text-decoration:none;margin-left:8px" title="Logout">⏻ Logout</a>
   </div>
 </div>
 
@@ -1033,9 +1009,10 @@ let cmdHistory = [], historyIdx = -1;
 function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('p-' + page).classList.add('active');
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  // Find the clicked sidebar button and activate it
+  const btn = event ? event.target.closest('.sidebar-btn') : null;
+  if (btn) btn.classList.add('active');
   if (page === 'terminal') document.getElementById('term-input').focus();
 }
 
