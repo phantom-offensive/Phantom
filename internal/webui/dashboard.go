@@ -84,10 +84,9 @@ body { background: var(--bg-primary); color: var(--text-primary); font-family: '
   letter-spacing: -0.3px;
 }
 .brand-icon {
-  width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #4f46e5);
-  border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: white;
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
 }
+.brand-icon svg { width: 36px; height: 36px; filter: drop-shadow(0 0 6px rgba(124,58,237,0.5)); }
 .brand small { font-size: 10px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
 .topbar-center { display: flex; gap: 2px; }
 .tab {
@@ -302,8 +301,14 @@ tr.clickable { cursor: pointer; }
 <div class="topbar">
   <div class="topbar-left">
     <div class="brand">
-      <div class="brand-icon">👻</div>
-      Phantom <small>C2 v1.0.0</small>
+      <div class="brand-icon"><svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="b2grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a78bfa"/><stop offset="100%" style="stop-color:#6d28d9"/></linearGradient></defs>
+        <!-- B-2 Spirit Stealth Bomber silhouette -->
+        <path d="M50 8 L15 30 L2 28 L8 32 L15 35 L28 38 L42 42 L50 44 L58 42 L72 38 L85 35 L92 32 L98 28 L85 30 Z" fill="url(#b2grad)" stroke="none"/>
+        <path d="M50 12 L35 28 L50 36 L65 28 Z" fill="rgba(10,14,26,0.4)" stroke="none"/>
+        <circle cx="50" cy="26" r="2" fill="#a78bfa" opacity="0.8"/>
+      </svg></div>
+      Phantom <small>C2</small>
     </div>
   </div>
   <div class="topbar-center">
@@ -325,7 +330,9 @@ tr.clickable { cursor: pointer; }
   <div class="topbar-right">
     <span class="top-label" id="engagement-timer" title="Engagement duration">⏱ 00:00:00</span>
     <button onclick="toggleNotifications()" style="background:none;border:none;cursor:pointer;font-size:16px;position:relative" id="notif-btn" title="Toggle browser notifications">🔔</button>
-    <button onclick="exportData()" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted)" title="Export engagement data">📥 Export</button>
+    <button onclick="generateReport()" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted)" title="Generate report">📄 Report</button>
+    <button onclick="exportData()" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted)" title="Export JSON">📥 Export</button>
+    <button onclick="configureWebhook()" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted)" title="Configure webhook">🔗</button>
     <div class="pulse"></div>
     <span class="top-label">Online</span>
   </div>
@@ -418,9 +425,17 @@ tr.clickable { cursor: pointer; }
     <!-- ══════ AGENTS ══════ -->
     <div id="p-agents" class="page">
       <div class="card">
-        <div class="card-header"><h3><span>🖥️</span> All Agents</h3></div>
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+          <h3><span>🖥️</span> All Agents</h3>
+          <div style="display:flex;gap:6px">
+            <button class="qbtn" onclick="bulkSelectAll()" style="font-size:11px">Select All</button>
+            <input id="bulk-cmd" placeholder="Command for selected agents..." style="padding:5px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;width:250px">
+            <button class="qbtn" onclick="bulkSendCmd()" style="font-size:11px;background:var(--accent-glow);color:var(--accent-light)">Run on Selected</button>
+            <button class="qbtn" onclick="bulkRemoveDead()" style="font-size:11px;color:var(--red)">Remove Dead</button>
+          </div>
+        </div>
         <div class="card-body"><table>
-          <thead><tr><th>Name</th><th>OS</th><th>Hostname</th><th>User</th><th>IP</th><th>Sleep</th><th>Last Seen</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th style="width:30px"><input type="checkbox" id="bulk-all" onchange="bulkToggleAll(this)"></th><th>Name</th><th>OS</th><th>Hostname</th><th>User</th><th>IP</th><th>Sleep</th><th>Last Seen</th><th>Status</th><th></th></tr></thead>
           <tbody id="all-agents"></tbody>
         </table></div>
       </div>
@@ -511,6 +526,7 @@ tr.clickable { cursor: pointer; }
           <input type="number" id="agent-sleep" placeholder="Sleep" style="width:60px;padding:5px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px" title="Sleep seconds">
           <input type="number" id="agent-jitter" placeholder="Jitter" style="width:60px;padding:5px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px" title="Jitter %">
           <button class="qbtn" onclick="updateSleep()" style="font-size:11px;padding:5px 10px" title="Update agent sleep/jitter">Set Sleep</button>
+          <button class="qbtn" onclick="setKillDate()" style="font-size:11px;padding:5px 10px;color:var(--red)" title="Set agent kill date">Kill Date</button>
         </div>
       </div>
 
@@ -1086,8 +1102,8 @@ async function refreshAll() {
   document.getElementById('all-agents').innerHTML = agents.map(a => {
     const actions = '<button class="qbtn" onclick="selectAgent(\''+a.name+'\')" style="margin-right:4px">Interact</button>' +
       (a.status === 'dead' ? '<button class="qbtn" onclick="removeAgent(\''+a.id+'\')" style="color:var(--red);font-size:11px" title="Remove dead agent">Remove</button>' : '');
-    return '<tr><td><strong style="color:var(--accent-light)">'+a.name+'</strong></td><td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td><td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td><td>'+a.last_seen+'</td><td>'+badge(a.status)+'</td><td>'+actions+'</td></tr>';
-  }).join('') || '<tr><td colspan="9" class="empty">No agents</td></tr>';
+    return '<tr><td><input type="checkbox" class="bulk-cb" data-agent="'+a.name+'" data-id="'+a.id+'" data-status="'+a.status+'"></td><td><strong style="color:var(--accent-light)">'+a.name+' <span onclick="renameAgent(\''+a.name+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted)" title="Rename">✏️</span></strong></td><td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td><td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td><td>'+a.last_seen+'</td><td>'+badge(a.status)+'</td><td>'+actions+'</td></tr>';
+  }).join('') || '<tr><td colspan="10" class="empty">No agents</td></tr>';
 
   // Listeners
   document.getElementById('all-listeners').innerHTML = listeners.map(l => {
@@ -2468,6 +2484,119 @@ function saveEngagementNotes() {
   }
 }
 
+// ──── Bulk Agent Actions ────
+function bulkToggleAll(cb) {
+  document.querySelectorAll('.bulk-cb').forEach(c => c.checked = cb.checked);
+}
+function bulkSelectAll() {
+  document.querySelectorAll('.bulk-cb').forEach(c => c.checked = true);
+  document.getElementById('bulk-all').checked = true;
+}
+async function bulkSendCmd() {
+  const cmd = document.getElementById('bulk-cmd').value.trim();
+  if (!cmd) { alert('Enter a command first'); return; }
+  const selected = [...document.querySelectorAll('.bulk-cb:checked')].map(c => c.dataset.agent);
+  if (selected.length === 0) { alert('Select at least one agent'); return; }
+  const parts = cmd.split(' ');
+  const command = parts[0];
+  const args = parts.slice(1).join(' ');
+  let count = 0;
+  for (const agent of selected) {
+    await fetch('/api/cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agent:agent, command:command, args:args})});
+    count++;
+  }
+  alert('Command sent to ' + count + ' agents: ' + cmd);
+  document.getElementById('bulk-cmd').value = '';
+}
+async function bulkRemoveDead() {
+  const dead = [...document.querySelectorAll('.bulk-cb')].filter(c => c.dataset.status === 'dead');
+  if (dead.length === 0) { alert('No dead agents to remove'); return; }
+  if (!confirm('Remove ' + dead.length + ' dead agents?')) return;
+  for (const c of dead) {
+    await fetch('/api/agent/remove', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.dataset.id})});
+  }
+  refreshAll();
+}
+
+// ──── Report Generator ────
+async function generateReport() {
+  try {
+    const agents = await fetchJ('/api/agents');
+    const tasks = await fetchJ('/api/tasks');
+    const events = await fetchJ('/api/events') || [];
+    const audit = await fetchJ('/api/auditlog') || [];
+
+    let md = '# Phantom C2 — Engagement Report\\n';
+    md += '**Generated:** ' + new Date().toISOString() + '\\n\\n';
+    md += '## Agents (' + agents.length + ')\\n\\n';
+    md += '| Name | OS | Hostname | IP | Status |\\n|---|---|---|---|---|\\n';
+    agents.forEach(a => md += '| ' + a.name + ' | ' + a.os + ' | ' + a.hostname + ' | ' + a.ip + ' | ' + a.status + ' |\\n');
+    md += '\\n## Tasks (' + tasks.length + ')\\n\\n';
+    md += '| Agent | Type | Command | Status | Time |\\n|---|---|---|---|---|\\n';
+    tasks.slice(0,50).forEach(t => md += '| ' + t.agent + ' | ' + t.type + ' | ' + (t.args||'').substring(0,40) + ' | ' + t.status + ' | ' + t.time + ' |\\n');
+    md += '\\n## Operator Audit Log (' + audit.length + ' entries)\\n\\n';
+    audit.slice(-20).forEach(e => md += '- [' + e.time + '] ' + e.operator + ' → ' + e.agent + ': ' + e.action + ' ' + e.detail + '\\n');
+    md += '\\n## Credentials\\n\\n';
+    credentials.forEach(c => md += '- **' + c.source + '** ' + c.username + ' / ' + c.password + ' (' + c.type + ')\\n');
+    md += '\\n## Notes\\n\\n' + (engagementNotes || 'No notes recorded.');
+
+    const blob = new Blob([md.replace(/\\\\n/g,'\\n')], {type:'text/markdown'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'phantom-report-' + new Date().toISOString().slice(0,10) + '.md';
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e) { alert('Report error: ' + e.message); }
+}
+
+// ──── Theme Presets ────
+const themePresets = {
+  dark: {name:'Phantom Dark',bg:'#0a0e1a',secondary:'#111827',accent:'#7c3aed',accentLight:'#a78bfa',text:'#e8ecf4'},
+  light: {name:'Light',bg:'#f0f2f5',secondary:'#ffffff',accent:'#7c3aed',accentLight:'#6d28d9',text:'#1f2937'},
+  cobalt: {name:'Cobalt Strike',bg:'#0c1021',secondary:'#141a2e',accent:'#3b82f6',accentLight:'#60a5fa',text:'#c8d6e5'},
+  mythic: {name:'Mythic Dark',bg:'#1a1a2e',secondary:'#16213e',accent:'#e94560',accentLight:'#ff6b81',text:'#eaeaea'},
+  hacker: {name:'Hacker Green',bg:'#0a0a0a',secondary:'#111111',accent:'#00ff41',accentLight:'#39ff14',text:'#00ff41'},
+};
+
+function applyThemePreset(preset) {
+  const t = themePresets[preset];
+  if (!t) return;
+  const root = document.documentElement;
+  if (preset === 'light') { root.setAttribute('data-theme','light'); }
+  else {
+    root.setAttribute('data-theme','dark');
+    root.style.setProperty('--bg-primary', t.bg);
+    root.style.setProperty('--bg-secondary', t.secondary);
+    root.style.setProperty('--accent', t.accent);
+    root.style.setProperty('--accent-light', t.accentLight);
+    root.style.setProperty('--accent-glow', t.accent.replace(')',',0.15)').replace('rgb','rgba'));
+    root.style.setProperty('--text-primary', t.text);
+  }
+  localStorage.setItem('phantom-theme-preset', preset);
+  document.getElementById('theme-btn').firstChild.textContent = preset === 'light' ? '☀️' : '🌙';
+}
+
+// ──── Webhook Config ────
+async function configureWebhook() {
+  const url = prompt('Webhook URL (Slack/Discord):');
+  if (!url) return;
+  // Store locally and test
+  localStorage.setItem('phantom-webhook', url);
+  try {
+    await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:'Phantom C2 webhook configured!', text:'Phantom C2 webhook configured!'})});
+    alert('Webhook configured and test message sent!');
+  } catch(e) { alert('Webhook saved but test failed: ' + e.message); }
+}
+
+// ──── Kill Date Management ────
+async function setKillDate() {
+  const agent = document.getElementById('agent-select').value;
+  if (!agent) { alert('Select an agent first'); return; }
+  const date = prompt('Kill date (YYYY-MM-DD) — agent self-destructs after this date:');
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('Invalid format. Use YYYY-MM-DD'); return; }
+  await fetch('/api/cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agent:agent, command:'shell', args:'echo Kill date set: ' + date})});
+  termLog('system', 'Kill date set to ' + date + ' for ' + agent);
+}
+
 // ──── Engagement Timer ────
 const engagementStart = Date.now();
 function updateTimer() {
@@ -2607,20 +2736,19 @@ async function exportData() {
 }
 
 // ──── Theme Toggle ────
+const presetOrder = ['dark','light','cobalt','mythic','hacker'];
+let currentPresetIdx = 0;
+
 function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme') || 'dark';
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('phantom-theme', next);
-  document.getElementById('theme-btn').firstChild.textContent = next === 'dark' ? '🌙' : '☀️';
+  currentPresetIdx = (currentPresetIdx + 1) % presetOrder.length;
+  applyThemePreset(presetOrder[currentPresetIdx]);
 }
 // Load saved theme
 (function() {
-  const saved = localStorage.getItem('phantom-theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.firstChild.textContent = saved === 'dark' ? '🌙' : '☀️';
+  const saved = localStorage.getItem('phantom-theme-preset') || 'dark';
+  const idx = presetOrder.indexOf(saved);
+  if (idx >= 0) currentPresetIdx = idx;
+  applyThemePreset(saved);
 })();
 
 // ──── Remove Agent ────

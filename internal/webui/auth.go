@@ -205,7 +205,7 @@ body{background:#0a0e1a;color:#e8ecf4;font-family:'Segoe UI',system-ui,sans-seri
 .error{background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;text-align:center;display:none}
 </style></head><body>
 <div class="login-card">
-<div class="icon">👻</div>
+<div class="icon"><svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg" width="80"><defs><linearGradient id="b2g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a78bfa"/><stop offset="100%" style="stop-color:#6d28d9"/></linearGradient></defs><path d="M50 8 L15 30 L2 28 L8 32 L15 35 L28 38 L42 42 L50 44 L58 42 L72 38 L85 35 L92 32 L98 28 L85 30 Z" fill="url(#b2g)"/><path d="M50 12 L35 28 L50 36 L65 28 Z" fill="rgba(10,14,26,0.4)"/><circle cx="50" cy="26" r="2" fill="#a78bfa" opacity="0.8"/></svg></div>
 <h1>Phantom C2</h1>
 <p>Sign in to access the dashboard</p>
 <form method="POST" action="/login">
@@ -235,7 +235,7 @@ body{background:#0a0e1a;color:#e8ecf4;font-family:'Segoe UI',system-ui,sans-seri
 .error{background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;text-align:center}
 </style></head><body>
 <div class="login-card">
-<div class="icon">👻</div>
+<div class="icon"><svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg" width="80"><defs><linearGradient id="b2g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a78bfa"/><stop offset="100%" style="stop-color:#6d28d9"/></linearGradient></defs><path d="M50 8 L15 30 L2 28 L8 32 L15 35 L28 38 L42 42 L50 44 L58 42 L72 38 L85 35 L92 32 L98 28 L85 30 Z" fill="url(#b2g)"/><path d="M50 12 L35 28 L50 36 L65 28 Z" fill="rgba(10,14,26,0.4)"/><circle cx="50" cy="26" r="2" fill="#a78bfa" opacity="0.8"/></svg></div>
 <h1>Phantom C2</h1>
 <p>Sign in to access the dashboard</p>
 <div class="error">Invalid username or password</div>
