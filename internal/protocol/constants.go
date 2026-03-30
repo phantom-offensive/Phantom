@@ -37,6 +37,7 @@ const (
 	TaskSocks       uint8 = 21  // SOCKS5 proxy
 	TaskPortFwd     uint8 = 22  // Port forwarding
 	TaskCreds       uint8 = 23  // Credential harvesting
+	TaskLateral     uint8 = 24  // Lateral movement (wmiexec, winrm, ssh, pth)
 )
 
 // Task status
@@ -103,6 +104,8 @@ func TaskTypeName(t uint8) string {
 		return "portfwd"
 	case TaskCreds:
 		return "creds"
+	case TaskLateral:
+		return "lateral"
 	default:
 		return "unknown"
 	}

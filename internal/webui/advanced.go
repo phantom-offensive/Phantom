@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/phantom-c2/phantom/internal/implant"
 	"github.com/phantom-c2/phantom/internal/protocol"
 	"github.com/phantom-c2/phantom/internal/util"
 )
@@ -169,6 +170,18 @@ func (w *WebUI) handleUploadToAgent(rw http.ResponseWriter, r *http.Request) {
 		"remote_path": remotePath,
 		"size":        header.Size,
 	})
+}
+
+// ══════════════════════════════════════════
+//  BOF CATALOG & FILE TRANSFERS
+// ══════════════════════════════════════════
+
+func (w *WebUI) handleBOFCatalog(rw http.ResponseWriter, r *http.Request) {
+	writeJSON(rw, implant.BOFCatalog())
+}
+
+func (w *WebUI) handleTransfers(rw http.ResponseWriter, r *http.Request) {
+	writeJSON(rw, implant.GetTransferProgress())
 }
 
 // ══════════════════════════════════════════

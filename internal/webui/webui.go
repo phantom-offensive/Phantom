@@ -75,6 +75,10 @@ func (w *WebUI) Start() error {
 	mux.HandleFunc("/api/auditlog", w.auth.AuthMiddleware(w.handleAuditLog))
 	mux.HandleFunc("/api/templates", w.auth.AuthMiddleware(w.handleCmdTemplates))
 
+	// BOF catalog & lateral movement
+	mux.HandleFunc("/api/bof/catalog", w.auth.AuthMiddleware(w.handleBOFCatalog))
+	mux.HandleFunc("/api/transfers", w.auth.AuthMiddleware(w.handleTransfers))
+
 	// API keys
 	mux.HandleFunc("/api/keys", w.auth.AuthMiddleware(w.handleAPIKeys))
 
@@ -350,6 +354,11 @@ func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
 		taskType = protocol.TaskCreds
 	case "pivot":
 		taskType = protocol.TaskPivot
+	case "lateral", "wmiexec", "winrm", "psexec", "pth":
+		taskType = protocol.TaskLateral
+		if req.Command != "lateral" {
+			args = append([]string{req.Command}, args...)
+		}
 	default:
 		// Check for AD commands
 		if strings.HasPrefix(req.Command, "ad-") {
