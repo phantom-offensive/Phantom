@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -166,16 +167,36 @@ func main() {
 	agentDir := "build/agents"
 	os.MkdirAll(agentDir, 0755)
 
-	// Determine listener URL for agents from first configured listener
-	agentCallbackURL := "https://127.0.0.1:443"
-	for _, lc := range cfg.Listeners {
-		scheme := "https"
-		if lc.Type == "http" {
-			scheme = "http"
+	// Determine listener URL for auto-built agents
+	// Check PHANTOM_CALLBACK env var first, then derive from listener config
+	agentCallbackURL := os.Getenv("PHANTOM_CALLBACK")
+	if agentCallbackURL == "" {
+		for _, lc := range cfg.Listeners {
+			scheme := "https"
+			if lc.Type == "http" {
+				scheme = "http"
+			}
+			port := lc.Bind[strings.LastIndex(lc.Bind, ":"):]
+
+			// Try to find the best routable IP
+			host := "127.0.0.1"
+			if addrs, err := net.InterfaceAddrs(); err == nil {
+				for _, addr := range addrs {
+					if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+						ip := ipnet.IP.String()
+						// Skip Docker/WSL internal bridges
+						if !strings.HasPrefix(ip, "10.255.") && !strings.HasPrefix(ip, "169.254.") {
+							host = ip
+							break
+						}
+					}
+				}
+			}
+			agentCallbackURL = fmt.Sprintf("%s://%s%s", scheme, host, port)
+			break
 		}
-		agentCallbackURL = fmt.Sprintf("%s://0.0.0.0%s", scheme, lc.Bind[strings.LastIndex(lc.Bind, ":"):])
-		break
 	}
+	cli.Info("Agent callback URL: %s", agentCallbackURL)
 
 	// Get RSA public key for embedding
 	module := "github.com/phantom-c2/phantom/internal/implant"
