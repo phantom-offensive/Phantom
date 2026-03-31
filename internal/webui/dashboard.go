@@ -1331,14 +1331,18 @@ async function refreshAll() {
     '<tr><td style="font-family:monospace;font-size:11px">'+t.id+'</td><td style="color:var(--accent-light)">'+t.agent+'</td><td>'+t.type+'</td><td><code style="color:var(--cyan)">'+((t.args||'').substring(0,30)||'—')+'</code></td><td>'+badge(t.status)+'</td><td style="color:var(--text-muted)">'+t.time+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:11px;color:var(--text-muted)">'+(t.output||'—')+'</td></tr>'
   ).join('');
 
-  // Agent selector — preserve selection even if agent goes dormant/dead
+  // Agent selector — only rebuild if agent list actually changed
   const sel = document.getElementById('agent-select');
-  const cur = sel.value;
-  const opts = agents.map(a => {
-    const status = a.status !== 'active' ? ' ['+a.status+']' : '';
-    return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIcon(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
-  }).join('');
-  sel.innerHTML = '<option value="">Select an agent...</option>' + opts;
+  const cur = sel.value || currentTermAgent;
+  const newAgentKey = agents.map(a => a.name + ':' + a.status).join(',');
+  if (newAgentKey !== window._lastAgentKey) {
+    window._lastAgentKey = newAgentKey;
+    const opts = agents.map(a => {
+      const status = a.status !== 'active' ? ' ['+a.status+']' : '';
+      return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIcon(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
+    }).join('');
+    sel.innerHTML = '<option value="">Select an agent...</option>' + opts;
+  }
   if (cur) sel.value = cur;
 
   // Events
@@ -1403,8 +1407,9 @@ async function sendTermCmd() {
   input.value = '';
   if (!raw) return;
 
-  const agent = document.getElementById('agent-select').value;
+  const agent = document.getElementById('agent-select').value || currentTermAgent;
   if (!agent) { termLog('error', '✗ No agent selected'); return; }
+  document.getElementById('agent-select').value = agent;
 
   cmdHistory.push(raw); historyIdx = cmdHistory.length;
   termLog('line', '❯ ' + raw);
