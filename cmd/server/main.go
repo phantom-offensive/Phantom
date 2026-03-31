@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -15,6 +17,21 @@ import (
 	"github.com/phantom-c2/phantom/internal/server"
 	"github.com/phantom-c2/phantom/internal/webui"
 )
+
+func findProjectRoot() string {
+	dir, _ := os.Getwd()
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "."
+}
 
 const phantomVersion = "1.0.0"
 
@@ -139,6 +156,27 @@ func main() {
 				cli.Warn("Could not auto-start listener %s: %v", lc.Name, err)
 			} else {
 				cli.Success("Listener '%s' started on %s (%s)", lc.Name, lc.Bind, lc.Type)
+			}
+		}
+	}
+
+	// Auto-build agent binaries if they don't exist
+	agentDir := "build/agents"
+	os.MkdirAll(agentDir, 0755)
+	for _, target := range []struct{ goos, suffix string }{
+		{"linux", "phantom-agent_linux_amd64"},
+		{"windows", "phantom-agent_windows_amd64.exe"},
+	} {
+		agentPath := agentDir + "/" + target.suffix
+		if _, err := os.Stat(agentPath); err != nil {
+			cli.Info("Auto-building %s agent...", target.goos)
+			buildCmd := exec.Command("go", "build", "-ldflags", "-s -w", "-o", agentPath, "./cmd/agent")
+			buildCmd.Dir = findProjectRoot()
+			buildCmd.Env = append(os.Environ(), "GOOS="+target.goos, "GOARCH=amd64", "CGO_ENABLED=0")
+			if out, err := buildCmd.CombinedOutput(); err != nil {
+				cli.Warn("Auto-build %s failed: %s", target.goos, strings.TrimSpace(string(out)))
+			} else {
+				cli.Success("Auto-built %s agent: %s", target.goos, agentPath)
 			}
 		}
 	}
