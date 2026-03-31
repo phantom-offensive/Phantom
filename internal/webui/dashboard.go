@@ -1331,12 +1331,15 @@ async function refreshAll() {
     '<tr><td style="font-family:monospace;font-size:11px">'+t.id+'</td><td style="color:var(--accent-light)">'+t.agent+'</td><td>'+t.type+'</td><td><code style="color:var(--cyan)">'+((t.args||'').substring(0,30)||'—')+'</code></td><td>'+badge(t.status)+'</td><td style="color:var(--text-muted)">'+t.time+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:11px;color:var(--text-muted)">'+(t.output||'—')+'</td></tr>'
   ).join('');
 
-  // Agent selector
+  // Agent selector — preserve selection even if agent goes dormant/dead
   const sel = document.getElementById('agent-select');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">Select an agent...</option>' + agents.map(a =>
-    '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIcon(a.os)+' '+a.name+' — '+a.hostname+'</option>'
-  ).join('');
+  const opts = agents.map(a => {
+    const status = a.status !== 'active' ? ' ['+a.status+']' : '';
+    return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIcon(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
+  }).join('');
+  sel.innerHTML = '<option value="">Select an agent...</option>' + opts;
+  if (cur) sel.value = cur;
 
   // Events
   if (events.length > 0) {

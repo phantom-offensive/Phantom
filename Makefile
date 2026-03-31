@@ -9,6 +9,7 @@ LDFLAGS     := -s -w -X '$(MODULE)/internal/implant.Version=$(VERSION)'
 LISTENER_URL ?= https://127.0.0.1:443
 SLEEP        ?= 10
 JITTER       ?= 20
+SERVER_PUBKEY := $(shell openssl rsa -pubin -in configs/server.pub -outform DER 2>/dev/null | base64 -w0)
 
 # ──────────────── Server ────────────────
 
@@ -29,7 +30,8 @@ agent-windows: ## Cross-compile Windows/amd64 agent
 	go build -ldflags "$(LDFLAGS) \
 	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
 	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
-	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)'" \
+	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
+	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe"
 
@@ -41,7 +43,8 @@ agent-linux: ## Cross-compile Linux/amd64 agent
 	go build -ldflags "$(LDFLAGS) \
 	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
 	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
-	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)'" \
+	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
+	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64 ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64"
 

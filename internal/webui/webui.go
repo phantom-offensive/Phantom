@@ -342,6 +342,10 @@ func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
 		taskType = protocol.TaskCd
 	case "kill":
 		taskType = protocol.TaskKill
+	case "upload":
+		taskType = protocol.TaskUpload
+	case "ad":
+		taskType = protocol.TaskAD
 	case "evasion":
 		taskType = protocol.TaskEvasion
 	case "token":
