@@ -68,6 +68,7 @@ func LoadPrivateKey(path string) (*rsa.PrivateKey, error) {
 }
 
 // LoadPublicKey reads an RSA public key from a PEM file.
+// Supports both PKCS#1 ("RSA PUBLIC KEY") and PKCS#8/X.509 ("PUBLIC KEY") formats.
 func LoadPublicKey(path string) (*rsa.PublicKey, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -77,15 +78,7 @@ func LoadPublicKey(path string) (*rsa.PublicKey, error) {
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
 	}
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-	rsaPub, ok := pub.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("not an RSA public key")
-	}
-	return rsaPub, nil
+	return parsePublicKeyDER(block.Bytes)
 }
 
 // PublicKeyToBytes serializes an RSA public key to DER bytes.
@@ -94,14 +87,38 @@ func PublicKeyToBytes(pubKey *rsa.PublicKey) ([]byte, error) {
 }
 
 // PublicKeyFromBytes deserializes an RSA public key from DER bytes.
+// Supports both PKCS#1 and PKCS#8/X.509 formats.
 func PublicKeyFromBytes(data []byte) (*rsa.PublicKey, error) {
-	pub, err := x509.ParsePKIXPublicKey(data)
-	if err != nil {
-		return nil, err
+	// First try: raw DER bytes
+	if key, err := parsePublicKeyDER(data); err == nil {
+		return key, nil
 	}
-	rsaPub, ok := pub.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("not an RSA public key")
+
+	// Second try: might be PEM-encoded (from base64 of full PEM file)
+	block, _ := pem.Decode(data)
+	if block != nil {
+		return parsePublicKeyDER(block.Bytes)
 	}
-	return rsaPub, nil
+
+	return nil, errors.New("failed to parse RSA public key (tried PKCS#1 and PKCS#8)")
+}
+
+// parsePublicKeyDER tries both PKCS#1 and PKCS#8 formats.
+func parsePublicKeyDER(der []byte) (*rsa.PublicKey, error) {
+	// Try PKCS#8/X.509 first (most common)
+	pub, err := x509.ParsePKIXPublicKey(der)
+	if err == nil {
+		rsaPub, ok := pub.(*rsa.PublicKey)
+		if ok {
+			return rsaPub, nil
+		}
+	}
+
+	// Try PKCS#1 ("RSA PUBLIC KEY" header)
+	rsaPub, err := x509.ParsePKCS1PublicKey(der)
+	if err == nil {
+		return rsaPub, nil
+	}
+
+	return nil, errors.New("not an RSA public key (tried PKCS#1 and PKCS#8)")
 }
