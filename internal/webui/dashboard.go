@@ -2780,13 +2780,15 @@ async function renameAgent(agentName) {
 // ──── Colored Terminal Output ────
 function colorizeOutput(text) {
   if (!text) return '';
+  // Escape HTML first to prevent XSS
+  text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return text
     .replace(/\b(error|failed|denied|not found|refused|timeout)\b/gi, '<span style="color:var(--red)">$1</span>')
     .replace(/\b(success|ok|active|running|complete|found)\b/gi, '<span style="color:var(--green)">$1</span>')
     .replace(/\b(warning|deprecated|caution)\b/gi, '<span style="color:var(--yellow)">$1</span>')
     .replace(/(FLAG\{[^}]+\})/g, '<span style="color:#f59e0b;font-weight:bold;background:rgba(245,158,11,0.1);padding:1px 4px;border-radius:3px">$1</span>')
-    .replace(/(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)/g, '<span style="color:var(--cyan)">$1</span>')
-    .replace(/(\/[\w\/.]+)/g, '<span style="color:var(--accent-light)">$1</span>');
+    .replace(/(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?:\/\d{1,2})?)/g, '<span style="color:var(--cyan)">$1</span>')
+    .replace(/((?:^|[ \t])(\/[\w\/._-]{3,}))/gm, '<span style="color:var(--accent-light)">$1</span>');
 }
 
 // ──── Engagement Notes (Global) ────
