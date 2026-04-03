@@ -9,8 +9,11 @@ import (
 
 // CaptureScreenshot takes a screenshot and returns the image bytes.
 func CaptureScreenshot() ([]byte, error) {
-	tmpDir := os.TempDir()
-	outPath := filepath.Join(tmpDir, "ss.png")
+	// Use a path without spaces to avoid shell escaping issues
+	outPath := filepath.Join(os.TempDir(), "ss.png")
+	if runtime.GOOS == "windows" {
+		outPath = `C:\Windows\Temp\ss.png`
+	}
 	defer os.Remove(outPath)
 
 	var err error
@@ -29,18 +32,9 @@ func CaptureScreenshot() ([]byte, error) {
 
 // screenshotWindows uses PowerShell to capture the screen.
 func screenshotWindows(outPath string) error {
-	psScript := fmt.Sprintf(`
-Add-Type -AssemblyName System.Windows.Forms
-$screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$bitmap = New-Object System.Drawing.Bitmap($screen.Width, $screen.Height)
-$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-$graphics.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)
-$bitmap.Save('%s')
-$graphics.Dispose()
-$bitmap.Dispose()
-`, outPath)
+	psScript := `Add-Type -AssemblyName System.Windows.Forms;Add-Type -AssemblyName System.Drawing;$s=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds;$b=New-Object System.Drawing.Bitmap($s.Width,$s.Height);$g=[System.Drawing.Graphics]::FromImage($b);$g.CopyFromScreen($s.Location,[System.Drawing.Point]::Empty,$s.Size);$b.Save('` + outPath + `');$g.Dispose();$b.Dispose()`
 
-	_, err := ExecuteShell([]string{"powershell", "-WindowStyle", "Hidden", "-Command", psScript})
+	_, err := ExecuteShell([]string{"powershell -WindowStyle Hidden -Command " + psScript})
 	return err
 }
 
