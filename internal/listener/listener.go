@@ -325,7 +325,7 @@ func (l *HTTPListener) handleStaging(w http.ResponseWriter, r *http.Request) {
 
 	// Determine which agent binary to serve
 	var agentPath string
-	if strings.Contains(ua, "Windows") || strings.Contains(ua, "Win64") || strings.Contains(ua, "Win32") {
+	if strings.Contains(ua, "Windows") || strings.Contains(ua, "Win64") || strings.Contains(ua, "Win32") || strings.Contains(ua, "WNS") || strings.Contains(ua, "PWSH") {
 		agentPath = filepath.Join(root, "build", "agents", "phantom-agent_windows_amd64.exe")
 	} else {
 		agentPath = filepath.Join(root, "build", "agents", "phantom-agent_linux_amd64")
