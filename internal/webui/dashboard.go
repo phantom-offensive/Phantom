@@ -571,10 +571,27 @@ tr.clickable { cursor: pointer; }
           <span class="term-title" id="term-title">Phantom C2 — Select an agent to begin</span>
         </div>
         <div class="term-body" id="term-body">
-          <div class="term-info">Welcome to Phantom C2 Interactive Terminal</div>
-          <div class="term-info">Select an agent above, then type commands below.</div>
-          <div class="term-info" style="color:var(--text-muted)">Commands: shell, sysinfo, ifconfig, ps, screenshot, download, persist, sleep, kill</div>
-          <div class="term-info" style="color:var(--text-muted)">          token, keylog, socks, portfwd, creds, pivot, evasion, ad-*</div>
+          <div class="term-info" style="color:var(--accent-light);font-weight:700;font-size:14px;letter-spacing:0.5px">
+            ╔══════════════════════════════════════════════════════════╗
+          </div>
+          <div class="term-info" style="color:var(--accent-light);font-weight:700;font-size:14px">
+            ║&nbsp;&nbsp;PHANTOM C2 — Interactive Terminal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;║
+          </div>
+          <div class="term-info" style="color:var(--accent-light);font-weight:700;font-size:14px;letter-spacing:0.5px">
+            ╚══════════════════════════════════════════════════════════╝
+          </div>
+          <div class="term-info" style="margin-top:8px;color:var(--text-muted)">Select an agent above to begin. Type <span style="color:var(--cyan)">help</span> for all commands.</div>
+          <div>&nbsp;</div>
+          <div class="term-info" style="color:var(--green)">⚡ Quick Commands</div>
+          <div class="term-info" style="color:var(--text-muted);font-size:12px;line-height:1.8">
+            <span style="color:var(--cyan)">shell</span> &lt;cmd&gt; &nbsp;│&nbsp; <span style="color:var(--cyan)">sysinfo</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">ifconfig</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">ps</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">screenshot</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">download</span> &lt;path&gt;
+          </div>
+          <div class="term-info" style="color:var(--text-muted);font-size:12px;line-height:1.8">
+            <span style="color:var(--cyan)">upload</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">persist</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">sleep</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">token</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">keylog</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">creds</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">evasion</span>
+          </div>
+          <div class="term-info" style="color:var(--text-muted);font-size:12px;line-height:1.8">
+            <span style="color:var(--cyan)">socks</span> start/stop/list &nbsp;│&nbsp; <span style="color:var(--cyan)">portfwd</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">pivot</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">lateral</span> &nbsp;│&nbsp; <span style="color:var(--cyan)">ad-*</span> (22 AD cmds)
+          </div>
           <div>&nbsp;</div>
         </div>
         <div class="term-input-row">
