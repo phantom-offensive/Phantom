@@ -32,26 +32,23 @@
 
 ## Screenshots
 
-### Login & Mode Selection
-![Login](docs/assets/screenshot-login.png)
+### Dashboard — Agent Overview, Beacon Graph, Network Topology
+![Dashboard](docs/screenshots/dash.jpg)
 
-### Web UI Dashboard (Cobalt Strike-style graphs)
-![Web UI](docs/assets/screenshot-webui-overview.png)
+### Agent Management — Status, OS, IP, Interact
+![Agents](docs/screenshots/dash1.jpg)
 
-### Server Startup
-![Startup](docs/assets/screenshot-startup.png)
+### Listener Management — HTTP/HTTPS, Presets, Create & Start
+![Listeners](docs/screenshots/dash2.jpg)
 
-### Agent Management
-![Agents](docs/assets/screenshot-agents.png)
+### Terminal — .NET Assembly, Quick Actions, File Upload
+![Terminal](docs/screenshots/dash4.jpg)
 
-### Agent Interaction & Shell
-![Interact](docs/assets/screenshot-interact.png)
+### Payload Generator — EXE, Stagers, Obfuscation Levels
+![Payloads](docs/screenshots/dash5.jpg)
 
-### Active Directory Commands
-![AD Commands](docs/assets/screenshot-ad-commands.png)
-
-### Payload Generation
-![Generate](docs/assets/screenshot-generate.png)
+### Binary Backdoor & Persistence Generator
+![Backdoor](docs/screenshots/dash6.jpg)
 
 ### Mobile App Builder (30+ Templates)
 ![App Templates](docs/assets/screenshot-app-templates.png)
