@@ -552,7 +552,7 @@ tr.clickable { cursor: pointer; }
       <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;">
         <span style="color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px;">Target</span>
         <div class="select-wrap">
-          <select id="agent-select" onchange="onAgentSelect()">
+          <select id="agent-select">
             <option value="">Select an agent...</option>
           </select>
         </div>
@@ -1406,20 +1406,28 @@ async function refreshAll() {
   const newAgentKey = sortedAgents.map(a => a.name).join(',');
   if (newAgentKey !== window._lastAgentKey) {
     window._lastAgentKey = newAgentKey;
+    // Suppress onchange during rebuild — the innerHTML swap briefly removes
+    // the selected option, which triggers onchange → onAgentSelect() → sets
+    // currentTermAgent to the wrong agent. This is the root cause of the
+    // "agent interchanging" bug.
+    sel.onchange = null;
     const opts = sortedAgents.map(a => {
       const status = a.status !== 'active' ? ' ['+a.status+']' : '';
       return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIcon(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
     }).join('');
     sel.innerHTML = '<option value="">Select an agent...</option>' + opts;
+    if (cur) sel.value = cur;
+    sel.onchange = onAgentSelect;
+  } else {
+    // No rebuild needed — just update status text in-place
+    sortedAgents.forEach(a => {
+      const opt = sel.querySelector('option[value="'+a.name+'"]');
+      if (opt) {
+        const status = a.status !== 'active' ? ' ['+a.status+']' : '';
+        opt.textContent = osIcon(a.os)+' '+a.name+' — '+a.hostname+status;
+      }
+    });
   }
-  if (cur) sel.value = cur;
-  sortedAgents.forEach(a => {
-    const opt = sel.querySelector('option[value="'+a.name+'"]');
-    if (opt) {
-      const status = a.status !== 'active' ? ' ['+a.status+']' : '';
-      opt.textContent = osIcon(a.os)+' '+a.name+' — '+a.hostname+status;
-    }
-  });
 
   // Events
   if (events.length > 0) {
@@ -3583,6 +3591,7 @@ loadTemplates();
 loadAutoTasks();
 loadAuditLog();
 loadLoot();
+document.getElementById('agent-select').onchange = onAgentSelect;
 refreshAll();
 setInterval(refreshAll, 4000);
 setInterval(loadAuditLog, 10000);
