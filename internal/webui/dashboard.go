@@ -2339,7 +2339,7 @@ function onListenerSelect() {
 function onPayloadTypeChange() {
   const type = document.getElementById('pl-type').value;
   const appRow = document.getElementById('pl-app-row');
-  if (type === 'app') {
+  if (type === 'app' || type === 'android') {
     appRow.style.display = 'block';
     loadAppTemplates();
   } else {

