@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -113,6 +114,11 @@ func (w *WebUI) Start() error {
 func (w *WebUI) handleAPIAgents(rw http.ResponseWriter, r *http.Request) {
 	agents, _ := w.server.AgentMgr.List()
 	w.server.AgentMgr.RefreshStatuses()
+
+	// Sort by name for stable ordering — prevents UI flickering
+	sort.Slice(agents, func(i, j int) bool {
+		return agents[i].Name < agents[j].Name
+	})
 
 	type agentResp struct {
 		ID       string `json:"id"`
