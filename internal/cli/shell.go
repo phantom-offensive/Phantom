@@ -135,9 +135,9 @@ func (sh *Shell) runBasicMode() {
 // getPrompt returns the current prompt string.
 func (sh *Shell) getPrompt() string {
 	if sh.activeAgent != nil {
-		return fmt.Sprintf("\n  %sphantom%s [%s%s%s] > ", colorPurple, colorReset, colorCyan, sh.activeAgent.Name, colorReset)
+		return "\n  " + FormatPrompt(sh.activeAgent.Name)
 	}
-	return fmt.Sprintf("\n  %sphantom%s > ", colorPurple, colorReset)
+	return "\n  " + FormatPrompt("")
 }
 
 // completer provides tab completion for commands and arguments.
