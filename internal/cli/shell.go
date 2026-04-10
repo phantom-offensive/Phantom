@@ -591,13 +591,29 @@ func (sh *Shell) cmdInteract(args []string) {
 		return
 	}
 
-	agent, err := sh.server.AgentMgr.Get(args[0])
+	// Join all args to support names with spaces (e.g. "iphone 16")
+	query := strings.Join(args, " ")
+
+	// Try exact match first (name or full UUID)
+	agent, err := sh.server.AgentMgr.Get(query)
 	if err != nil {
 		Error("Error: %v", err)
 		return
 	}
+
+	// If not found, try short ID prefix match
 	if agent == nil {
-		Error("Agent not found: %s", args[0])
+		agents, _ := sh.server.AgentMgr.List()
+		for _, a := range agents {
+			if strings.HasPrefix(a.ID, query) {
+				agent = a
+				break
+			}
+		}
+	}
+
+	if agent == nil {
+		Error("Agent not found: %s", query)
 		return
 	}
 
