@@ -366,6 +366,12 @@ func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
 		taskType = protocol.TaskPortFwd
 	case "creds":
 		taskType = protocol.TaskCreds
+	case "location", "gps":
+		taskType = protocol.TaskLocation
+	case "clipboard":
+		taskType = protocol.TaskClipboard
+	case "fileget", "grab":
+		taskType = protocol.TaskFileGet
 	case "pivot":
 		taskType = protocol.TaskPivot
 	case "lateral", "wmiexec", "winrm", "psexec", "pth":

