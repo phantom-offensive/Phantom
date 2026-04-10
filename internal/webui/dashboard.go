@@ -1388,12 +1388,26 @@ async function refreshAll() {
     });
   }
 
-  // All agents table
-  document.getElementById('all-agents').innerHTML = agents.map(a => {
-    const actions = '<button class="qbtn" onclick="selectAgent(\''+a.name+'\')" style="margin-right:4px">Interact</button>' +
-      (a.status === 'dead' ? '<button class="qbtn" onclick="removeAgent(\''+a.id+'\')" style="color:var(--red);font-size:11px" title="Remove dead agent">Remove</button>' : '');
-    return '<tr><td><input type="checkbox" class="bulk-cb" data-agent="'+a.name+'" data-id="'+a.id+'" data-status="'+a.status+'"></td><td><strong style="color:var(--accent-light)">'+a.name+' <span onclick="renameAgent(\''+a.name+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted)" title="Rename">✏️</span></strong></td><td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td><td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td><td>'+a.last_seen+'</td><td>'+badge(a.status)+'</td><td>'+actions+'</td></tr>';
-  }).join('') || '<tr><td colspan="10" class="empty">No agents</td></tr>';
+  // All agents table — only rebuild when agent list changes, update Last Seen in-place
+  const agentTableKey = agents.map(a => a.name+':'+a.status).join(',');
+  const agentTable = document.getElementById('all-agents');
+  if (agentTableKey !== window._lastAgentTableKey) {
+    window._lastAgentTableKey = agentTableKey;
+    agentTable.innerHTML = agents.map(a => {
+      const actions = '<button class="qbtn" onclick="selectAgent(\''+a.name+'\')" style="margin-right:4px">Interact</button>' +
+        (a.status === 'dead' ? '<button class="qbtn" onclick="removeAgent(\''+a.id+'\')" style="color:var(--red);font-size:11px" title="Remove dead agent">Remove</button>' : '');
+      return '<tr data-agent="'+a.name+'"><td><input type="checkbox" class="bulk-cb" data-agent="'+a.name+'" data-id="'+a.id+'" data-status="'+a.status+'"></td><td><strong style="color:var(--accent-light)">'+a.name+' <span onclick="renameAgent(\''+a.name+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted)" title="Rename">✏️</span></strong></td><td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td><td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td><td class="last-seen">'+a.last_seen+'</td><td>'+badge(a.status)+'</td><td>'+actions+'</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="empty">No agents</td></tr>';
+  } else {
+    // Just update Last Seen column in-place
+    agents.forEach(a => {
+      const row = agentTable.querySelector('tr[data-agent="'+a.name+'"]');
+      if (row) {
+        const ls = row.querySelector('.last-seen');
+        if (ls) ls.textContent = a.last_seen;
+      }
+    });
+  }
 
   // Listeners
   document.getElementById('all-listeners').innerHTML = listeners.map(l => {
