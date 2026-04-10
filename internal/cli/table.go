@@ -29,17 +29,20 @@ func (t *Table) Render() {
 		return
 	}
 
-	// Calculate column widths (based on raw text, not ANSI codes)
+	// Calculate column widths using display width (emoji-aware)
 	widths := make([]int, len(t.Headers))
 	for i, h := range t.Headers {
-		widths[i] = len(h)
+		widths[i] = displayWidth(h)
 	}
 	for _, row := range t.Rows {
 		for i, col := range row {
 			if i < len(widths) {
-				raw := stripAnsi(col)
-				if len(raw) > widths[i] {
-					widths[i] = len(raw)
+				// Measure the ENHANCED value (with icons) not just the raw value
+				enhanced := enhanceValue(col, t.Headers[i])
+				raw := stripAnsi(enhanced)
+				dw := displayWidth(raw)
+				if dw > widths[i] {
+					widths[i] = dw
 				}
 			}
 		}
@@ -99,15 +102,13 @@ func (t *Table) Render() {
 			}
 			// Apply color + icons
 			colored := enhanceValue(val, t.Headers[i])
-			raw := stripAnsi(val)
+			rawEnhanced := stripAnsi(colored)
+			dw := displayWidth(rawEnhanced)
 
-			// Pad based on raw value length
-			padding := widths[i] - len(raw)
+			// Pad based on display width of enhanced value
+			padding := widths[i] - dw
 			if padding < 0 {
 				padding = 0
-				val = val[:widths[i]]
-				colored = enhanceValue(val, t.Headers[i])
-				raw = val
 			}
 			leftPad := 1
 			rightPad := padding - leftPad
@@ -131,12 +132,13 @@ func (t *Table) Render() {
 	fmt.Printf("  %s%d row(s)%s\n", colorDim, len(t.Rows), colorReset)
 }
 
-// padCenter centers a string within a given width.
+// padCenter centers a string within a given width (display-width aware).
 func padCenter(s string, width int) string {
-	if len(s) >= width {
-		return s[:width]
+	dw := displayWidth(s)
+	if dw >= width {
+		return s
 	}
-	total := width - len(s)
+	total := width - dw
 	left := total / 2
 	right := total - left
 	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
@@ -237,4 +239,29 @@ func stripAnsi(s string) string {
 		result = append(result, s[i])
 	}
 	return string(result)
+}
+
+// displayWidth returns the number of terminal columns a string occupies.
+// Emojis and CJK characters are 2 columns wide; ASCII is 1.
+func displayWidth(s string) int {
+	width := 0
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+		if r >= 0x1F000 || // emojis (supplementary symbols)
+			(r >= 0x2600 && r <= 0x27BF) || // misc symbols
+			(r >= 0x2700 && r <= 0x27BF) || // dingbats
+			(r >= 0xFE00 && r <= 0xFE0F) || // variation selectors
+			(r >= 0x1F300 && r <= 0x1FAFF) || // extended emojis
+			r == 0x25CF || r == 0x25D0 || r == 0x25CB || // ● ◐ ○
+			r == 0x26A1 || // ⚡
+			r == 0x2713 || r == 0x2717 || // ✓ ✗
+			r == 0x23F3 || // ⏳
+			r == 0x1F4E4 { // 📤
+			width += 2
+		} else {
+			width += 1
+		}
+	}
+	return width
 }
