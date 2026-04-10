@@ -1010,9 +1010,20 @@ func (sh *Shell) cmdRemoveAgent(args []string) {
 		return
 	}
 
-	a, err := sh.server.AgentMgr.Get(args[0])
+	query := strings.Join(args, " ")
+	a, err := sh.server.AgentMgr.Get(query)
 	if err != nil || a == nil {
-		Error("Agent not found: %s", args[0])
+		// Try short ID prefix match
+		agents, _ := sh.server.AgentMgr.List()
+		for _, ag := range agents {
+			if strings.HasPrefix(ag.ID, query) {
+				a = ag
+				break
+			}
+		}
+	}
+	if a == nil {
+		Error("Agent not found: %s", query)
 		return
 	}
 
