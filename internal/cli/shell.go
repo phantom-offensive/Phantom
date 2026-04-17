@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -31,7 +32,7 @@ var globalCommands = []string{
 	"agents", "interact", "listeners", "tasks", "generate",
 	"remove", "loot", "report", "webui", "webhook", "doctor", "diagnostics",
 	"troubleshoot", "version", "events", "clear", "help", "exit",
-	"build", "payload",
+	"build", "payload", "exchannel",
 }
 
 // Agent commands available when interacting with an agent.
@@ -228,8 +229,8 @@ func (sh *Shell) completer(line string) []string {
 				if len(parts) >= 2 && (parts[1] == "start" || parts[1] == "stop") {
 					listeners := sh.server.ListenerMgr.List()
 					for _, l := range listeners {
-						if strings.HasPrefix(l.Name, argPrefix) {
-							candidates = append(candidates, "listeners "+parts[1]+" "+l.Name)
+						if strings.HasPrefix(l.GetName(), argPrefix) {
+							candidates = append(candidates, "listeners "+parts[1]+" "+l.GetName())
 						}
 					}
 				}
@@ -378,6 +379,8 @@ func (sh *Shell) execute(line string) {
 		sh.cmdWebhook(args)
 	case "redirector":
 		sh.cmdRedirector(args)
+	case "exchannel":
+		sh.cmdExChannel(args)
 	case "clear", "cls":
 		fmt.Print("\033[H\033[2J")
 	case "exit", "quit":
@@ -651,7 +654,7 @@ func (sh *Shell) cmdListeners(args []string) {
 			if l.IsRunning() {
 				status = "running"
 			}
-			t.AddRow(l.Name, strings.ToUpper(l.Type), l.BindAddr, status)
+			t.AddRow(l.GetName(), strings.ToUpper(l.GetType()), l.GetBindAddr(), status)
 		}
 		fmt.Println()
 		t.Render()
@@ -1259,6 +1262,95 @@ func (sh *Shell) cmdEvents() {
 	fmt.Println()
 	for _, e := range sh.server.EventLog {
 		fmt.Printf("  %s%s%s\n", colorDim, e, colorReset)
+	}
+}
+
+// ─────────────── External C2 Channel Commands ───────────────
+
+func (sh *Shell) cmdExChannel(args []string) {
+	if len(args) == 0 || args[0] == "help" {
+		fmt.Println()
+		fmt.Printf("  %s%sExternal C2 Channels%s\n", colorBold, colorCyan, colorReset)
+		fmt.Printf("  %s──────────────────────────────────────────────%s\n", colorDim, colorReset)
+		fmt.Printf("  %sexchannel list%s            List all registered ExC2 channels\n", colorCyan, colorReset)
+		fmt.Printf("  %sexchannel start <name>%s    Start a channel (begin polling)\n", colorCyan, colorReset)
+		fmt.Printf("  %sexchannel stop <name>%s     Stop a running channel\n", colorCyan, colorReset)
+		fmt.Println()
+		fmt.Printf("  %sChannels allow agents to communicate via Slack, Teams,\n  GitHub Gists, DNS-over-HTTPS and other services that\n  bypass corporate egress controls blocking HTTP/HTTPS.%s\n", colorDim, colorReset)
+		fmt.Println()
+		return
+	}
+
+	subCmd := args[0]
+	switch subCmd {
+	case "list":
+		names := sh.server.ExChannels.List()
+		if len(names) == 0 {
+			Warn("No ExC2 channels registered")
+			fmt.Printf("  %sRegister channels programmatically via server.RegisterExChannel().%s\n", colorDim, colorReset)
+			return
+		}
+		fmt.Println()
+		fmt.Printf("  %-20s  %-10s\n", "NAME", "STATUS")
+		fmt.Printf("  %-20s  %-10s\n", "────────────────────", "──────────")
+		for _, name := range names {
+			ch, _ := sh.server.ExChannels.Get(name)
+			status := "stopped"
+			if ch.IsRunning() {
+				status = "running"
+			}
+			statusColor := colorRed
+			if status == "running" {
+				statusColor = colorGreen
+			}
+			fmt.Printf("  %-20s  %s%s%s\n", name, statusColor, status, colorReset)
+		}
+		fmt.Println()
+
+	case "start":
+		if len(args) < 2 {
+			Error("Usage: exchannel start <name>")
+			return
+		}
+		name := args[1]
+		ch, ok := sh.server.ExChannels.Get(name)
+		if !ok {
+			Error("Channel '%s' not found. Use 'exchannel list' to see registered channels.", name)
+			return
+		}
+		if ch.IsRunning() {
+			Warn("Channel '%s' is already running", name)
+			return
+		}
+		if err := ch.Start(context.Background()); err != nil {
+			Error("Failed to start channel '%s': %v", name, err)
+			return
+		}
+		Success("ExC2 channel '%s' started", name)
+
+	case "stop":
+		if len(args) < 2 {
+			Error("Usage: exchannel stop <name>")
+			return
+		}
+		name := args[1]
+		ch, ok := sh.server.ExChannels.Get(name)
+		if !ok {
+			Error("Channel '%s' not found. Use 'exchannel list' to see registered channels.", name)
+			return
+		}
+		if !ch.IsRunning() {
+			Warn("Channel '%s' is not running", name)
+			return
+		}
+		if err := ch.Stop(); err != nil {
+			Error("Failed to stop channel '%s': %v", name, err)
+			return
+		}
+		Success("ExC2 channel '%s' stopped", name)
+
+	default:
+		Error("Unknown exchannel subcommand: %s (try: list, start, stop)", subCmd)
 	}
 }
 

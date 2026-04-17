@@ -99,6 +99,11 @@ func (w *WebUI) Start() error {
 	mux.HandleFunc("/api/screenshot", w.auth.AuthMiddleware(w.handleScreenshotRequest))
 	mux.HandleFunc("/api/processlist", w.auth.AuthMiddleware(w.handleProcessList))
 
+	// External C2 channel management (auth required)
+	mux.HandleFunc("/api/exchannel/list", w.auth.AuthMiddleware(w.handleExChannelList))
+	mux.HandleFunc("/api/exchannel/start", w.auth.AuthMiddleware(w.handleExChannelStart))
+	mux.HandleFunc("/api/exchannel/stop", w.auth.AuthMiddleware(w.handleExChannelStop))
+
 	httpServer := &http.Server{
 		Addr:         w.bindAddr,
 		Handler:      mux,
@@ -239,7 +244,7 @@ func (w *WebUI) handleAPIListeners(rw http.ResponseWriter, r *http.Request) {
 			status = "running"
 		}
 		resp = append(resp, listenerResp{
-			Name: l.Name, Type: strings.ToUpper(l.Type), Bind: l.BindAddr, Status: status,
+			Name: l.GetName(), Type: strings.ToUpper(l.GetType()), Bind: l.GetBindAddr(), Status: status,
 		})
 	}
 	if resp == nil {

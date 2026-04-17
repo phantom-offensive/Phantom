@@ -9,6 +9,7 @@ import (
 	"github.com/phantom-c2/phantom/internal/agent"
 	cryptopkg "github.com/phantom-c2/phantom/internal/crypto"
 	"github.com/phantom-c2/phantom/internal/db"
+	"github.com/phantom-c2/phantom/internal/exchannel"
 	"github.com/phantom-c2/phantom/internal/listener"
 	"github.com/phantom-c2/phantom/internal/task"
 )
@@ -24,6 +25,7 @@ type Server struct {
 	ListenerMgr *listener.Manager
 	TunnelMgr   *TunnelManager
 	PluginMgr   *PluginManager
+	ExChannels  *exchannel.Registry
 	EventLog    []string
 	OnEvent     func(string, ...interface{})
 	Webhook     *WebhookNotifier
@@ -57,6 +59,7 @@ func New(cfg *Config) (*Server, error) {
 		ListenerMgr: listener.NewManager(),
 		TunnelMgr:   NewTunnelManager(),
 		PluginMgr:   NewPluginManager("plugins"),
+		ExChannels:  exchannel.NewRegistry(),
 	}
 
 	return s, nil
@@ -72,7 +75,7 @@ func (s *Server) SetupListeners() error {
 			profile = listener.DefaultProfile()
 		}
 
-		l := listener.NewHTTPListener(listener.ListenerConfig{
+		cfg := listener.ListenerConfig{
 			ID:       uuid.New().String(),
 			Name:     lc.Name,
 			Type:     lc.Type,
@@ -85,7 +88,15 @@ func (s *Server) SetupListeners() error {
 			TaskDisp: s.TaskDisp,
 			OnEvent:  s.handleEvent,
 			Database: s.DB,
-		})
+		}
+
+		var l listener.Listener
+		switch lc.Type {
+		case "ws", "wss":
+			l = listener.NewWSListener(cfg)
+		default:
+			l = listener.NewHTTPListener(cfg)
+		}
 
 		if err := s.ListenerMgr.Add(l); err != nil {
 			return err
@@ -93,10 +104,10 @@ func (s *Server) SetupListeners() error {
 
 		// Save to DB
 		s.DB.InsertListener(&db.ListenerRecord{
-			ID:        l.ID,
-			Name:      l.Name,
-			Type:      l.Type,
-			BindAddr:  l.BindAddr,
+			ID:        l.GetID(),
+			Name:      l.GetName(),
+			Type:      l.GetType(),
+			BindAddr:  l.GetBindAddr(),
 			ProfileID: lc.Profile,
 			TLSCert:   lc.TLSCert,
 			TLSKey:    lc.TLSKey,
@@ -111,7 +122,7 @@ func (s *Server) StartListener(name string) error {
 	err := s.ListenerMgr.Start(name)
 	if err == nil {
 		if l, ok := s.ListenerMgr.Get(name); ok {
-			s.DB.UpdateListenerStatus(l.ID, "running")
+			s.DB.UpdateListenerStatus(l.GetID(), "running")
 		}
 	}
 	return err
@@ -122,14 +133,15 @@ func (s *Server) StopListener(name string) error {
 	err := s.ListenerMgr.Stop(name)
 	if err == nil {
 		if l, ok := s.ListenerMgr.Get(name); ok {
-			s.DB.UpdateListenerStatus(l.ID, "stopped")
+			s.DB.UpdateListenerStatus(l.GetID(), "stopped")
 		}
 	}
 	return err
 }
 
 // CreateListener creates and registers a new listener at runtime.
-// Supported types: http, https, dns, tcp. SMB is agent-side only (use 'pivot start' on an agent).
+// Supported types: http, https, ws, wss, dns, tcp.
+// SMB is agent-side only (use 'pivot start' on an agent).
 func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string) error {
 	if typ == "smb" {
 		return fmt.Errorf("SMB is not a server-side listener — deploy an agent then run: pivot start [pipe-name]")
@@ -141,7 +153,7 @@ func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string
 		prof = listener.DefaultProfile()
 	}
 
-	l := listener.NewHTTPListener(listener.ListenerConfig{
+	cfg := listener.ListenerConfig{
 		ID:       uuid.New().String(),
 		Name:     name,
 		Type:     typ,
@@ -154,17 +166,25 @@ func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string
 		TaskDisp: s.TaskDisp,
 		OnEvent:  s.handleEvent,
 		Database: s.DB,
-	})
+	}
+
+	var l listener.Listener
+	switch typ {
+	case "ws", "wss":
+		l = listener.NewWSListener(cfg)
+	default:
+		l = listener.NewHTTPListener(cfg)
+	}
 
 	if err := s.ListenerMgr.Add(l); err != nil {
 		return err
 	}
 
 	s.DB.InsertListener(&db.ListenerRecord{
-		ID:        l.ID,
-		Name:      l.Name,
-		Type:      l.Type,
-		BindAddr:  l.BindAddr,
+		ID:        l.GetID(),
+		Name:      l.GetName(),
+		Type:      l.GetType(),
+		BindAddr:  l.GetBindAddr(),
 		ProfileID: profile,
 		TLSCert:   tlsCert,
 		TLSKey:    tlsKey,
@@ -177,6 +197,13 @@ func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string
 func (s *Server) Shutdown() {
 	s.ListenerMgr.StopAll()
 	s.DB.Close()
+}
+
+// RegisterExChannel registers a third-party External C2 channel.
+// Call this before starting the server to add transport modules
+// (Slack, Teams, GitHub Gists, DNS-over-HTTPS, etc.).
+func (s *Server) RegisterExChannel(ch exchannel.Channel) {
+	s.ExChannels.Register(ch)
 }
 
 // handleEvent processes events from listeners and other components.

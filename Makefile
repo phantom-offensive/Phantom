@@ -98,8 +98,24 @@ agent-dll: ## Cross-compile Windows DLL agent (rundll32/regsvr32/sideload)
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll ./cmd/agent-dll
 	@echo "[+] DLL built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll"
 
+.PHONY: agent-shellcode
+agent-shellcode: agent-windows ## Generate PIC shellcode from Windows agent via Donut
+	@echo "[*] Generating shellcode from Windows agent..."
+	@if ! command -v donut >/dev/null 2>&1; then \
+		echo "[-] donut not found. Install: go install github.com/wabzsy/gonut/cmd/donut@latest"; \
+		echo "    Or: pip3 install donut-shellcode && donut --help"; \
+		exit 1; \
+	fi
+	@mkdir -p $(AGENT_DIR)
+	donut -i $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe \
+	      -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin \
+	      -a 2 -b 1 -e 3 -z 2
+	@echo "[+] Shellcode: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin"
+	@ls -lh $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin
+
 .PHONY: agent-all
-agent-all: agent-windows agent-linux agent-darwin agent-dll ## Build all agent variants
+agent-all: agent-windows agent-linux agent-darwin agent-dll ## Build all agent variants (shellcode requires donut)
+	@command -v donut >/dev/null 2>&1 && $(MAKE) agent-shellcode || echo "[!] Skipping shellcode (donut not installed)"
 
 # ──────────────── Utilities ─────────────
 

