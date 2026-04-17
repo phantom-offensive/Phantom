@@ -367,3 +367,9 @@ func ClearWindowsLogs() []string {
 	}
 	return results
 }
+
+
+// ClearPlatformLogs routes to the Windows event log cleaner.
+func ClearPlatformLogs() []string {
+	return ClearWindowsLogs()
+}

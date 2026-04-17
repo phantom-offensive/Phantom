@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 package implant
 
@@ -82,5 +82,10 @@ func ClearLinuxLogs() []string {
 
 // ClearWindowsLogs is a no-op on Linux.
 func ClearWindowsLogs() []string {
+	return ClearLinuxLogs()
+}
+
+// ClearPlatformLogs clears logs appropriate for the current OS.
+func ClearPlatformLogs() []string {
 	return ClearLinuxLogs()
 }

