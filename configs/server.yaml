@@ -17,12 +17,12 @@ server:
 
 # Default listener configuration
 listeners:
-  - name: "default-https"
-    type: "https"
-    bind: "0.0.0.0:443"
-    profile: "default"
-    tls_cert: "configs/server.crt"
-    tls_key: "configs/server-tls.key"
+#  - name: "default-https"
+#    type: "https"
+#    bind: "0.0.0.0:443"
+#    profile: "default"
+#    tls_cert: "configs/server.crt"
+#    tls_key: "configs/server-tls.key"
 
   - name: "fallback-http"
     type: "http"

