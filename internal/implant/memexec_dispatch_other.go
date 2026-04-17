@@ -11,3 +11,7 @@ func executeShellcodeCrossPlatform(shellcode []byte) error {
 func injectShellcodeRemoteCrossPlatform(pid uint32, shellcode []byte) error {
 	return fmt.Errorf("process injection not supported on this platform")
 }
+
+func injectEarlyBirdCrossPlatform(shellcode []byte) error {
+	return fmt.Errorf("Early Bird APC injection is Windows-only")
+}

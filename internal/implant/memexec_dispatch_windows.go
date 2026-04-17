@@ -9,3 +9,7 @@ func executeShellcodeCrossPlatform(shellcode []byte) error {
 func injectShellcodeRemoteCrossPlatform(pid uint32, shellcode []byte) error {
 	return InjectShellcodeRemote(pid, shellcode)
 }
+
+func injectEarlyBirdCrossPlatform(shellcode []byte) error {
+	return InjectShellcodeEarlyBird(shellcode)
+}

