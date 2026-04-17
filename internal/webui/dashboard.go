@@ -501,18 +501,19 @@ tr.clickable { cursor: pointer; }
             </div>
             <div>
               <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Type</label>
-              <select id="ln-type" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;">
+              <select id="ln-type" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;" onchange="onListenerTypeChange()">
                 <option value="http">HTTP</option>
                 <option value="https">HTTPS</option>
                 <option value="tcp">TCP (Raw)</option>
                 <option value="dns">DNS</option>
+                <option value="smb">SMB (Named Pipe)</option>
               </select>
             </div>
-            <div>
+            <div id="ln-bind-wrap">
               <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Bind Address</label>
               <input type="text" id="ln-bind" placeholder="0.0.0.0:8080" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace;">
             </div>
-            <div>
+            <div id="ln-profile-wrap">
               <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Profile</label>
               <select id="ln-profile" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;">
                 <option value="default">Default</option>
@@ -520,6 +521,11 @@ tr.clickable { cursor: pointer; }
                 <option value="cloudflare">Cloudflare</option>
               </select>
             </div>
+          </div>
+          <!-- SMB note (hidden unless SMB selected) -->
+          <div id="ln-smb-note" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text-muted)">
+            <span style="color:var(--cyan);font-weight:600">🔗 SMB Named Pipe is agent-side</span> — the pipe relay runs on a compromised host, not the C2 server.<br>
+            To start a relay: go to <strong>Terminal</strong>, select an agent, and use the <strong>SMB Pivot</strong> card (or type <code style="color:var(--cyan)">pivot start</code>).
           </div>
           <div style="display:flex;gap:8px;margin-top:12px;">
             <button class="btn" onclick="createListener(false)" style="padding:8px 18px;font-size:13px;">🚀 Create & Start</button>
@@ -2265,11 +2271,20 @@ async function stopListener(name) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+function onListenerTypeChange() {
+  const typ = document.getElementById('ln-type').value;
+  const isSMB = typ === 'smb';
+  document.getElementById('ln-bind-wrap').style.display = isSMB ? 'none' : '';
+  document.getElementById('ln-profile-wrap').style.display = isSMB ? 'none' : '';
+  document.getElementById('ln-smb-note').style.display = isSMB ? 'block' : 'none';
+}
+
 async function createListener(savePreset) {
   const name = document.getElementById('ln-name').value.trim();
   const typ = document.getElementById('ln-type').value;
   const bind = document.getElementById('ln-bind').value.trim();
   const profile = document.getElementById('ln-profile').value;
+  if (typ === 'smb') { alert('SMB is agent-side — use the SMB Pivot card in the Terminal tab to start a named pipe relay on an agent.'); return; }
   if (!name || !bind) { alert('Name and bind address are required'); return; }
 
   try {
