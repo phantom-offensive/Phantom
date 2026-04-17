@@ -35,3 +35,12 @@ profile:
     tls=TLSv1.3
     sni=plaintext
     warp=off
+
+  # Domain fronting (optional)
+  # Enables SNI-based bypassing of network-layer filtering (Zscaler, BlueCoat, etc.).
+  # The TLS handshake SNI goes to front_domain (a trusted CDN host — inspectors see
+  # a connection to Cloudflare). The HTTP Host header routes to the actual C2 worker.
+  # Build agents with: make agent-windows FRONT_DOMAIN=cdn.cloudflare.com HOST_HEADER=your-c2.workers.dev
+  #
+  # front_domain: "cdn.cloudflare.com"        # SNI goes here (trusted CDN — passes inspection)
+  # host_header: "your-c2-worker.workers.dev" # C2 routes here (real destination)

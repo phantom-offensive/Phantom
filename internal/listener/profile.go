@@ -18,6 +18,8 @@ type Profile struct {
 	Headers       map[string]string `yaml:"headers"`
 	ContentType   string            `yaml:"content_type"`
 	DecoyResponse string            `yaml:"decoy_response"`
+	FrontDomain   string            `yaml:"front_domain"` // CDN domain for SNI-based domain fronting (e.g., "cdn.cloudflare.com")
+	HostHeader    string            `yaml:"host_header"`  // Actual C2 Host header override for domain fronting
 }
 
 // ProfileFile wraps the YAML structure.

