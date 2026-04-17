@@ -180,7 +180,7 @@ func getHostnameQuiet() string {
 // ExecutePivotCommand handles pivot-related task arguments.
 func ExecutePivotCommand(args []string) ([]byte, error) {
 	if len(args) == 0 {
-		return []byte("Usage: pivot <start|stop|list> [pipe-name]"), nil
+		return []byte("Usage: pivot <start|stop|list|tcp-start|tcp-stop|tcp-list> [name/addr]"), nil
 	}
 
 	switch args[0] {
@@ -194,7 +194,17 @@ func ExecutePivotCommand(args []string) ([]byte, error) {
 		return StopPipeRelay()
 	case "list":
 		return ListPivots()
+	case "tcp-start":
+		addr := ""
+		if len(args) > 1 {
+			addr = args[1]
+		}
+		return StartTCPRelay(addr)
+	case "tcp-stop":
+		return StopTCPRelay()
+	case "tcp-list":
+		return ListTCPPivots()
 	default:
-		return []byte("Unknown pivot command. Use: start, stop, list"), nil
+		return []byte("Unknown pivot command. Use: start, stop, list, tcp-start, tcp-stop, tcp-list"), nil
 	}
 }

