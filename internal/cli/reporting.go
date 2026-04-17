@@ -126,7 +126,7 @@ func (rg *ReportGenerator) GenerateReport(outputPath string) error {
 			status = "Running"
 		}
 		sb.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n",
-			l.Name, strings.ToUpper(l.Type), l.BindAddr, status))
+			l.GetName(), strings.ToUpper(l.GetType()), l.GetBindAddr(), status))
 	}
 	sb.WriteString("\n")
 

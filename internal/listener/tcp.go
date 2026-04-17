@@ -85,6 +85,11 @@ func (l *TCPListener) IsRunning() bool {
 	return l.running
 }
 
+func (l *TCPListener) GetID() string       { return l.ID }
+func (l *TCPListener) GetName() string     { return l.Name }
+func (l *TCPListener) GetType() string     { return l.Type }
+func (l *TCPListener) GetBindAddr() string { return l.BindAddr }
+
 func (l *TCPListener) serve() {
 	for l.running {
 		conn, err := l.listener.Accept()

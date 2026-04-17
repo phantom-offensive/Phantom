@@ -162,7 +162,7 @@ func RunDiagnostics(srv *server.Server) {
 					status = "running"
 					result = "pass"
 				}
-				printDiag(l.Name, fmt.Sprintf("%s %s (%s)", l.Type, l.BindAddr, status), result)
+				printDiag(l.GetName(), fmt.Sprintf("%s %s (%s)", l.GetType(), l.GetBindAddr(), status), result)
 				if result == "pass" {
 					passed++
 				} else {

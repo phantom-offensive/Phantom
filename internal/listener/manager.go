@@ -5,29 +5,41 @@ import (
 	"sync"
 )
 
+// Listener is the interface implemented by all listener types (HTTP, WS, TCP, DNS…).
+type Listener interface {
+	GetID() string
+	GetName() string
+	GetType() string
+	GetBindAddr() string
+	Start() error
+	Stop() error
+	IsRunning() bool
+}
+
 // Manager manages the lifecycle of all listeners.
 type Manager struct {
 	mu        sync.RWMutex
-	listeners map[string]*HTTPListener // name -> listener
+	listeners map[string]Listener // name -> listener
 }
 
 // NewManager creates a new listener manager.
 func NewManager() *Manager {
 	return &Manager{
-		listeners: make(map[string]*HTTPListener),
+		listeners: make(map[string]Listener),
 	}
 }
 
 // Add registers a listener (does not start it).
-func (m *Manager) Add(l *HTTPListener) error {
+func (m *Manager) Add(l Listener) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.listeners[l.Name]; exists {
-		return fmt.Errorf("listener %q already exists", l.Name)
+	name := l.GetName()
+	if _, exists := m.listeners[name]; exists {
+		return fmt.Errorf("listener %q already exists", name)
 	}
 
-	m.listeners[l.Name] = l
+	m.listeners[name] = l
 	return nil
 }
 
@@ -47,7 +59,14 @@ func (m *Manager) Start(name string) error {
 
 	go func() {
 		if err := l.Start(); err != nil {
-			l.emitEvent("listener_error", name, err.Error())
+			// Emit via HTTPListener emitEvent if available, otherwise ignore
+			if hl, ok := l.(*HTTPListener); ok {
+				hl.emitEvent("listener_error", name, err.Error())
+			} else if wl, ok := l.(*WSListener); ok {
+				if wl.onEvent != nil {
+					wl.onEvent("listener_error", name, err.Error())
+				}
+			}
 		}
 	}()
 
@@ -90,7 +109,7 @@ func (m *Manager) Remove(name string) error {
 }
 
 // Get retrieves a listener by name.
-func (m *Manager) Get(name string) (*HTTPListener, bool) {
+func (m *Manager) Get(name string) (Listener, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	l, ok := m.listeners[name]
@@ -98,11 +117,11 @@ func (m *Manager) Get(name string) (*HTTPListener, bool) {
 }
 
 // List returns all registered listeners.
-func (m *Manager) List() []*HTTPListener {
+func (m *Manager) List() []Listener {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	list := make([]*HTTPListener, 0, len(m.listeners))
+	list := make([]Listener, 0, len(m.listeners))
 	for _, l := range m.listeners {
 		list = append(list, l)
 	}

@@ -134,6 +134,11 @@ func (l *DNSListener) IsRunning() bool {
 	return l.running
 }
 
+func (l *DNSListener) GetID() string       { return l.ID }
+func (l *DNSListener) GetName() string     { return l.Name }
+func (l *DNSListener) GetType() string     { return "dns" }
+func (l *DNSListener) GetBindAddr() string { return l.BindAddr }
+
 // handleQuery processes a DNS query and generates a response.
 func (l *DNSListener) handleQuery(data []byte, addr *net.UDPAddr) {
 	// Parse DNS header (minimal parser)

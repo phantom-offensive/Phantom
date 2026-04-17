@@ -1068,7 +1068,28 @@ listeners:
     type: "http"
     bind: "0.0.0.0:8080"
     profile: "default"
+
+  - name: "ws-c2"
+    type: "ws"
+    bind: "0.0.0.0:8888"
+    profile: "default"
 ```
+
+### WebSocket Listener (ws:// / wss://)
+
+WebSocket transport provides persistent bidirectional connections that look like legitimate browser WS traffic and defeat HTTP request/response correlation analysis.
+
+Supported types: `ws` (plaintext) and `wss` (TLS — supply `tls_cert` + `tls_key`).
+
+```
+# Create and start a WS listener from the CLI
+phantom > listeners create ws-c2 ws 0.0.0.0:8888
+phantom > listeners start ws-c2
+```
+
+From the Web UI: select **WebSocket (ws://)** or **WebSocket TLS (wss://)** in the listener type dropdown.
+
+Agent URL format: `ws://C2-IP:8888` or `wss://C2-IP:8889`
 
 ### Malleable Profiles
 
@@ -1200,7 +1221,7 @@ phantom/
     e2etest/         End-to-end test runner
   internal/
     server/          Core server, config, webhooks
-    listener/        HTTP/HTTPS/DNS listeners + malleable profiles + SMB pipes
+    listener/        HTTP/HTTPS/WS/WSS/DNS/TCP listeners + malleable profiles + SMB pipes
     agent/           Agent manager + builder
     task/            Task dispatcher + queues
     crypto/          RSA-2048, AES-256-GCM, key exchange

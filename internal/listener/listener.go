@@ -150,6 +150,18 @@ func (l *HTTPListener) IsRunning() bool {
 	return l.running
 }
 
+// GetID returns the listener ID.
+func (l *HTTPListener) GetID() string { return l.ID }
+
+// GetName returns the listener name.
+func (l *HTTPListener) GetName() string { return l.Name }
+
+// GetType returns the listener type.
+func (l *HTTPListener) GetType() string { return l.Type }
+
+// GetBindAddr returns the listener bind address.
+func (l *HTTPListener) GetBindAddr() string { return l.BindAddr }
+
 // handleRegister processes agent registration requests.
 func (l *HTTPListener) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
