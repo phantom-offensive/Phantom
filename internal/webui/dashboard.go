@@ -504,6 +504,8 @@ tr.clickable { cursor: pointer; }
               <select id="ln-type" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;" onchange="onListenerTypeChange()">
                 <option value="http">HTTP</option>
                 <option value="https">HTTPS</option>
+                <option value="ws">WebSocket (ws://)</option>
+                <option value="wss">WebSocket TLS (wss://)</option>
                 <option value="tcp">TCP (Raw)</option>
                 <option value="dns">DNS</option>
                 <option value="smb">SMB (Named Pipe)</option>
@@ -733,6 +735,7 @@ tr.clickable { cursor: pointer; }
                     <option value="dll">📦 Windows DLL (rundll32 / regsvr32)</option>
                     <option value="elf">🐧 Linux ELF (amd64)</option>
                     <option value="elf-garble">🐧 Linux ELF (Obfuscated)</option>
+                    <option value="darwin">🍎 macOS (darwin/amd64)</option>
                   </optgroup>
                   <optgroup label="Web Shells">
                     <option value="aspx">🌐 ASPX Web Shell (IIS)</option>

