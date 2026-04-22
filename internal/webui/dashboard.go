@@ -1406,6 +1406,14 @@ function osIcon(os) {
   if (os==='ios') return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(156,163,175,0.15);border-radius:4px;font-size:11px" title="iOS">🍎</span>';
   return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(124,58,237,0.15);border-radius:4px;font-size:11px">💻</span>';
 }
+// Plain-text variant for use inside <option> elements — browsers don't render HTML in options
+function osIconChar(os) {
+  if (os==='windows') return '⊞';
+  if (os==='linux')   return '🐧';
+  if (os==='android') return '📱';
+  if (os==='ios')     return '🍎';
+  return '💻';
+}
 async function fetchJ(u) { try { return await (await fetch(u)).json(); } catch(e) { return []; } }
 
 // ──── Data Refresh ────
@@ -1527,7 +1535,7 @@ async function refreshAll() {
     sel.onchange = null;
     const opts = sortedAgents.map(a => {
       const status = a.status !== 'active' ? ' ['+a.status+']' : '';
-      return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIcon(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
+      return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIconChar(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
     }).join('');
     sel.innerHTML = '<option value="">Select an agent...</option>' + opts;
     if (cur) sel.value = cur;
@@ -1538,7 +1546,7 @@ async function refreshAll() {
       const opt = sel.querySelector('option[value="'+a.name+'"]');
       if (opt) {
         const status = a.status !== 'active' ? ' ['+a.status+']' : '';
-        opt.textContent = osIcon(a.os)+' '+a.name+' — '+a.hostname+status;
+        opt.textContent = osIconChar(a.os)+' '+a.name+' — '+a.hostname+status;
       }
     });
   }
