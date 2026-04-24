@@ -164,6 +164,10 @@ func (l *HTTPListener) GetBindAddr() string { return l.BindAddr }
 
 // handleRegister processes agent registration requests.
 func (l *HTTPListener) handleRegister(w http.ResponseWriter, r *http.Request) {
+	if l.Profile != nil && !l.Profile.IsAllowedHost(r.Host) {
+		l.serveDecoy(w, r)
+		return
+	}
 	if r.Method != http.MethodPost {
 		l.serveDecoy(w, r)
 		return
@@ -246,6 +250,10 @@ func (l *HTTPListener) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 // handleCheckIn processes agent check-in requests.
 func (l *HTTPListener) handleCheckIn(w http.ResponseWriter, r *http.Request) {
+	if l.Profile != nil && !l.Profile.IsAllowedHost(r.Host) {
+		l.serveDecoy(w, r)
+		return
+	}
 	if r.Method != http.MethodPost {
 		l.serveDecoy(w, r)
 		return

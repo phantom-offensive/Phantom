@@ -18,8 +18,33 @@ type Profile struct {
 	Headers       map[string]string `yaml:"headers"`
 	ContentType   string            `yaml:"content_type"`
 	DecoyResponse string            `yaml:"decoy_response"`
-	FrontDomain   string            `yaml:"front_domain"` // CDN domain for SNI-based domain fronting (e.g., "cdn.cloudflare.com")
-	HostHeader    string            `yaml:"host_header"`  // Actual C2 Host header override for domain fronting
+	FrontDomain   string            `yaml:"front_domain"`   // CDN domain for SNI-based domain fronting
+	HostHeader    string            `yaml:"host_header"`    // Actual C2 Host header override for domain fronting
+	AllowedHosts  []string          `yaml:"allowed_hosts"`  // Whitelist of Host headers; empty = allow all
+}
+
+// IsAllowedHost returns true if the given host is whitelisted (or no whitelist is set).
+func (p *Profile) IsAllowedHost(host string) bool {
+	if len(p.AllowedHosts) == 0 {
+		return true
+	}
+	// Strip port
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+	for _, allowed := range p.AllowedHosts {
+		if strings.EqualFold(host, allowed) {
+			return true
+		}
+		// Wildcard: *.example.com
+		if strings.HasPrefix(allowed, "*.") {
+			suffix := allowed[1:] // .example.com
+			if strings.HasSuffix(strings.ToLower(host), strings.ToLower(suffix)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ProfileFile wraps the YAML structure.
