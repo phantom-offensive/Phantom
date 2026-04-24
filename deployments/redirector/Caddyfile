@@ -1,11 +1,8 @@
 {
-    # local_certs: use internal CA (self-signed) — swap to nothing when DNS is live
     local_certs
 }
 
-www.YOUR_DOMAIN.com {
-    # tls internal = self-signed cert for local testing
-    # Remove this line once DNS points here and Caddy will auto-get Let's Encrypt
+www.YOUR_DOMAIN.com:443 {
     tls internal
 
     @c2 path /api/v1/* /cdn-cgi/* /common/oauth2/* /app/*
@@ -26,13 +23,12 @@ www.YOUR_DOMAIN.com {
     }
 }
 
-# Redirect bare domain → www
-YOUR_DOMAIN.com {
-    tls internal
-    redir https://www.YOUR_DOMAIN.com{uri} permanent
-}
-
 # HTTP → HTTPS redirect
 http://www.YOUR_DOMAIN.com {
     redir https://{host}{uri} permanent
+}
+
+YOUR_DOMAIN.com {
+    tls internal
+    redir https://www.YOUR_DOMAIN.com{uri} permanent
 }
