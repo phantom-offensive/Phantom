@@ -878,27 +878,6 @@ tr.clickable { cursor: pointer; }
         </div>
       </div>
 
-      <!-- Quick Reference -->
-      <div class="card">
-        <div class="card-header"><h3><span>📖</span> Quick Reference</h3></div>
-        <div class="card-body padded">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-            <div>
-              <h4 style="color:var(--accent-light);font-size:12px;margin-bottom:6px;">AGENT BINARIES</h4>
-              <p style="font-size:12px;color:var(--text-muted);">Cross-compiled Go agents with embedded encryption keys. Run on target, calls back to your listener.</p>
-            </div>
-            <div>
-              <h4 style="color:var(--accent-light);font-size:12px;margin-bottom:6px;">WEB SHELLS</h4>
-              <p style="font-size:12px;color:var(--text-muted);">Token-protected shells with 404 decoy. Upload to web server, access with X-Debug-Token header.</p>
-            </div>
-            <div>
-              <h4 style="color:var(--accent-light);font-size:12px;margin-bottom:6px;">MOBILE PAYLOADS</h4>
-              <p style="font-size:12px;color:var(--text-muted);">Android APK projects with evasion suite. iOS MDM profiles and phishing pages. 30+ fake app templates.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Backdoor Generator -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
         <div class="card" style="border-top:2px solid rgba(139,92,246,0.5);">
