@@ -2481,6 +2481,16 @@ function onPayloadTypeChange() {
   // DLL usage hint
   var hint = document.getElementById('pl-dll-hint');
   if (hint) hint.style.display = type === 'dll' ? 'block' : 'none';
+
+  // Sync obfuscation radio to match the selected type
+  const isGarble = type === 'exe-garble' || type === 'elf-garble';
+  if (isGarble) {
+    const radio = document.querySelector('input[name="pl-obfuscation"][value="garble"]');
+    if (radio) radio.checked = true;
+  } else {
+    const radio = document.querySelector('input[name="pl-obfuscation"][value="none"]');
+    if (radio) radio.checked = true;
+  }
 }
 
 async function loadAppTemplates() {
@@ -2524,6 +2534,14 @@ async function generatePayload() {
   const sleep = parseInt(document.getElementById('pl-sleep').value) || 10;
   const jitter = parseInt(document.getElementById('pl-jitter').value) || 20;
   const appTemplate = document.getElementById('pl-app-template').value;
+  const obfuscateLevel = (document.querySelector('input[name="pl-obfuscation"]:checked') || {}).value || 'none';
+
+  // Derive effective type: if radio says garble and base type is plain exe/elf, use garble variant
+  let effectiveType = type;
+  if (obfuscateLevel === 'garble') {
+    if (type === 'exe') effectiveType = 'exe-garble';
+    else if (type === 'elf') effectiveType = 'elf-garble';
+  }
 
   btn.textContent = 'Generating...';
   btn.disabled = true;
@@ -2534,11 +2552,12 @@ async function generatePayload() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        type: type,
+        type: effectiveType,
         listener_url: url,
         sleep: sleep,
         jitter: jitter,
-        app_template: appTemplate
+        app_template: appTemplate,
+        obfuscate_level: obfuscateLevel
       })
     });
     const data = await resp.json();

