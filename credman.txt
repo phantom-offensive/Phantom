@@ -1,4 +1,0 @@
-
-Currently stored credentials:
-
-* NONE *
