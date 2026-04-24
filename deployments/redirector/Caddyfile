@@ -1,7 +1,13 @@
-# LOCAL TESTING: http://localhost:8443 → Phantom C2
-# PRODUCTION:   Change ":80" to "www.YOUR_DOMAIN.com" for auto-HTTPS
+{
+    # local_certs: use internal CA (self-signed) — swap to nothing when DNS is live
+    local_certs
+}
 
-:80 {
+www.YOUR_DOMAIN.com {
+    # tls internal = self-signed cert for local testing
+    # Remove this line once DNS points here and Caddy will auto-get Let's Encrypt
+    tls internal
+
     @c2 path /api/v1/* /cdn-cgi/* /common/oauth2/* /app/*
 
     handle @c2 {
@@ -18,4 +24,15 @@
         header -X-Powered-By
         respond "<html><body><h1>Digital Shield HQ</h1><p>All systems operational.</p></body></html>" 200
     }
+}
+
+# Redirect bare domain → www
+YOUR_DOMAIN.com {
+    tls internal
+    redir https://www.YOUR_DOMAIN.com{uri} permanent
+}
+
+# HTTP → HTTPS redirect
+http://www.YOUR_DOMAIN.com {
+    redir https://{host}{uri} permanent
 }
