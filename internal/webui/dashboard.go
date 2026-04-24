@@ -2833,7 +2833,7 @@ async function backdoorBinary() {
   const selVal = (document.getElementById('bd-binary-select')||{}).value || '';
   const input = selVal || document.getElementById('bd-input').value.trim();
   const url = document.getElementById('bd-url').value.trim();
-  const output = document.getElementById('bd-output').value.trim();
+  const output = (document.getElementById('bd-output')||{value:''}).value.trim();
   const obfuscate = (document.querySelector('input[name="bd-obfuscate"]:checked')||{}).value === 'garble';
   const result = document.getElementById('bd-result');
 
