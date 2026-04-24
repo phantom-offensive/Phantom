@@ -231,17 +231,17 @@ tr.clickable { cursor: pointer; }
 /* ══════ AGENT CARDS ══════ */
 .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; padding: 18px; }
 .agent-card {
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(26,31,53,0.6) 100%);
-  border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 16px; cursor: pointer; transition: all 0.3s ease;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 12px; cursor: pointer; transition: border-color .2s, background .2s;
   position: relative; overflow: hidden;
 }
 .agent-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0;
-  transition: opacity 0.3s;
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent); opacity: 0; transition: opacity 0.2s;
 }
-.agent-card:hover { border-color: var(--accent); box-shadow: 0 4px 30px rgba(124,58,237,0.15); transform: translateY(-3px); }
+.agent-card:hover { border-color: var(--accent); background: rgba(124,58,237,0.06); }
 .agent-card:hover::before { opacity: 1; }
 .agent-top { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
 .agent-name { font-size: 15px; font-weight: 700; color: var(--accent-light); }
@@ -1564,37 +1564,46 @@ async function refreshAll() {
   if (dashKey !== window._lastDashKey) {
     window._lastDashKey = dashKey;
     if (agents.length > 0) {
-      wrap.innerHTML = '<div class="agent-grid">' + agents.map(a => {
+      wrap.innerHTML = '<div style="display:flex;flex-direction:column;gap:5px;padding:10px">' + agents.map(a => {
         const tagBadges = (a.tags||[]).map(t =>
-          '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-right:3px;">'+t+'</span>'
+          '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;">'+t+'</span>'
         ).join('');
-        const tagRow = tagBadges ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:2px;align-items:center;">' + tagBadges +
-          '<span onclick="event.stopPropagation();tagAgent(\''+a.name+'\')" style="cursor:pointer;color:var(--text-muted);font-size:10px;margin-left:2px;" title="Edit tags">✏️</span></div>'
-          : '<div style="margin-top:6px;"><span onclick="event.stopPropagation();tagAgent(\''+a.name+'\')" style="cursor:pointer;color:var(--text-muted);font-size:10px;" title="Add tags">+ Add tag</span></div>';
         return '<div class="agent-card" onclick="selectAgent(\''+a.name+'\')">' +
-          '<div class="agent-top"><div><div class="agent-name">'+a.name+' <span onclick="event.stopPropagation();renameAgent(\''+a.name+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted);margin-left:4px" title="Rename">✏️</span></div>' +
-          '<div class="agent-os">'+osIcon(a.os)+' '+a.os+'</div></div>' +
-          badge(a.status) + '</div>' +
-          '<div class="agent-details">' +
-          '<div class="agent-detail"><div class="agent-detail-label">Host</div><div class="agent-detail-value">'+a.hostname+'</div></div>' +
-          '<div class="agent-detail"><div class="agent-detail-label">User</div><div class="agent-detail-value">'+a.username+'</div></div>' +
-          '<div class="agent-detail"><div class="agent-detail-label">IP</div><div class="agent-detail-value">'+a.ip+'</div></div>' +
-          '<div class="agent-detail"><div class="agent-detail-label">Last Seen</div><div class="agent-detail-value">'+a.last_seen+'</div></div>' +
-          '</div>' + tagRow + '</div>';
+          // Status dot
+          '<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(a.status==='active'?'#22c55e':a.status==='idle'?'#f59e0b':'#6b7280')+';box-shadow:'+(a.status==='active'?'0 0 6px #22c55e':'none')+'"></div>' +
+          // OS icon
+          '<span style="font-size:16px;flex-shrink:0">'+osIcon(a.os)+'</span>' +
+          // Name + rename
+          '<div style="min-width:110px;flex-shrink:0">' +
+            '<div style="font-size:13px;font-weight:700;color:var(--accent-light)">'+a.name+'</div>' +
+            '<div style="font-size:10px;color:var(--text-muted)">'+a.os+'</div>' +
+          '</div>' +
+          // Divider
+          '<div style="width:1px;height:28px;background:var(--border);flex-shrink:0"></div>' +
+          // Host / User / IP
+          '<div style="display:flex;gap:16px;flex:1;min-width:0">' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Host</div><div style="font-size:12px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">'+a.hostname+'</div></div>' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">User</div><div style="font-size:12px;color:var(--text-primary);white-space:nowrap">'+a.username+'</div></div>' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">IP</div><div style="font-size:12px;color:var(--cyan);font-family:monospace">'+a.ip+'</div></div>' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Last Seen</div><div class="agent-lastseen-'+a.name.replace(/[^a-z0-9]/gi,'_')+'" style="font-size:12px;color:var(--text-secondary)">'+a.last_seen+'</div></div>' +
+          '</div>' +
+          // Tags
+          (tagBadges ? '<div style="display:flex;gap:3px;flex-shrink:0">'+tagBadges+'</div>' : '') +
+          // Actions
+          '<div style="display:flex;gap:4px;flex-shrink:0">' +
+            '<button onclick="event.stopPropagation();tagAgent(\''+a.name+'\')" title="Tags" style="padding:3px 7px;font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer">🏷</button>' +
+            '<button onclick="event.stopPropagation();renameAgent(\''+a.name+'\')" title="Rename" style="padding:3px 7px;font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer">✏️</button>' +
+          '</div>' +
+          badge(a.status) +
+        '</div>';
       }).join('') + '</div>';
     } else {
       wrap.innerHTML = '<div class="empty"><div class="empty-icon">📡</div><div class="empty-text">Waiting for agents...</div><div class="empty-sub">Deploy an agent to get started</div></div>';
     }
   } else if (agents.length > 0) {
-    // Just update Last Seen timestamps without rebuilding
     agents.forEach(a => {
-      const cards = wrap.querySelectorAll('.agent-card');
-      cards.forEach(card => {
-        if (card.querySelector('.agent-name') && card.querySelector('.agent-name').textContent.trim().startsWith(a.name)) {
-          const details = card.querySelectorAll('.agent-detail-value');
-          if (details.length >= 4) details[3].textContent = a.last_seen;
-        }
-      });
+      const el = wrap.querySelector('.agent-lastseen-'+a.name.replace(/[^a-z0-9]/gi,'_'));
+      if (el) el.textContent = a.last_seen;
     });
   }
 
