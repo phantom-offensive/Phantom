@@ -937,7 +937,7 @@ tr.clickable { cursor: pointer; }
               <select id="bd-listener" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;margin-bottom:6px;box-sizing:border-box;">
                 <option value="">— Select listener —</option>
               </select>
-              <input type="text" id="bd-url" placeholder="http://172.20.41.154:8080" style="width:100%;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box;">
+              <input type="text" id="bd-url" placeholder="http://YOUR_C2_IP:8080" style="width:100%;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box;">
             </div>
 
             <!-- Step 3: Options -->
@@ -993,7 +993,7 @@ tr.clickable { cursor: pointer; }
             </div>
             <div style="margin-bottom:10px">
               <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Listener URL</label>
-              <input type="text" id="bd-persist-url" placeholder="http://172.20.41.154:8080" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+              <input type="text" id="bd-persist-url" placeholder="http://YOUR_C2_IP:8080" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
             </div>
             <button onclick="generatePersistBackdoor()" class="btn" style="width:100%;padding:12px;font-size:14px">🔓 Generate Backdoor</button>
             <div id="bd-persist-result" style="margin-top:10px;font-size:13px"></div>
@@ -1929,7 +1929,7 @@ function drawNetworkGraph(agents) {
   ctx.fillStyle = colors.white; ctx.font = 'bold 11px Inter'; ctx.textAlign = 'center';
   ctx.fillText('PHANTOM C2', sx, sy+35);
   ctx.fillStyle = colors.dim; ctx.font = '9px JetBrains Mono';
-  ctx.fillText('172.20.41.154:8080', sx, sy+47);
+  ctx.fillText('YOUR_C2_IP:8080', sx, sy+47);
 
   if (agents.length === 0) {
     ctx.fillStyle = colors.dim; ctx.font = '13px Inter';
@@ -3058,7 +3058,7 @@ function updateIOC() {
   if (network) {
     network.innerHTML = agents.map(a =>
       '<div style="padding:4px 0;border-bottom:1px solid var(--border)">' +
-      '<span style="color:var(--cyan)">'+a.ip+'</span> → 172.20.41.154:8080 <span style="color:var(--text-muted)">(HTTP C2 beacon, '+a.sleep+')</span></div>'
+      '<span style="color:var(--cyan)">'+a.ip+'</span> → YOUR_C2_IP:8080 <span style="color:var(--text-muted)">(HTTP C2 beacon, '+a.sleep+')</span></div>'
     ).join('') || '<div style="color:var(--text-muted)">No connections tracked</div>';
   }
 
