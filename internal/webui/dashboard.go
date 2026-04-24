@@ -2545,7 +2545,7 @@ async function generatePayload() {
 
   btn.textContent = 'Generating...';
   btn.disabled = true;
-  output.innerHTML = '<div style="text-align:center;padding:40px;color:var(--accent-light);">Generating payload...</div>';
+  output.innerHTML = '<div style="text-align:center;padding:50px 20px;"><div style="font-size:32px;margin-bottom:12px;animation:spin 1.2s linear infinite;display:inline-block;">⚙️</div><div style="color:var(--accent-light);font-size:14px;font-weight:600;">Building payload...</div><div style="color:var(--text-muted);font-size:12px;margin-top:4px;">This may take a moment for obfuscated builds</div></div><style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
 
   try {
     const resp = await fetch('/api/payload/generate', {
@@ -2563,30 +2563,87 @@ async function generatePayload() {
     const data = await resp.json();
 
     if (data.success) {
-      let details = '<div style="color:var(--green);font-weight:600;font-size:14px;margin-bottom:12px;">Payload Generated Successfully</div>';
-      if (data.filename) details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">FILE:</span> <code style="color:var(--accent-light);">'+data.filename+'</code></div>';
-      if (data.filepath) details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">PATH:</span> <code style="color:var(--text-primary);">'+data.filepath+'</code></div>';
-      if (data.size) details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">SIZE:</span> <span style="color:var(--blue);">'+data.size+'</span></div>';
-      details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">TYPE:</span> <span>'+data.type+'</span></div>';
-      details += '<div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size:11px;">CALLBACK:</span> <span>'+url+'</span></div>';
+      const typeIcons = {exe:'🪟',elf:'🐧',darwin:'🍎',dll:'📦','svc-exe':'⚙️',aspx:'🌐',php:'🌐',jsp:'🌐',powershell:'💻',bash:'💻',python:'🐍',hta:'📧',vba:'📧',android:'📱',ios:'🍎',app:'📲',shellcode:'💉'};
+      const icon = typeIcons[data.type] || typeIcons[effectiveType] || '📦';
+      const obfBadge = obfuscateLevel === 'garble'
+        ? '<span style="background:rgba(139,92,246,0.2);color:#a78bfa;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-left:6px;">GARBLED</span>'
+        : obfuscateLevel === 'strip'
+        ? '<span style="background:rgba(59,130,246,0.2);color:var(--blue);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-left:6px;">STRIPPED</span>'
+        : '';
+
+      // Header
+      let d = '<div style="text-align:center;padding:16px 0 12px;">'
+        + '<div style="font-size:36px;margin-bottom:6px;">' + icon + '</div>'
+        + '<div style="color:var(--green);font-weight:700;font-size:15px;letter-spacing:0.3px;">Payload Ready ' + obfBadge + '</div>'
+        + '</div>';
+
+      // Divider + metadata grid
+      d += '<div style="border-top:1px solid var(--border);margin:0 -16px;"></div>';
+      d += '<div style="display:grid;grid-template-columns:1fr 1fr;margin:0 -16px;">';
+
+      const fn = data.filename || '—';
+      const sz = data.size || '—';
+      const ty = data.type || effectiveType;
+      const cb = url;
+      const metaRows = [
+        ['FILE', '<code style="color:var(--accent-light);font-size:11px;word-break:break-all;">' + fn + '</code>', true, false],
+        ['SIZE', '<span style="color:var(--blue);font-weight:600;">' + sz + '</span>', true, true],
+        ['TYPE', '<span style="color:var(--cyan);">' + ty + '</span>', false, false],
+        ['CALLBACK', '<code style="color:var(--text-primary);font-size:10px;word-break:break-all;">' + cb + '</code>', false, true],
+      ];
+      metaRows.forEach(function(r) {
+        const label = r[0], val = r[1], hasBottom = r[2], isRight = r[3];
+        const bb = hasBottom ? 'border-bottom:1px solid var(--border);' : '';
+        const br = isRight ? '' : 'border-right:1px solid var(--border);';
+        d += '<div style="padding:10px 16px;' + bb + br + '">'
+          + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">' + label + '</div>'
+          + '<div style="font-size:12px;">' + val + '</div>'
+          + '</div>';
+      });
+      d += '</div>';
 
       // Download button
       if (data.filepath) {
-        details += '<div style="margin-top:12px;"><a href="/api/payload/download?file='+encodeURIComponent(data.filepath)+'" class="btn" style="text-decoration:none;display:inline-block;padding:10px 20px;">Download '+( data.filename || 'Payload' )+'</a></div>';
+        const dlName = data.filename || 'Payload';
+        const dlUrl = '/api/payload/download?file=' + encodeURIComponent(data.filepath);
+        d += '<div style="border-top:1px solid var(--border);margin:0 -16px;padding:12px 16px;">'
+          + '<a href="' + dlUrl + '" style="display:flex;align-items:center;justify-content:center;gap:8px;'
+          + 'background:var(--green);color:#000;font-weight:700;font-size:13px;padding:11px 20px;'
+          + 'border-radius:var(--radius);text-decoration:none;" '
+          + 'onmouseover="this.style.opacity=\'.85\'" onmouseout="this.style.opacity=\'1\'">'
+          + '⬇ &nbsp;Download ' + dlName + '</a>'
+          + '</div>';
       }
 
+      // Build output (collapsible if long)
       if (data.message) {
-        details += '<div style="margin-top:12px;padding:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:6px;font-size:12px;color:var(--green);white-space:pre-wrap;">'+data.message+'</div>';
+        const escaped = data.message.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const lines = escaped.split('\n');
+        const preview = lines.slice(0, 3).join('\n');
+        const hasMore = lines.length > 3;
+        d += '<div style="border-top:1px solid var(--border);margin:0 -16px 0;padding:10px 16px 0;">'
+          + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Build Output</div>'
+          + '<pre id="pl-msg-p" style="margin:0;padding:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:' + (hasMore ? '6px 6px 0 0' : '6px') + ';font-size:11px;color:var(--green);white-space:pre-wrap;line-height:1.6;">' + preview + '</pre>';
+        if (hasMore) {
+          d += '<pre id="pl-msg-f" style="display:none;margin:0;padding:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;font-size:11px;color:var(--green);white-space:pre-wrap;line-height:1.6;">' + escaped + '</pre>'
+            + '<button onclick="document.getElementById(\'pl-msg-f\').style.display=\'block\';document.getElementById(\'pl-msg-p\').style.borderRadius=\'6px 6px 0 0\';this.style.display=\'none\';" '
+            + 'style="margin-top:4px;background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;padding:2px 0;">▼ Show full output</button>';
+        }
+        d += '</div>';
       }
-      output.innerHTML = details;
 
-      // Refresh payload history
+      output.innerHTML = d;
       loadPayloadHistory();
     } else {
-      output.innerHTML = '<div style="color:var(--red);font-weight:600;">Generation Failed</div><div style="margin-top:8px;color:var(--text-muted);font-size:12px;">'+data.message+'</div>';
+      const errMsg = (data.message || 'Unknown error').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      output.innerHTML = '<div style="text-align:center;padding:24px 0 16px;">'
+        + '<div style="font-size:32px;margin-bottom:8px;">❌</div>'
+        + '<div style="color:var(--red);font-weight:700;font-size:14px;margin-bottom:8px;">Generation Failed</div>'
+        + '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:6px;padding:10px 16px;text-align:left;font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.6;">' + errMsg + '</div>'
+        + '</div>';
     }
   } catch(e) {
-    output.innerHTML = '<div style="color:var(--red);">Error: '+e.message+'</div>';
+    output.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);">⚠️ Request error: ' + e.message + '</div>';
   }
 
   btn.textContent = 'Generate Payload';
