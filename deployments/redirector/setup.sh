@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phantom C2 — Docker Redirector Setup
+# Phantom C2 — Caddy Redirector Setup
 # Usage: ./setup.sh [C2_PORT] [EXTERNAL_PORT]
 
 set -e
