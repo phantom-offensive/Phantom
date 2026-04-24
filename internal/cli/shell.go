@@ -708,7 +708,7 @@ func (sh *Shell) cmdListeners(args []string) {
 		// listeners save <name> <type> <bind> [profile] — save as preset
 		if len(args) < 4 {
 			Error("Usage: listeners save <name> <http|https> <bind-addr> [profile]")
-			Info("  Example: listeners save lab-http http 172.20.41.154:8080")
+			Info("  Example: listeners save lab-http http YOUR_C2_IP:8080")
 			Info("  Saved presets persist across restarts")
 			return
 		}
