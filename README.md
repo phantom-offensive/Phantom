@@ -170,14 +170,20 @@
 - **API key authentication** — generate keys for scripting/automation (X-API-Key header)
 
 **Web UI (Full Feature Parity with CLI)**
-- **Light/dark theme** — toggle with persistence, professional light theme
-- **Bigger sidebar icons** — labeled icons for all tabs
+- **3-color theme** — violet + cyan + red only; light/dark toggle with persistence
+- **Compact agent rows** — status dot, OS icon, host/user/IP/last-seen all in one line
+- **Labeled sidebar icons** — all tabs with icons and labels
 - **Dashboard** — real-time stats, beacon graphs, network topology, engagement timer
-- **Agent management** — rename agents, delete dead agents, agent cards with status
+- **Agent management** — rename agents, delete dead agents, tag agents, compact row view
 - **Listener management** — create, start/stop, save presets, one-click launch
-- **Interactive terminal** — colored output (IPs cyan, errors red, FLAGs gold), command history, `help` / `?` for full agent command reference (OS-aware)
+- **Interactive terminal** — colored output, command history, quick-action buttons, OS-aware help
 - **Payload generator** — listener/preset dropdown, obfuscation level, auto-download
-- **Backdoor generator** — binary backdoor + 10 persistence types from browser
+- **Persistence backdoor generator** — 10 types with OPSEC risk indicator (🟢/🟡/🔴), OS badge, dynamic Target App field, listener auto-populate
+- **Binary backdoor** — inject agent into any PE/ELF with icon preservation
+- **.NET Assembly panel** — tabbed quick-args (Seatbelt / Rubeus / SharpHound / Other), one-click fill
+- **Upload to Agent** — drag & drop file zone with size display, quick remote path buttons
+- **Pivot Control** — SMB / TCP tab switcher with colour-coded start/stop
+- **ExC2 Channels** — visual channel selector cards (Slack / Teams / Gist), API token field, status badge
 - **File browser** — OS-adaptive (dir/ls), clickable folders, Up/Refresh navigation
 - **Credential manager** — add/view/remove harvested credentials with type tagging
 - **Loot viewer** — browse captured output by type (creds, files, screenshots, keylogs)
@@ -202,7 +208,7 @@
 - **Webhook notifications** — Slack/Discord alerts on events
 - **Session recording** — every command logged for documentation
 - **Built-in diagnostics** — `--doctor` flag checks 25+ system requirements
-- **Redirector support** — generate Nginx/Caddy/Cloudflare/iptables configs
+- **Redirector** — production Caddy Docker redirector with Let's Encrypt TLS, path-based C2 routing, decoy page, and access logging (see `deployments/redirector/`)
 - **Docker deployment** — `docker-compose up -d` one-liner
 
 ---
@@ -220,7 +226,7 @@ sudo apt install -y golang-go git make
 go version
 
 # Step 2: Clone the repository
-git clone https://github.com/Phantom-C2-77/Phantom.git
+git clone https://github.com/phantom-offensive/Phantom.git
 cd Phantom
 
 # Step 3: Install dependencies
@@ -257,7 +263,7 @@ go version
 winget install Git.Git
 
 # Step 3: Clone the repository
-git clone https://github.com/Phantom-C2-77/Phantom.git
+git clone https://github.com/phantom-offensive/Phantom.git
 cd Phantom
 
 # Step 4: Install dependencies
@@ -280,18 +286,18 @@ go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server
 
 **Linux:**
 ```bash
-git clone https://github.com/Phantom-C2-77/Phantom.git && cd Phantom && go mod tidy && go run ./cmd/keygen -out configs/ && make server && ./build/phantom-server --config configs/server.yaml
+git clone https://github.com/phantom-offensive/Phantom.git && cd Phantom && go mod tidy && go run ./cmd/keygen -out configs/ && make server && ./build/phantom-server --config configs/server.yaml
 ```
 
 **Windows (PowerShell):**
 ```powershell
-git clone https://github.com/Phantom-C2-77/Phantom.git; cd Phantom; go mod tidy; go run ./cmd/keygen -out configs/; go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server; .\build\phantom-server.exe --config configs\server.yaml
+git clone https://github.com/phantom-offensive/Phantom.git; cd Phantom; go mod tidy; go run ./cmd/keygen -out configs/; go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server; .\build\phantom-server.exe --config configs\server.yaml
 ```
 
 ### Docker (Recommended)
 
 ```bash
-git clone https://github.com/Phantom-C2-77/Phantom.git
+git clone https://github.com/phantom-offensive/Phantom.git
 cd Phantom
 docker-compose up -d
 docker attach phantom-c2
@@ -447,22 +453,23 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 
 ## Agent Capabilities
 
-| Capability | Windows | Linux |
-|-----------|---------|-------|
-| Shell Execution | cmd.exe | /bin/sh |
-| File Upload/Download | Yes (resumable chunks) | Yes (resumable chunks) |
-| Screenshot | PowerShell GDI | import/scrot/xwd |
-| Process List | tasklist | ps aux |
-| System Info | Full | Full |
-| Persistence | 7 methods (registry, schtask, startup, WMI, service, logon, COM) | 5 methods (cron, systemd, bashrc, profile, rc.local) |
-| BOF Execution | In-memory COFF loader (55+ catalog) | memfd_create |
-| .NET Assembly | In-memory via reflection | N/A |
-| Shellcode Execution | VirtualAlloc + CreateThread | mmap RWX |
-| Process Injection | CreateRemoteThread / Early Bird APC | N/A |
-| Sandbox Detection | Yes | Yes |
-| Lateral Movement | wmiexec, winrm, psexec, pth | ssh |
-| Exfiltration | DNS, HTTP, ICMP, SMB, clipboard, browser, WiFi, vault | DNS, HTTP, ICMP, ssh-keys, cloud-keys |
-| Initial Access | portscan, spray, enum-smb, enum-web, vuln-scan | portscan, enum-dns, netdiscover |
+| Capability | Windows | Linux | macOS |
+|-----------|---------|-------|-------|
+| Shell Execution | cmd.exe | /bin/sh | /bin/sh |
+| File Upload/Download | Yes (resumable chunks) | Yes (resumable chunks) | Yes (resumable chunks) |
+| Screenshot | PowerShell GDI | import/scrot/xwd | screencapture |
+| Process List | tasklist | ps aux | ps aux |
+| System Info | Full | Full | Full |
+| Persistence | 7 methods (registry, schtask, startup, WMI, service, logon, COM) | 5 methods (cron, systemd, bashrc, profile, rc.local) | 2 methods (LaunchAgent plist, cron) |
+| BOF Execution | In-memory COFF loader (55+ catalog) | memfd_create | N/A |
+| .NET Assembly | In-memory via reflection | N/A | N/A |
+| Shellcode Execution | VirtualAlloc + CreateThread | mmap RWX | mmap RWX |
+| Process Injection | CreateRemoteThread / Early Bird APC | N/A | N/A |
+| Sandbox Detection | Yes | Yes | Yes (Frida, lldb, Instruments.app) |
+| Lateral Movement | wmiexec, winrm, psexec, pth | ssh | ssh |
+| Credential Harvest | browser, WiFi, clipboard, SSH, RDP, vault | ssh-keys, cloud-keys | Keychain, WiFi, browser, SSH, AWS, history |
+| Exfiltration | DNS, HTTP, ICMP, SMB, clipboard, browser, WiFi, vault | DNS, HTTP, ICMP, ssh-keys, cloud-keys | DNS, HTTP, ICMP, keychain, ssh-keys, cloud-keys |
+| Initial Access | portscan, spray, enum-smb, enum-web, vuln-scan | portscan, enum-dns, netdiscover | portscan, enum-dns, netdiscover |
 
 ### Active Directory Commands (24 total)
 
@@ -700,6 +707,62 @@ make agent-linux \
 3. Network inspection tools see a connection to a trusted Cloudflare IP — not your C2
 
 The profile YAML also supports `front_domain` and `host_header` fields for server-side documentation — see `configs/profiles/cloudflare.yaml` for an annotated example.
+
+---
+
+## HTTPS Redirector Deployment
+
+Route agent callbacks through a legitimate domain with a trusted TLS certificate. Agents call your domain on 443 — Caddy forwards only C2 paths to your listener, everything else returns a convincing decoy page.
+
+```
+Agent → https://www.yourdomain.com:443 → Caddy → C2 listener (127.0.0.1:8080)
+```
+
+### Quick Start
+
+```bash
+cd deployments/redirector
+
+# Set your domain (never commit this file)
+echo "C2_DOMAIN=yourdomain.com" > .env
+
+# Start (Caddy auto-obtains Let's Encrypt cert)
+docker compose up -d
+
+# Watch live agent traffic
+docker logs phantom-redirector -f 2>&1 | grep '"request"' | jq '{ip: .request.remote_ip, uri: .request.uri, status: .status}'
+```
+
+**Requirements:**
+- Domain A record pointing at your server's public IP
+- Ports 80 + 443 open inbound (80 for Let's Encrypt HTTP-01 challenge)
+- Docker + docker compose
+
+**C2 paths proxied:** `/api/v1/*`, `/cdn-cgi/*`, `/common/oauth2/*`, `/app/*`
+
+**Auto-restart:** Caddy uses `restart: unless-stopped` — survives reboots automatically.
+
+**Phantom C2 server auto-start (systemd):**
+
+```bash
+sudo tee /etc/systemd/system/phantom-server.service > /dev/null << 'EOF'
+[Unit]
+Description=Phantom C2 Server
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/path/to/phantom
+ExecStart=/path/to/phantom/build/phantom-server --config configs/server.yaml --headless --mode web
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload && sudo systemctl enable --now phantom-server
+```
 
 ---
 
@@ -1256,7 +1319,7 @@ Always:
 
 ## Author
 
-**Opeyemi Kolawole** - [GitHub](https://github.com/Phantom-C2-77) | ckkolawole77@gmail.com
+**Opeyemi Kolawole** - [GitHub](https://github.com/phantom-offensive)
 
 ## License
 
