@@ -4565,9 +4565,11 @@ async function geoLookup(ip) {
 }
 
 function geoHtml(ip) {
+  if (!ip) return '';
+  if (_PRIVATE.test(ip)) return '<span title="Private / LAN address" style="font-size:11px;color:#2a3050;margin-right:3px">🏠</span>';
   const g = _geoCache[ip];
-  if (!g) return '';
-  return ' <span class="geo-flag" title="'+g.country+(g.city?', '+g.city:'')+'">'+ g.flag +'</span>';
+  if (!g) return '<span style="font-size:10px;color:#2a3050;margin-right:3px">🌐</span>';
+  return '<span class="geo-flag" title="'+g.country+(g.city?', '+g.city:'')+'">'+ g.flag +'</span>';
 }
 
 // Kick off geo lookups for all visible IPs
