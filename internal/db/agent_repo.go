@@ -49,6 +49,18 @@ func (db *Database) GetAgent(id string) (*Agent, error) {
 	return a, err
 }
 
+// GetAgentByHostnameUser finds an existing agent by hostname + username (used to deduplicate re-registrations).
+func (db *Database) GetAgentByHostnameUser(hostname, username string) (*Agent, error) {
+	a := &Agent{}
+	err := db.conn.QueryRow(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, COALESCE(tags,'') FROM agents WHERE hostname = ? AND username = ? ORDER BY last_seen DESC LIMIT 1`, hostname, username).
+		Scan(&a.ID, &a.Name, &a.ExternalIP, &a.InternalIP, &a.Hostname, &a.Username, &a.OS, &a.Arch,
+			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.Tags)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return a, err
+}
+
 // GetAgentByName retrieves an agent by name.
 func (db *Database) GetAgentByName(name string) (*Agent, error) {
 	a := &Agent{}
@@ -82,6 +94,13 @@ func (db *Database) ListAgents() ([]*Agent, error) {
 }
 
 // UpdateAgentLastSeen updates the last_seen timestamp and status.
+// UpdateAgent updates all mutable fields for an existing agent (used on re-registration).
+func (db *Database) UpdateAgent(a *Agent) error {
+	_, err := db.conn.Exec(`UPDATE agents SET external_ip=?, internal_ip=?, pid=?, process_name=?, arch=?, last_seen=?, status=?, listener_id=? WHERE id=?`,
+		a.ExternalIP, a.InternalIP, a.PID, a.ProcessName, a.Arch, a.LastSeen, a.Status, a.ListenerID, a.ID)
+	return err
+}
+
 func (db *Database) UpdateAgentLastSeen(id string, lastSeen time.Time, status string) error {
 	_, err := db.conn.Exec(`UPDATE agents SET last_seen = ?, status = ? WHERE id = ?`, lastSeen, status, id)
 	return err
