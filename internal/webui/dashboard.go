@@ -1661,20 +1661,33 @@ function badge(s) {
   const dot = ['active','dormant','dead'].includes(s) ? '<span class="badge-dot"></span>' : '';
   return '<span class="badge '+(m[s]||'b-pending')+'">'+dot+s+'</span>';
 }
-function osIcon(os) {
-  if (os==='windows') return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(59,130,246,0.15);border-radius:4px;font-size:11px" title="Windows">⊞</span>';
-  if (os==='linux') return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(245,158,11,0.15);border-radius:4px;font-size:11px" title="Linux">🐧</span>';
-  if (os==='android') return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(16,185,129,0.15);border-radius:4px;font-size:11px" title="Android">📱</span>';
-  if (os==='ios') return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(156,163,175,0.15);border-radius:4px;font-size:11px" title="iOS">🍎</span>';
-  return '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:rgba(124,58,237,0.15);border-radius:4px;font-size:11px">💻</span>';
+function osEmoji(os) {
+  switch(os) {
+    case 'windows': return '🪟';
+    case 'linux':   return '🐧';
+    case 'android': return '📱';
+    case 'ios':     return '🍎';
+    case 'darwin':  return '🍎';
+    default:        return '💻';
+  }
 }
-// Plain-text variant for use inside <option> elements — browsers don't render HTML in options
+function osLabel(os) {
+  if (os === 'darwin') return 'macOS';
+  return os;
+}
+function osIcon(os) {
+  const emoji = osEmoji(os);
+  const label = osLabel(os);
+  const colors = {
+    windows:'rgba(99,102,241,0.15)', linux:'rgba(6,182,212,0.15)',
+    android:'rgba(6,182,212,0.15)', ios:'rgba(200,200,200,0.1)',
+    darwin:'rgba(200,200,200,0.1)'
+  };
+  const bg = colors[os] || 'rgba(124,58,237,0.15)';
+  return '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:'+bg+';border-radius:4px;font-size:13px" title="'+label+'">'+emoji+'</span>';
+}
 function osIconChar(os) {
-  if (os==='windows') return '⊞';
-  if (os==='linux')   return '🐧';
-  if (os==='android') return '📱';
-  if (os==='ios')     return '🍎';
-  return '💻';
+  return osEmoji(os);
 }
 async function fetchJ(u) { try { return await (await fetch(u)).json(); } catch(e) { return []; } }
 
@@ -1733,7 +1746,7 @@ async function refreshAll() {
           // Name + rename
           '<div style="min-width:110px;flex-shrink:0">' +
             '<div style="font-size:13px;font-weight:700;color:var(--accent-light)">'+a.name+'</div>' +
-            '<div style="font-size:10px;color:var(--text-muted)">'+a.os+'</div>' +
+            '<div style="font-size:10px;color:var(--text-muted)">'+osLabel(a.os)+'</div>' +
           '</div>' +
           // Divider
           '<div style="width:1px;height:28px;background:var(--border);flex-shrink:0"></div>' +
@@ -1777,8 +1790,11 @@ async function refreshAll() {
       ).join('') + '<span onclick="tagAgent(\''+a.name+'\')" style="cursor:pointer;color:var(--text-muted);font-size:10px;margin-left:2px;" title="Edit tags">✏️</span>';
       return '<tr data-agent="'+a.name+'"><td><input type="checkbox" class="bulk-cb" data-agent="'+a.name+'" data-id="'+a.id+'" data-status="'+a.status+'"></td>' +
         '<td><strong style="color:var(--accent-light)">'+a.name+' <span onclick="renameAgent(\''+a.name+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted)" title="Rename">✏️</span></strong></td>' +
-        '<td>'+osIcon(a.os)+' '+a.os+'</td><td>'+a.hostname+'</td><td>'+a.username+'</td>' +
-        '<td style="font-family:monospace">'+a.ip+'</td><td>'+a.sleep+'</td>' +
+        '<td>'+osIcon(a.os)+' <span style="font-size:12px">'+osLabel(a.os)+'</span></td>' +
+        '<td class="copyable" onclick="copyText(\''+a.hostname+'\',\'hostname\')" style="font-family:monospace;font-size:12px">'+a.hostname+'</td>' +
+        '<td style="color:var(--text-muted);font-size:12px">'+a.username+'</td>' +
+        '<td class="copyable" onclick="copyText(\''+a.ip+'\',\'IP\')" style="font-family:monospace;font-size:12px;color:var(--cyan)">'+geoHtml(a.ip)+a.ip+'</td>' +
+        '<td style="color:var(--text-muted);font-size:12px">'+a.sleep+'</td>' +
         '<td class="last-seen">'+a.last_seen+'</td><td>'+badge(a.status)+'</td>' +
         '<td>'+tagHtml+'</td><td>'+actions+'</td></tr>';
     }).join('') || '<tr><td colspan="11" class="empty">No agents</td></tr>';
