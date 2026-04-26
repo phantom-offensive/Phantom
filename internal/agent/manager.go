@@ -34,23 +34,42 @@ func NewManager(database *db.Database, defaultSleep, defaultJitter int) *Manager
 // Register creates a new agent from a registration request.
 // Returns the agent record and stores the session key in memory.
 func (m *Manager) Register(req *protocol.RegisterRequest, sessionKey []byte, externalIP, listenerID string) (*db.Agent, error) {
-	agentID := uuid.New().String()
+	now := time.Now()
 
-	// Use hostname as agent name, add suffix if duplicate
+	// Deduplicate: if an agent with the same hostname+username already exists, reuse it
+	existing, _ := m.database.GetAgentByHostnameUser(req.Hostname, req.Username)
+	if existing != nil {
+		existing.ExternalIP  = externalIP
+		existing.InternalIP  = req.InternalIP
+		existing.PID         = req.PID
+		existing.ProcessName = req.ProcessName
+		existing.Arch        = req.Arch
+		existing.LastSeen    = now
+		existing.Status      = protocol.AgentActive
+		existing.ListenerID  = listenerID
+		_ = m.database.UpdateAgent(existing)
+
+		m.mu.Lock()
+		m.sessionKeys[existing.ID] = sessionKey
+		m.mu.Unlock()
+		return existing, nil
+	}
+
+	// New agent — generate ID and name
+	agentID := uuid.New().String()
 	name := strings.ToLower(req.Hostname)
 	if name == "" {
 		name = "agent"
 	}
 	baseName := name
 	for i := 1; i <= 20; i++ {
-		existing, _ := m.database.GetAgentByName(name)
-		if existing == nil {
+		dup, _ := m.database.GetAgentByName(name)
+		if dup == nil {
 			break
 		}
 		name = fmt.Sprintf("%s-%d", baseName, i)
 	}
 
-	now := time.Now()
 	agent := &db.Agent{
 		ID:          agentID,
 		Name:        name,
@@ -74,11 +93,9 @@ func (m *Manager) Register(req *protocol.RegisterRequest, sessionKey []byte, ext
 		return nil, err
 	}
 
-	// Store session key in memory only
 	m.mu.Lock()
 	m.sessionKeys[agentID] = sessionKey
 	m.mu.Unlock()
-
 	return agent, nil
 }
 
