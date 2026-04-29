@@ -1960,7 +1960,7 @@ async function sendTermCmd() {
         if (resp.status === 401) { termLog('error', '✗ Session expired — refresh the page and log in again'); return; }
         const data = await resp.json();
         if (data.error) { termLog('error', '✗ ' + data.error); }
-        else { termLog('success', data.message); termLog('info', 'Configure proxychains: socks5 ' + bind.split(':')[0] + ' ' + displayPort); }
+        else { termLog('success', data.message); const pcHost = bind.split(':')[0] === '0.0.0.0' ? '127.0.0.1' : bind.split(':')[0]; termLog('info', 'Configure proxychains: socks5 ' + pcHost + ' ' + displayPort); }
       } catch(e) { termLog('error', '✗ ' + e.message); }
       return;
     }
