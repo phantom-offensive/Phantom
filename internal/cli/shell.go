@@ -1832,7 +1832,12 @@ func (sh *Shell) cmdSocks(args []string) {
 		}
 		bind := "127.0.0.1:1080"
 		if len(args) > 1 {
-			bind = "127.0.0.1:" + args[1]
+			// support both "1080" and "0.0.0.0:9050" forms
+			if strings.Contains(args[1], ":") {
+				bind = args[1]
+			} else {
+				bind = "127.0.0.1:" + args[1]
+			}
 		}
 		msg, err := sh.server.TunnelMgr.StartSOCKSTunnel(sh.server, sh.activeAgent.ID, sh.activeAgent.Name, bind)
 		if err != nil {

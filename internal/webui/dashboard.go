@@ -1951,12 +1951,15 @@ async function sendTermCmd() {
   if (cmd === 'socks') {
     const sub = parts[1] ? parts[1].toLowerCase() : '';
     if (sub === 'start') {
-      const port = parts[2] || '1080';
+      const arg = parts[2] || '1080';
+      // arg can be a port number (1080) or a full bind address (0.0.0.0:9050)
+      const bind = arg.includes(':') ? arg : '127.0.0.1:' + arg;
+      const displayPort = bind.split(':').pop();
       try {
-        const resp = await fetch('/api/tunnel/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agent, bind:'127.0.0.1:'+port}) });
+        const resp = await fetch('/api/tunnel/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agent, bind}) });
         const data = await resp.json();
         if (data.error) { termLog('error', '✗ ' + data.error); }
-        else { termLog('success', data.message); termLog('info', 'Configure proxychains: socks5 127.0.0.1 ' + port); }
+        else { termLog('success', data.message); termLog('info', 'Configure proxychains: socks5 ' + bind.split(':')[0] + ' ' + displayPort); }
       } catch(e) { termLog('error', '✗ ' + e.message); }
       return;
     }
