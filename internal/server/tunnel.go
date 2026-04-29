@@ -90,12 +90,17 @@ func (tm *TunnelManager) StartSOCKSTunnel(srv *Server, agentID, agentName, bindA
 	tm.listeners[agentID] = sl
 	go sl.serve(ctx)
 
+	port := extractPort(bindAddr)
+	connectHost := "127.0.0.1"
+	if h := bindAddr[:len(bindAddr)-len(port)-1]; h != "0.0.0.0" && h != "" {
+		connectHost = h
+	}
 	msg := fmt.Sprintf("[+] SOCKS5 proxy started on %s (tunneled through %s)\n"+
 		"[+] Configure proxychains:\n"+
-		"    echo 'socks5 127.0.0.1 %s' >> /etc/proxychains4.conf\n"+
+		"    echo 'socks5 %s %s' >> /etc/proxychains4.conf\n"+
 		"[+] Usage: proxychains nmap -sT -Pn 10.10.20.0/24\n"+
-		"[+] Or set browser SOCKS proxy to %s",
-		bindAddr, agentName, extractPort(bindAddr), bindAddr)
+		"[+] Or set browser SOCKS proxy to %s:%s",
+		bindAddr, agentName, connectHost, port, connectHost, port)
 
 	return msg, nil
 }
