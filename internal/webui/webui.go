@@ -480,6 +480,8 @@ func (w *WebUI) handleAgentRemove(rw http.ResponseWriter, r *http.Request) {
 
 func (w *WebUI) handleDashboard(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
+	rw.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	rw.Header().Set("Pragma", "no-cache")
 	rw.Write([]byte(dashboardHTML))
 }
 

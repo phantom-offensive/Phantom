@@ -3187,18 +3187,21 @@ async function generatePayload() {
 async function startTunnel() {
   const agent = document.getElementById('agent-select').value;
   if (!agent) { alert('Select an agent first'); return; }
-  const port = prompt('SOCKS5 bind port on YOUR machine (default: 1080):', '1080');
-  if (!port) return;
-  const bind = '127.0.0.1:' + port;
+  const input = prompt('SOCKS5 bind address (port or host:port, default: 1080):', '1080');
+  if (!input) return;
+  const bind = input.includes(':') ? input : '127.0.0.1:' + input;
+  const displayHost = bind.split(':')[0];
+  const displayPort = bind.split(':').pop();
   try {
     const resp = await fetch('/api/tunnel/start', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({agent:agent, bind:bind})
     });
+    if (resp.status === 401) { termLog('error', '✗ Session expired — refresh and log in again'); return; }
     const data = await resp.json();
     if (data.error) { termLog('error', 'Tunnel error: ' + data.error); return; }
     termLog('success', data.message);
-    termLog('info', 'Proxychains config: socks5 127.0.0.1 ' + port);
+    termLog('info', 'Proxychains config: socks5 ' + displayHost + ' ' + displayPort);
     termLog('info', 'Usage: proxychains nmap -sT -Pn <target_network>');
   } catch(e) { termLog('error', 'Tunnel failed: ' + e.message); }
 }
