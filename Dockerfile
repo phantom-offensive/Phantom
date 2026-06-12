@@ -4,7 +4,7 @@
 #   docker run -it --rm -p 8080:8080 -p 443:443 -p 3000:3000 phantom-c2
 
 # ── Build Stage ──
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 RUN apk add --no-cache git make
 
