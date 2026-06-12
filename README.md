@@ -222,7 +222,7 @@
 sudo apt update
 sudo apt install -y golang-go git make
 
-# Verify Go version (1.22+ required)
+# Verify Go version (1.25+ required)
 go version
 
 # Step 2: Clone the repository
