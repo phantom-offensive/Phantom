@@ -59,3 +59,33 @@ ed25519.pub
 dc01*
 task_root.xml
 .claude/
+
+# Credential dumps & sensitive loot — NEVER commit (engagement data)
+*.dmp
+*.dit
+ntds.dit
+SAM
+SYSTEM
+*.restore
+auth.csv
+*.csv
+authorized_keys
+.ssh/
+creds.txt
+C:\\creds.txt
+darkc0de_crack.log
+sessions.txt
+*.rec
+
+# Ad-hoc exploit / pentest scripts (repo root only — C2 code lives in cmd/ & internal/)
+/*.py
+/*.so
+/*.sql
+/dirty_cred_exp
+/exp_file_credential
+/pwnkit*
+/hydra.restore
+ScheduledTasks.xml
+fd_watcher*.sh
+nikto_*.txt
+*ws77*
