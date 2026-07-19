@@ -34,7 +34,7 @@ RUN mkdir -p data build/agents build/payloads logs reports
 
 # Generate RSA keys on first run (if not mounted)
 RUN if [ ! -f configs/server.key ]; then \
-      openssl genrsa -out configs/server.key 2048 2>/dev/null && \
+      openssl genrsa -traditional -out configs/server.key 2048 2>/dev/null && \
       openssl rsa -in configs/server.key -pubout -out configs/server.pub 2>/dev/null; \
     fi
 

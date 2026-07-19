@@ -305,6 +305,23 @@ docker attach phantom-c2
 
 Exposes: HTTP (8080), HTTPS (443), DNS (53), Web UI (3000)
 
+On first launch the container drops into **First-Time Setup** to create an
+operator account (username + password, min 6 chars). If the screen looks blank
+after `docker attach`, press **Enter** once to redraw the prompt. Detach with
+`Ctrl-P Ctrl-Q` — do **not** press `Ctrl-C`, which stops the container. Or skip
+the CLI entirely and use the Web UI at http://localhost:3000.
+
+**Troubleshooting**
+
+- `load private key: x509: ...` on startup — the server RSA key is in the wrong
+  PEM format. The loader accepts both PKCS#1 and PKCS#8, but if you built an
+  older image, regenerate: `docker exec phantom-c2 openssl rsa -traditional -in configs/server.key -out configs/server.key && docker restart phantom-c2`.
+- `Could not resolve host: github.com` during build — Docker DNS is broken.
+  Add `{"dns": ["8.8.8.8","1.1.1.1"]}` to `/etc/docker/daemon.json` and
+  `sudo systemctl restart docker`.
+- `authentication failed` in the CLI — a partial operator account exists. Reset
+  it: `docker exec phantom-c2 rm -f /phantom/configs/.phantom_creds && docker restart phantom-c2`, then redo First-Time Setup.
+
 ---
 
 ## Usage
