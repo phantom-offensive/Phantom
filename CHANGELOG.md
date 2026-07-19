@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Version string fix
+
+- Startup banner and the `version` command reported `1.0.0` while the project
+  was already at `1.0.2` (VERSION file / CHANGELOG). `PrintBanner` now takes the
+  `phantomVersion` constant instead of a hardcoded literal, and the constant is
+  bumped to `1.0.2` so all version displays agree.
+
+### Repo hygiene
+
+- Hardened `.gitignore` to exclude credential dumps and engagement loot
+  (`*.dmp`, `*.dit`, `SAM`/`SYSTEM` hives, `authorized_keys`, `.ssh/`, `*.csv`,
+  ad-hoc exploit scripts) so sensitive test artifacts can never be committed by
+  an accidental `git add .`.
+
 ### Web UI help command
 
 - `help` / `?` in the Web UI terminal now returns the same agent command

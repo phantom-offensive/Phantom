@@ -1291,7 +1291,7 @@ func (sh *Shell) cmdVersion() {
 	fmt.Println()
 	fmt.Printf("  %s%sPhantom C2 Framework%s\n", colorBold, colorPurple, colorReset)
 	fmt.Printf("  %s─────────────────────────────────%s\n", colorDim, colorReset)
-	fmt.Printf("  %-15s %s\n", "Version:", "1.0.0")
+	fmt.Printf("  %-15s %s\n", "Version:", "1.0.2")
 	fmt.Printf("  %-15s %s\n", "Go:", runtime.Version())
 	fmt.Printf("  %-15s %s/%s\n", "Platform:", runtime.GOOS, runtime.GOARCH)
 	fmt.Printf("  %-15s %s\n", "Repo:", "github.com/Phantom-C2-77/Phantom")

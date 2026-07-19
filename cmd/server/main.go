@@ -36,7 +36,7 @@ func findProjectRoot() string {
 	return "."
 }
 
-const phantomVersion = "1.0.0"
+const phantomVersion = "1.0.2"
 
 func main() {
 	configPath := flag.String("config", "configs/server.yaml", "Path to server configuration file")
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Print banner
-	cli.PrintBanner("1.0.0")
+	cli.PrintBanner(phantomVersion)
 
 	// Doctor flag — run diagnostics without starting server
 	if *runDoctor {
