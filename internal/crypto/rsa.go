@@ -64,7 +64,27 @@ func LoadPrivateKey(path string) (*rsa.PrivateKey, error) {
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
 	}
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
+	return parsePrivateKeyDER(block.Bytes)
+}
+
+// parsePrivateKeyDER tries both PKCS#1 ("RSA PRIVATE KEY") and PKCS#8
+// ("PRIVATE KEY") formats. OpenSSL 3.x `genrsa` emits PKCS#8, while our
+// keygen tool emits PKCS#1 — accept either so keys from any source load.
+func parsePrivateKeyDER(der []byte) (*rsa.PrivateKey, error) {
+	// Try PKCS#1 first (our keygen tool's format).
+	if priv, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+		return priv, nil
+	}
+
+	// Fall back to PKCS#8 (OpenSSL 3.x `genrsa` default).
+	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		if rsaPriv, ok := key.(*rsa.PrivateKey); ok {
+			return rsaPriv, nil
+		}
+		return nil, errors.New("not an RSA private key")
+	}
+
+	return nil, errors.New("failed to parse RSA private key (tried PKCS#1 and PKCS#8)")
 }
 
 // LoadPublicKey reads an RSA public key from a PEM file.
