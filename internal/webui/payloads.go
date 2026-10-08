@@ -404,6 +404,7 @@ func (w *WebUI) generateWebPayload(req PayloadRequest) PayloadResponse {
 		Type:        payloads.PayloadType(req.Type),
 		ListenerURL: req.ListenerURL,
 		OutputPath:  "build/payloads",
+		StagingToken: w.server.Config.Server.StagingToken,
 	}
 
 	outPath, err := payloads.Generate(cfg)

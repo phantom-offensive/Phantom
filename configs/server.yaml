@@ -15,6 +15,9 @@ server:
   default_sleep: 10
   default_jitter: 20
 
+  # Shared token required by staging endpoints (/api/v1/update, /app/download)
+  staging_token: "943ae74656e078ff0e31a8ac063a7989"
+
 # Default listener configuration
 listeners:
 #  - name: "default-https"

@@ -36,24 +36,11 @@ func NewManager(database *db.Database, defaultSleep, defaultJitter int) *Manager
 func (m *Manager) Register(req *protocol.RegisterRequest, sessionKey []byte, externalIP, listenerID string) (*db.Agent, error) {
 	now := time.Now()
 
-	// Deduplicate: if an agent with the same hostname+username already exists, reuse it
-	existing, _ := m.database.GetAgentByHostnameUser(req.Hostname, req.Username)
-	if existing != nil {
-		existing.ExternalIP  = externalIP
-		existing.InternalIP  = req.InternalIP
-		existing.PID         = req.PID
-		existing.ProcessName = req.ProcessName
-		existing.Arch        = req.Arch
-		existing.LastSeen    = now
-		existing.Status      = protocol.AgentActive
-		existing.ListenerID  = listenerID
-		_ = m.database.UpdateAgent(existing)
-
-		m.mu.Lock()
-		m.sessionKeys[existing.ID] = sessionKey
-		m.mu.Unlock()
-		return existing, nil
-	}
+	// Intentionally do NOT deduplicate on hostname+username. A matching
+	// re-registration would otherwise overwrite the existing agent's session
+	// key, allowing a third party that reuses a known hostname/username to
+	// hijack a live agent's task stream. Every registration gets a fresh agent
+	// entry (name collisions are suffixed below).
 
 	// New agent — generate ID and name
 	agentID := uuid.New().String()

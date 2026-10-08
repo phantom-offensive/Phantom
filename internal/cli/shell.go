@@ -987,6 +987,7 @@ func (sh *Shell) cmdGenerate(args []string) {
 		Type:        payloads.PayloadType(pType),
 		ListenerURL: listenerURL,
 		OutputPath:  "build/payloads",
+		StagingToken: sh.server.Config.Server.StagingToken,
 	}
 
 	outPath, err := payloads.Generate(cfg)

