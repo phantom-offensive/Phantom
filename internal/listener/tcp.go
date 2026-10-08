@@ -138,6 +138,9 @@ func (l *TCPListener) handleConn(conn net.Conn) {
 			return
 		}
 
+		if len(payload) < 32 {
+			return
+		}
 		sessionKey := payload[:32]
 		regPayload := payload[32:]
 
@@ -170,8 +173,40 @@ func (l *TCPListener) handleConn(conn net.Conn) {
 		}
 
 	case protocol.MsgCheckIn:
-		// Handle check-in — similar to HTTP handler
-		response = []byte{} // Simplified — full implementation would decrypt and process
+		agentID, sessionKey, found := l.agentMgr.FindAgentByKeyID(env.KeyID)
+		if !found {
+			return
+		}
+		plaintext, err := protocol.OpenEnvelope(env, sessionKey)
+		if err != nil {
+			return
+		}
+		var checkIn protocol.CheckInRequest
+		if err := protocol.Unmarshal(plaintext, &checkIn); err != nil {
+			return
+		}
+		l.agentMgr.CheckIn(agentID)
+		for _, result := range checkIn.Results {
+			result.AgentID = agentID
+			l.taskDisp.ProcessResult(&result)
+			if l.onEvent != nil {
+				l.onEvent("task_result", agentID, result.TaskID)
+			}
+		}
+		tasks, err := l.taskDisp.GetPendingTasks(agentID)
+		if err != nil {
+			tasks = nil
+		}
+		resp := protocol.CheckInResponse{Tasks: tasks}
+		respData, err := protocol.Marshal(resp)
+		if err != nil {
+			return
+		}
+		respEnv, err := protocol.SealEnvelope(protocol.MsgCheckInResponse, sessionKey, respData)
+		if err != nil {
+			return
+		}
+		response = protocol.EnvelopeToBytes(respEnv)
 	}
 
 	if response != nil {

