@@ -1,3 +1,20 @@
+# =============================================================================
+# Phantom C2 — .gitignore
+#
+# Engagement loot (credential dumps, Kerberos ccaches, hives, ad-hoc exploit
+# scripts) does not belong in this tree. It lives outside the repo at:
+#
+#     ~/engagements/<engagement>/
+#
+# Everything below is a safety net so an accidental `git add .` can never commit
+# engagement data. If loot reappears at the repo root, treat that as a bug and
+# move it out again rather than leaning on these rules.
+#
+# Patterns are anchored with a leading "/" when they are only meant to catch
+# loose files dropped at the repo ROOT, so legitimate files in subdirectories
+# (configs/, deployments/, docs/) are not silently swallowed.
+# =============================================================================
+
 # Binaries
 build/
 *.exe
@@ -8,6 +25,11 @@ phantom-agent
 
 # Database
 data/*.db
+
+# Runtime logs and sessions
+logs/
+*.log
+*.rec
 
 # Keys and certs
 configs/*.pem
@@ -33,7 +55,6 @@ vendor/
 
 # Loot and logs
 loot/
-*.log
 configs/server.key
 configs/.phantom_creds
 
@@ -50,12 +71,10 @@ root_ad_dump.txt
 flag*.txt
 f.txt
 SECURITY
-config
+/config
 puppet.conf
 ed25519
 ed25519.pub
-*.ps1
-*.json
 dc01*
 task_root.xml
 .claude/
@@ -75,12 +94,13 @@ creds.txt
 C:\\creds.txt
 darkc0de_crack.log
 sessions.txt
-*.rec
 
 # Ad-hoc exploit / pentest scripts (repo root only — C2 code lives in cmd/ & internal/)
 /*.py
 /*.so
 /*.sql
+/*.ps1
+/*.json
 /dirty_cred_exp
 /exp_file_credential
 /pwnkit*
@@ -89,3 +109,12 @@ ScheduledTasks.xml
 fd_watcher*.sh
 nikto_*.txt
 *ws77*
+
+# Loose root-level text drops.
+# The repo root tracks no .txt files, so this closes the whole class rather than
+# blacklisting names one at a time. Added 2026-10-08 after ntlm.txt — a 33-byte
+# credential dump — proved to be the single artifact the previous net missed.
+/*.txt
+
+# Local Tandem agent state (never commit)
+.tandem/
