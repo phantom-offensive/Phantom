@@ -1,7 +1,7 @@
 package listener
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"strings"
 	"time"
@@ -142,7 +142,7 @@ func (p *HTTPProfile) RandomRegisterURI() string {
 	if len(p.Client.RegisterURIs) == 0 {
 		return "/api/v1/auth"
 	}
-	return p.Client.RegisterURIs[rand.Intn(len(p.Client.RegisterURIs))]
+	return p.Client.RegisterURIs[rand.IntN(len(p.Client.RegisterURIs))]
 }
 
 // RandomCheckInURI returns a random check-in URI.
@@ -150,7 +150,7 @@ func (p *HTTPProfile) RandomCheckInURI() string {
 	if len(p.Client.CheckInURIs) == 0 {
 		return "/api/v1/status"
 	}
-	return p.Client.CheckInURIs[rand.Intn(len(p.Client.CheckInURIs))]
+	return p.Client.CheckInURIs[rand.IntN(len(p.Client.CheckInURIs))]
 }
 
 // IsAllowedHost checks if the Host header is in the allowed list.
@@ -191,6 +191,4 @@ func (p *HTTPProfile) ResolveServerHeaders() map[string]string {
 	return resolved
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
+

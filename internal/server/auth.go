@@ -3,11 +3,15 @@ package server
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -99,9 +103,13 @@ func (am *AuthManager) Authenticate(username, password string) (string, error) {
 		return "", fmt.Errorf("invalid credentials")
 	}
 
-	hash := hashPassword(password, am.creds.Salt)
-	if hash != am.creds.PassHash {
+	if !verifyPassword(password, am.creds.Salt, am.creds.PassHash) {
 		return "", fmt.Errorf("invalid credentials")
+	}
+	if !strings.HasPrefix(am.creds.PassHash, "$2") {
+		// Transparently upgrade legacy SHA-256 hashes to bcrypt.
+		am.creds.PassHash = hashPassword(password, am.creds.Salt)
+		am.saveCredentials()
 	}
 
 	// Generate session token
@@ -139,8 +147,29 @@ func (am *AuthManager) GetUsername() string {
 // ── Helpers ──
 
 func hashPassword(password, salt string) string {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
+	if err != nil {
+		return ""
+	}
+	return string(hash)
+}
+
+func verifyPassword(password, salt, stored string) bool {
+	if strings.HasPrefix(stored, "$2") {
+		return bcrypt.CompareHashAndPassword([]byte(stored), []byte(password+salt)) == nil
+	}
 	h := sha256.Sum256([]byte(password + salt))
-	return hex.EncodeToString(h[:])
+	legacy := hex.EncodeToString(h[:])
+	return subtle.ConstantTimeCompare([]byte(legacy), []byte(stored)) == 1
+}
+
+func (am *AuthManager) saveCredentials() error {
+	data, err := json.MarshalIndent(am.creds, "", "  ")
+	if err != nil {
+		return err
+	}
+	os.MkdirAll("configs", 0755)
+	return os.WriteFile(credFile, data, 0600)
 }
 
 func generateSalt() string {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -246,14 +247,32 @@ func (w *WebUI) handleAPIAgentDetail(rw http.ResponseWriter, r *http.Request) {
 	writeJSON(rw, resp)
 }
 
+// lanIP returns the first non-loopback IPv4 address of this host, falling back
+// to 127.0.0.1. It is used to advertise a reachable callback host to the UI.
+func lanIP() string {
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		for _, a := range addrs {
+			if ipn, ok := a.(*net.IPNet); ok && !ipn.IP.IsLoopback() && ipn.IP.To4() != nil {
+				ip := ipn.IP.String()
+				if !strings.HasPrefix(ip, "10.255.") && !strings.HasPrefix(ip, "169.254.") {
+					return ip
+				}
+			}
+		}
+	}
+	return "127.0.0.1"
+}
+
 func (w *WebUI) handleAPIListeners(rw http.ResponseWriter, r *http.Request) {
 	listeners := w.server.ListenerMgr.List()
+	host := lanIP()
 
 	type listenerResp struct {
 		Name   string `json:"name"`
 		Type   string `json:"type"`
 		Bind   string `json:"bind"`
 		Status string `json:"status"`
+		Host   string `json:"host"`
 	}
 
 	var resp []listenerResp
@@ -263,7 +282,7 @@ func (w *WebUI) handleAPIListeners(rw http.ResponseWriter, r *http.Request) {
 			status = "running"
 		}
 		resp = append(resp, listenerResp{
-			Name: l.GetName(), Type: strings.ToUpper(l.GetType()), Bind: l.GetBindAddr(), Status: status,
+			Name: l.GetName(), Type: strings.ToUpper(l.GetType()), Bind: l.GetBindAddr(), Status: status, Host: host,
 		})
 	}
 	if resp == nil {
@@ -487,7 +506,6 @@ func (w *WebUI) handleDashboard(rw http.ResponseWriter, r *http.Request) {
 
 func writeJSON(rw http.ResponseWriter, data interface{}) {
 	rw.Header().Set("Content-Type", "application/json")
-	rw.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(rw).Encode(data)
 }
 

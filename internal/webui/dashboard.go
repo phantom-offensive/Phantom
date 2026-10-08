@@ -2832,7 +2832,7 @@ function populateListenerSelector() {
     window._cachedListeners.forEach(l => {
       if (l.status === 'running') {
         const proto = (l.type||'').toLowerCase() === 'https' ? 'https' : 'http';
-        const bind = (l.bind||'').replace('0.0.0.0', host);
+        const bind = (l.bind||'').replace('0.0.0.0', l.host || host);
         const url = proto + '://' + bind;
         opts += '<option value="'+url+'">'+l.name+' ('+url+')</option>';
       }
@@ -2860,7 +2860,7 @@ function populateListenerSelector() {
     const running = window._cachedListeners.filter(l => l.status === 'running');
     if (running.length === 1) {
       const proto = (running[0].type||'').toLowerCase() === 'https' ? 'https' : 'http';
-      const bind = (running[0].bind||'').replace('0.0.0.0', host);
+      const bind = (running[0].bind||'').replace('0.0.0.0', running[0].host || host);
       const urlEl = document.getElementById('pl-url');
       if (urlEl && !urlEl.value) urlEl.value = proto + '://' + bind;
     }
@@ -3427,7 +3427,7 @@ function populateBackdoorListeners() {
       if (l.status === 'running') {
         const proto = (l.type||'').toUpperCase() === 'HTTPS' ? 'https' : 'http';
         // Replace 0.0.0.0 with the window's location hostname for a usable URL
-        const bind = l.bind.replace('0.0.0.0', window.location.hostname);
+        const bind = l.bind.replace('0.0.0.0', l.host || window.location.hostname);
         const url = proto + '://' + bind;
         opts += '<option value="'+url+'">'+l.name+' ('+url+')</option>';
       }
@@ -3453,7 +3453,7 @@ function populateBackdoorListeners() {
     const running = window._cachedListeners.filter(l => l.status === 'running');
     if (running.length === 1) {
       const proto = (running[0].type||'').toUpperCase() === 'HTTPS' ? 'https' : 'http';
-      const bind = running[0].bind.replace('0.0.0.0', window.location.hostname);
+      const bind = running[0].bind.replace('0.0.0.0', running[0].host || window.location.hostname);
       const urlEl = document.getElementById('bd-url');
       if (urlEl && !urlEl.value) urlEl.value = proto + '://' + bind;
     }
@@ -3467,7 +3467,7 @@ function populateBackdoorListeners() {
       window._cachedListeners.forEach(l => {
         if (l.status === 'running') {
           const proto = (l.type||'').toUpperCase() === 'HTTPS' ? 'https' : 'http';
-          const bind = l.bind.replace('0.0.0.0', window.location.hostname);
+          const bind = l.bind.replace('0.0.0.0', l.host || window.location.hostname);
           const url = proto + '://' + bind;
           pOpts += '<option value="'+url+'">'+l.name+' ('+url+')</option>';
         }
@@ -3479,7 +3479,7 @@ function populateBackdoorListeners() {
       const running = window._cachedListeners.filter(l => l.status === 'running');
       if (running.length === 1) {
         const proto = (running[0].type||'').toUpperCase() === 'HTTPS' ? 'https' : 'http';
-        const bind = running[0].bind.replace('0.0.0.0', window.location.hostname);
+        const bind = running[0].bind.replace('0.0.0.0', running[0].host || window.location.hostname);
         const pUrl = document.getElementById('bd-persist-url');
         if (pUrl && !pUrl.value) pUrl.value = proto + '://' + bind;
       }

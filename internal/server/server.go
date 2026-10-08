@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/phantom-c2/phantom/internal/agent"
@@ -147,10 +148,12 @@ func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string
 		return fmt.Errorf("SMB is not a server-side listener — deploy an agent then run: pivot start [pipe-name]")
 	}
 
-	profilePath := filepath.Join("configs", "profiles", profile+".yaml")
-	prof, err := listener.LoadProfile(profilePath)
-	if err != nil {
-		prof = listener.DefaultProfile()
+	prof := listener.DefaultProfile()
+	if profile != "" && !strings.ContainsAny(profile, "/\\") && !strings.Contains(profile, "..") {
+		profilePath := filepath.Join("configs", "profiles", profile+".yaml")
+		if loaded, err := listener.LoadProfile(profilePath); err == nil {
+			prof = loaded
+		}
 	}
 
 	cfg := listener.ListenerConfig{
