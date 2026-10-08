@@ -1736,33 +1736,33 @@ async function refreshAll() {
     if (agents.length > 0) {
       wrap.innerHTML = '<div style="display:flex;flex-direction:column;gap:5px;padding:10px">' + agents.map(a => {
         const tagBadges = (a.tags||[]).map(t =>
-          '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;">'+t+'</span>'
+          '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;">'+escHtml(t)+'</span>'
         ).join('');
-        return '<div class="agent-card" onclick="selectAgent(\''+a.name+'\')">' +
+        return '<div class="agent-card" onclick="selectAgent(\''+escAttr(a.name)+'\')">' +
           // Status dot
           '<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(a.status==='active'?'#22c55e':a.status==='idle'?'#f59e0b':'#6b7280')+';box-shadow:'+(a.status==='active'?'0 0 6px #22c55e':'none')+'"></div>' +
           // OS icon
           '<span style="font-size:16px;flex-shrink:0">'+osIcon(a.os)+'</span>' +
           // Name + rename
           '<div style="min-width:110px;flex-shrink:0">' +
-            '<div style="font-size:13px;font-weight:700;color:var(--accent-light)">'+a.name+'</div>' +
+            '<div style="font-size:13px;font-weight:700;color:var(--accent-light)">'+escHtml(a.name)+'</div>' +
             '<div style="font-size:10px;color:var(--text-muted)">'+osLabel(a.os)+'</div>' +
           '</div>' +
           // Divider
           '<div style="width:1px;height:28px;background:var(--border);flex-shrink:0"></div>' +
           // Host / User / IP
           '<div style="display:flex;gap:16px;flex:1;min-width:0">' +
-            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Host</div><div class="copyable" onclick="copyText(\''+a.hostname+'\',\'hostname\')" style="font-size:12px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">'+a.hostname+'</div></div>' +
-            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">User</div><div class="copyable" onclick="copyText(\''+a.username+'\',\'user\')" style="font-size:12px;color:var(--text-primary);white-space:nowrap">'+a.username+'</div></div>' +
-            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">IP</div><div class="copyable" onclick="copyText(\''+a.ip+'\',\'IP\')" style="font-size:12px;color:var(--cyan);font-family:monospace">'+geoHtml(a.ip)+a.ip+'</div></div>' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Host</div><div class="copyable" onclick="copyText(\''+escAttr(a.hostname)+'\',\'hostname\')" style="font-size:12px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">'+escHtml(a.hostname)+'</div></div>' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">User</div><div class="copyable" onclick="copyText(\''+escAttr(a.username)+'\',\'user\')" style="font-size:12px;color:var(--text-primary);white-space:nowrap">'+escHtml(a.username)+'</div></div>' +
+            '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">IP</div><div class="copyable" onclick="copyText(\''+escAttr(a.ip)+'\',\'IP\')" style="font-size:12px;color:var(--cyan);font-family:monospace">'+geoHtml(a.ip)+escHtml(a.ip)+'</div></div>' +
             '<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Last Seen</div><div class="agent-lastseen-'+a.name.replace(/[^a-z0-9]/gi,'_')+'" style="font-size:12px;color:var(--text-secondary)">'+a.last_seen+'</div></div>' +
           '</div>' +
           // Tags
           (tagBadges ? '<div style="display:flex;gap:3px;flex-shrink:0">'+tagBadges+'</div>' : '') +
           // Actions
           '<div style="display:flex;gap:4px;flex-shrink:0">' +
-            '<button onclick="event.stopPropagation();tagAgent(\''+a.name+'\')" title="Tags" style="padding:3px 7px;font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer">🏷</button>' +
-            '<button onclick="event.stopPropagation();renameAgent(\''+a.name+'\')" title="Rename" style="padding:3px 7px;font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer">✏️</button>' +
+            '<button onclick="event.stopPropagation();tagAgent(\''+escAttr(a.name)+'\')" title="Tags" style="padding:3px 7px;font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer">🏷</button>' +
+            '<button onclick="event.stopPropagation();renameAgent(\''+escAttr(a.name)+'\')" title="Rename" style="padding:3px 7px;font-size:11px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer">✏️</button>' +
           '</div>' +
           badge(a.status) +
         '</div>';
@@ -1783,17 +1783,17 @@ async function refreshAll() {
   if (agentTableKey !== window._lastAgentTableKey) {
     window._lastAgentTableKey = agentTableKey;
     agentTable.innerHTML = agents.map(a => {
-      const actions = '<button class="qbtn" onclick="selectAgent(\''+a.name+'\')" style="margin-right:4px">Interact</button>' +
+      const actions = '<button class="qbtn" onclick="selectAgent(\''+escAttr(a.name)+'\')" style="margin-right:4px">Interact</button>' +
         (a.status === 'dead' ? '<button class="qbtn" onclick="removeAgent(\''+a.id+'\')" style="color:var(--red);font-size:11px" title="Remove dead agent">Remove</button>' : '');
       const tagHtml = (a.tags||[]).map(t =>
-        '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:10px;font-size:10px;margin-right:2px;">'+t+'</span>'
-      ).join('') + '<span onclick="tagAgent(\''+a.name+'\')" style="cursor:pointer;color:var(--text-muted);font-size:10px;margin-left:2px;" title="Edit tags">✏️</span>';
-      return '<tr data-agent="'+a.name+'"><td><input type="checkbox" class="bulk-cb" data-agent="'+a.name+'" data-id="'+a.id+'" data-status="'+a.status+'"></td>' +
-        '<td><strong style="color:var(--accent-light)">'+a.name+' <span onclick="renameAgent(\''+a.name+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted)" title="Rename">✏️</span></strong></td>' +
+        '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:10px;font-size:10px;margin-right:2px;">'+escHtml(t)+'</span>'
+      ).join('') + '<span onclick="tagAgent(\''+escAttr(a.name)+'\')" style="cursor:pointer;color:var(--text-muted);font-size:10px;margin-left:2px;" title="Edit tags">✏️</span>';
+      return '<tr data-agent="'+escHtml(a.name)+'"><td><input type="checkbox" class="bulk-cb" data-agent="'+escHtml(a.name)+'" data-id="'+a.id+'" data-status="'+a.status+'"></td>' +
+        '<td><strong style="color:var(--accent-light)">'+escHtml(a.name)+' <span onclick="renameAgent(\''+escAttr(a.name)+'\')" style="font-size:10px;cursor:pointer;color:var(--text-muted)" title="Rename">✏️</span></strong></td>' +
         '<td>'+osIcon(a.os)+' <span style="font-size:12px">'+osLabel(a.os)+'</span></td>' +
-        '<td class="copyable" onclick="copyText(\''+a.hostname+'\',\'hostname\')" style="font-family:monospace;font-size:12px">'+a.hostname+'</td>' +
-        '<td style="color:var(--text-muted);font-size:12px">'+a.username+'</td>' +
-        '<td class="copyable" onclick="copyText(\''+a.ip+'\',\'IP\')" style="font-family:monospace;font-size:12px;color:var(--cyan)">'+geoHtml(a.ip)+a.ip+'</td>' +
+        '<td class="copyable" onclick="copyText(\''+escAttr(a.hostname)+'\',\'hostname\')" style="font-family:monospace;font-size:12px">'+escHtml(a.hostname)+'</td>' +
+        '<td style="color:var(--text-muted);font-size:12px">'+escHtml(a.username)+'</td>' +
+        '<td class="copyable" onclick="copyText(\''+escAttr(a.ip)+'\',\'IP\')" style="font-family:monospace;font-size:12px;color:var(--cyan)">'+geoHtml(a.ip)+escHtml(a.ip)+'</td>' +
         '<td style="color:var(--text-muted);font-size:12px">'+a.sleep+'</td>' +
         '<td class="last-seen">'+a.last_seen+'</td><td>'+badge(a.status)+'</td>' +
         '<td>'+tagHtml+'</td><td>'+actions+'</td></tr>';
@@ -1801,7 +1801,7 @@ async function refreshAll() {
   } else {
     // Just update Last Seen column in-place
     agents.forEach(a => {
-      const row = agentTable.querySelector('tr[data-agent="'+a.name+'"]');
+      const row = agentTable.querySelector('tr[data-agent="'+escHtml(a.name)+'"]');
       if (row) {
         const ls = row.querySelector('.last-seen');
         if (ls) ls.textContent = a.last_seen;
@@ -1820,12 +1820,12 @@ async function refreshAll() {
 
   // Dashboard tasks
   document.getElementById('dash-tasks').innerHTML = tasks.slice(0,8).map(t =>
-    '<tr><td style="color:var(--accent-light);font-weight:500">'+t.agent+'</td><td>'+t.type+'</td><td><code style="color:var(--cyan)">'+((t.args||'').substring(0,40)||'—')+'</code></td><td>'+badge(t.status)+'</td><td style="color:var(--text-muted)">'+t.time+'</td></tr>'
+    '<tr><td style="color:var(--accent-light);font-weight:500">'+escHtml(t.agent)+'</td><td>'+t.type+'</td><td><code style="color:var(--cyan)">'+((t.args||'').substring(0,40)||'—')+'</code></td><td>'+badge(t.status)+'</td><td style="color:var(--text-muted)">'+t.time+'</td></tr>'
   ).join('') || '<tr><td colspan="5" class="empty">No tasks yet</td></tr>';
 
   // All tasks
   document.getElementById('all-tasks').innerHTML = tasks.map(t =>
-    '<tr><td style="font-family:monospace;font-size:11px">'+t.id+'</td><td style="color:var(--accent-light)">'+t.agent+'</td><td>'+t.type+'</td><td><code style="color:var(--cyan)">'+((t.args||'').substring(0,30)||'—')+'</code></td><td>'+badge(t.status)+'</td><td style="color:var(--text-muted)">'+t.time+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:11px;color:var(--text-muted)">'+(t.output||'—')+'</td></tr>'
+    '<tr><td style="font-family:monospace;font-size:11px">'+t.id+'</td><td style="color:var(--accent-light)">'+escHtml(t.agent)+'</td><td>'+t.type+'</td><td><code style="color:var(--cyan)">'+((t.args||'').substring(0,30)||'—')+'</code></td><td>'+badge(t.status)+'</td><td style="color:var(--text-muted)">'+t.time+'</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:11px;color:var(--text-muted)">'+escHtml(t.output||'—')+'</td></tr>'
   ).join('');
 
   // Agent selector — only rebuild if agent list actually changed
@@ -1842,7 +1842,7 @@ async function refreshAll() {
     sel.onchange = null;
     const opts = sortedAgents.map(a => {
       const status = a.status !== 'active' ? ' ['+a.status+']' : '';
-      return '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+osIconChar(a.os)+' '+a.name+' — '+a.hostname+status+'</option>';
+      return '<option value="'+escHtml(a.name)+'" '+(a.name===cur?'selected':'')+'>'+osIconChar(a.os)+' '+escHtml(a.name)+' — '+a.hostname+status+'</option>';
     }).join('');
     sel.innerHTML = '<option value="">Select an agent...</option>' + opts;
     if (cur) sel.value = cur;
@@ -1850,10 +1850,10 @@ async function refreshAll() {
   } else {
     // No rebuild needed — just update status text in-place
     sortedAgents.forEach(a => {
-      const opt = sel.querySelector('option[value="'+a.name+'"]');
+      const opt = sel.querySelector('option[value="'+escHtml(a.name)+'"]');
       if (opt) {
         const status = a.status !== 'active' ? ' ['+a.status+']' : '';
-        opt.textContent = osIconChar(a.os)+' '+a.name+' — '+a.hostname+status;
+        opt.textContent = osIconChar(a.os)+' '+escHtml(a.name)+' — '+a.hostname+status;
       }
     });
   }
@@ -2685,7 +2685,7 @@ function updateFBAgentSelector(agents) {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">Select an agent...</option>' + agents.map(a =>
-    '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+a.name+' ('+a.os+' / '+a.hostname+')</option>'
+    '<option value="'+escHtml(a.name)+'" '+(a.name===cur?'selected':'')+'>'+escHtml(a.name)+' ('+a.os+' / '+escHtml(a.hostname)+')</option>'
   ).join('');
 
   // Update OS-specific buttons if agent selected
@@ -3589,7 +3589,7 @@ function updateIOC() {
   if (files) {
     files.innerHTML = agents.map(a =>
       '<div style="padding:4px 0;border-bottom:1px solid var(--border)">' +
-      '<span style="color:var(--red)">'+a.hostname+'</span>: /tmp/agent <span style="color:var(--text-muted)">(Phantom implant)</span></div>'
+      '<span style="color:var(--red)">'+escHtml(a.hostname)+'</span>: /tmp/agent <span style="color:var(--text-muted)">(Phantom implant)</span></div>'
     ).join('') || '<div style="color:var(--text-muted)">No files tracked</div>';
   }
 
@@ -3598,7 +3598,7 @@ function updateIOC() {
   if (network) {
     network.innerHTML = agents.map(a =>
       '<div style="padding:4px 0;border-bottom:1px solid var(--border)">' +
-      '<span style="color:var(--cyan)">'+a.ip+'</span> → YOUR_C2_IP:8080 <span style="color:var(--text-muted)">(HTTP C2 beacon, '+a.sleep+')</span></div>'
+      '<span style="color:var(--cyan)">'+escHtml(a.ip)+'</span> → YOUR_C2_IP:8080 <span style="color:var(--text-muted)">(HTTP C2 beacon, '+a.sleep+')</span></div>'
     ).join('') || '<div style="color:var(--text-muted)">No connections tracked</div>';
   }
 
@@ -3607,7 +3607,7 @@ function updateIOC() {
   if (procs) {
     procs.innerHTML = agents.map(a =>
       '<div style="padding:4px 0;border-bottom:1px solid var(--border)">' +
-      '<span style="color:var(--yellow)">'+a.hostname+'</span>: /tmp/agent <span style="color:var(--text-muted)">(PID unknown, '+(a.os==='windows'?'cmd.exe':'/bin/sh')+' child)</span></div>'
+      '<span style="color:var(--yellow)">'+escHtml(a.hostname)+'</span>: /tmp/agent <span style="color:var(--text-muted)">(PID unknown, '+(a.os==='windows'?'cmd.exe':'/bin/sh')+' child)</span></div>'
     ).join('') || '<div style="color:var(--text-muted)">No processes tracked</div>';
   }
 
@@ -3622,7 +3622,7 @@ function updateIOC() {
   if (sel) {
     const cur = sel.value;
     sel.innerHTML = '<option value="">Select agent...</option>' +
-      agents.map(a => '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+a.name+' ('+a.hostname+')</option>').join('');
+      agents.map(a => '<option value="'+escHtml(a.name)+'" '+(a.name===cur?'selected':'')+'>'+escHtml(a.name)+' ('+escHtml(a.hostname)+')</option>').join('');
   }
 }
 
@@ -3647,7 +3647,7 @@ async function loadReplay() {
       html += '<span style="color:var(--cyan)">'+t.args+'</span>';
       html += ' <span style="font-size:10px;padding:1px 6px;border-radius:3px;background:'+(t.status==='complete'?'var(--green-dim)':t.status==='error'?'var(--red-dim)':'var(--yellow-dim)')+';color:'+(t.status==='complete'?'var(--green)':t.status==='error'?'var(--red)':'var(--yellow)')+'">'+t.status+'</span>';
       if (t.output) {
-        html += '\n<span style="color:var(--text-secondary)">'+t.output.substring(0,500)+'</span>';
+        html += '\n<span style="color:var(--text-secondary)">'+escHtml(t.output.substring(0,500))+'</span>';
       }
       if (t.error) {
         html += '\n<span style="color:var(--red)">Error: '+t.error+'</span>';
@@ -4269,7 +4269,7 @@ function updateAsmAgents(agents) {
     if (!sel) return;
     const cur = sel.value;
     sel.innerHTML = '<option value="">Select agent...</option>' + agents.filter(a=>a.status==='active').map(a =>
-      '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+a.name+' ('+a.hostname+')</option>'
+      '<option value="'+escHtml(a.name)+'" '+(a.name===cur?'selected':'')+'>'+escHtml(a.name)+' ('+escHtml(a.hostname)+')</option>'
     ).join('');
   });
 }
@@ -4317,7 +4317,7 @@ async function loadTaskQueue() {
     return;
   }
   table.innerHTML = tasks.map(t =>
-    '<tr><td style="font-weight:600">'+t.agent+'</td><td style="color:var(--cyan)">'+t.type+'</td>' +
+    '<tr><td style="font-weight:600">'+escHtml(t.agent)+'</td><td style="color:var(--cyan)">'+t.type+'</td>' +
     '<td style="font-family:monospace;font-size:11px">'+t.args+'</td>' +
     '<td>'+badge(t.status)+'</td><td style="color:var(--text-muted);font-size:11px">'+t.created+'</td></tr>'
   ).join('');
@@ -4360,7 +4360,7 @@ function updateUploadAgents(agents) {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">Select agent...</option>' + agents.filter(a=>a.status==='active').map(a =>
-    '<option value="'+a.name+'" '+(a.name===cur?'selected':'')+'>'+a.name+' ('+a.hostname+')</option>'
+    '<option value="'+escHtml(a.name)+'" '+(a.name===cur?'selected':'')+'>'+escHtml(a.name)+' ('+escHtml(a.hostname)+')</option>'
   ).join('');
 }
 
