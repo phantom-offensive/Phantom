@@ -73,7 +73,7 @@ func portScan(target, portList string) ([]byte, error) {
 
 	for _, p := range ports {
 		p = strings.TrimSpace(p)
-		addr := fmt.Sprintf("%s:%s", target, p)
+		addr := net.JoinHostPort(target, p)
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err == nil {
 			conn.Close()
