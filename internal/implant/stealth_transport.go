@@ -43,7 +43,7 @@ func RandomTLSConfig() *tls.Config {
 	shuffleCurves(curves)
 
 	return &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: TLSInsecure == "true",
 		CipherSuites:      selected,
 		CurvePreferences:  curves,
 		MinVersion:        tls.VersionTLS12,
