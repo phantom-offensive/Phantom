@@ -101,7 +101,7 @@ func (d *Dispatcher) autoSaveLoot(result *protocol.TaskResult) {
 	agent, _ := d.database.GetAgent(result.AgentID)
 	agentName := "unknown"
 	if agent != nil {
-		agentName = agent.Name
+		agentName = sanitizeFileComponent(agent.Name)
 	}
 	timestamp := time.Now().Format("20060102-150405")
 
@@ -159,6 +159,26 @@ func (d *Dispatcher) autoSaveLoot(result *protocol.TaskResult) {
 			}
 		}
 	}
+}
+
+// sanitizeFileComponent strips path separators and traversal sequences from a
+// value before it is used in a filename, preventing path traversal.
+func sanitizeFileComponent(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '-', r == '_', r == '.':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('_')
+		}
+	}
+	out := b.String()
+	if out == "" || out == "." || out == ".." {
+		return "agent"
+	}
+	return out
 }
 
 // base64Decode handles standard and padded base64.

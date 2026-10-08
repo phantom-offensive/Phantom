@@ -176,7 +176,15 @@ func main() {
 			if lc.Type == "http" {
 				scheme = "http"
 			}
-			port := lc.Bind[strings.LastIndex(lc.Bind, ":"):]
+			_, p, err := net.SplitHostPort(lc.Bind)
+			if err != nil {
+				if scheme == "https" {
+					p = "443"
+				} else {
+					p = "80"
+				}
+			}
+			port := ":" + p
 
 			// Try to find the best routable IP
 			host := "127.0.0.1"

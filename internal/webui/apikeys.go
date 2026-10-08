@@ -101,10 +101,17 @@ func (w *WebUI) handleAPIKeys(rw http.ResponseWriter, r *http.Request) {
 		writeJSON(rw, map[string]string{"key": key, "name": req.Name, "status": "created"})
 
 	case "revoke":
+		if len(req.Key) == 0 {
+			writeJSON(rw, map[string]string{"error": "key required"})
+			return
+		}
+		suffix := ""
+		if len(req.Key) >= 4 {
+			suffix = req.Key[len(req.Key)-4:]
+		}
 		apiKeysMu.Lock()
-		// Find key by prefix match
 		for k := range apiKeys {
-			if strings.HasPrefix(k, req.Key) || strings.HasSuffix(k, req.Key[len(req.Key)-4:]) {
+			if strings.HasPrefix(k, req.Key) || (suffix != "" && strings.HasSuffix(k, suffix)) {
 				delete(apiKeys, k)
 				break
 			}

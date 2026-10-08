@@ -2,7 +2,6 @@ package webui
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // WebAuth handles authentication for the Web UI.
@@ -57,7 +58,7 @@ func (wa *WebAuth) Authenticate(username, password string) (string, error) {
 	user, ok := wa.users[username]
 	wa.mu.RUnlock()
 
-	if !ok || hashPass(password, user.Salt) != user.PassHash {
+	if !ok || bcrypt.CompareHashAndPassword([]byte(user.PassHash), []byte(password+user.Salt)) != nil {
 		return "", fmt.Errorf("invalid credentials")
 	}
 
@@ -192,8 +193,11 @@ func (wa *WebAuth) GetOnlineOperators() []string {
 }
 
 func hashPass(password, salt string) string {
-	h := sha256.Sum256([]byte(password + salt))
-	return hex.EncodeToString(h[:])
+	hash, err := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
+	if err != nil {
+		return ""
+	}
+	return string(hash)
 }
 
 func randomHex(n int) string {
