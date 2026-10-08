@@ -120,7 +120,7 @@
 - **.NET assembly execution** — in-memory via PowerShell reflection (Seatbelt, Rubeus, SharpHound, Certify, etc.)
 - **Shellcode execution** — VirtualAlloc/mmap, zero disk footprint
 - **Process injection** — CreateRemoteThread or Early Bird APC (`inject earlybird`)
-- **22 AD commands** — enumeration, Kerberoasting, DCSync, lateral movement
+- **24 AD commands** — enumeration, Kerberoasting, DCSync, ADCS, lateral movement
 
 **Initial Access**
 - **Port scanner** — TCP port scan with service detection
@@ -1130,28 +1130,26 @@ Once the agent is registered, send these via the Web UI or CLI:
 
 ```yaml
 server:
+  bind: "0.0.0.0"                 # TUI management interface
   database: "data/phantom.db"
   rsa_private_key: "configs/server.key"
   rsa_public_key: "configs/server.pub"
   default_sleep: 10
   default_jitter: 20
 
+# Only the HTTP listener is enabled by default. Uncomment HTTPS (and run
+# 'make certs') or add a ws-c2 listener when you need encrypted/WebSocket C2.
 listeners:
-  - name: "default-https"
-    type: "https"
-    bind: "0.0.0.0:443"
-    profile: "default"
-    tls_cert: "configs/server.crt"
-    tls_key: "configs/server-tls.key"
+#  - name: "default-https"
+#    type: "https"
+#    bind: "0.0.0.0:443"
+#    profile: "default"
+#    tls_cert: "configs/server.crt"
+#    tls_key: "configs/server-tls.key"
 
   - name: "fallback-http"
     type: "http"
     bind: "0.0.0.0:8080"
-    profile: "default"
-
-  - name: "ws-c2"
-    type: "ws"
-    bind: "0.0.0.0:8888"
     profile: "default"
 ```
 
@@ -1173,11 +1171,12 @@ Agent URL format: `ws://C2-IP:8888` or `wss://C2-IP:8889`
 
 ### Malleable Profiles
 
-Three built-in profiles in `configs/profiles/`:
+Four built-in profiles in `configs/profiles/`:
 
 - **default.yaml** — Generic API traffic (`/api/v1/status`)
 - **microsoft.yaml** — Microsoft 365/Azure (`/common/oauth2/v2.0/token`)
 - **cloudflare.yaml** — Cloudflare Workers (`/cdn-cgi/rum`) — includes commented domain fronting example
+- **redirector.yaml** — Host-header validation, URI rotation, realistic server headers, and a decoy response (use behind Nginx/Caddy/Cloudflare)
 
 Profile fields: `name`, `register_uri`, `checkin_uri`, `decoy_uris`, `user_agent`, `headers`, `content_type`, `decoy_response`, `front_domain` (SNI override for domain fronting), `host_header` (HTTP Host override for domain fronting).
 
@@ -1202,6 +1201,11 @@ Password: phantom
 ```
 
 All pages and API endpoints are protected — no anonymous access.
+
+The default Web UI account (`admin` / `phantom`) is recreated in-memory on
+every server start and is not persisted. The CLI's operator account is
+separate: it is stored in `configs/.phantom_creds` and created on first CLI
+run. Passwords are hashed with bcrypt.
 
 ### Web UI Features
 
@@ -1261,6 +1265,20 @@ All pages and API endpoints are protected — no anonymous access.
 | `/api/filebrowser` | GET | Request directory listing from agent |
 | `/api/screenshot` | GET | Request screenshot from agent |
 | `/api/processlist` | GET | Request process list from agent |
+| `/api/keys` | GET/POST | Manage API keys for scripting/automation |
+| `/api/upload-to-agent` | POST | Upload a file to an agent |
+| `/api/taskqueue` | GET/POST | Task queue |
+| `/api/payload/history` | GET | Payload build history |
+| `/api/payload/history/delete` | POST | Delete a payload history entry |
+| `/api/payload/binaries` | GET | List uploaded binaries (for backdooring) |
+| `/api/payload/binaries/upload` | POST | Upload a binary to the server |
+| `/api/payload/loader` | POST | Generate shellcode loader |
+| `/api/bof/catalog` | GET | List the BOF catalog |
+| `/api/plugins` | GET | List plugins |
+| `/api/transfers` | GET | List file transfers |
+| `/api/exchannel/list` | GET | List external C2 channels |
+| `/api/exchannel/start` | POST | Start an external C2 channel |
+| `/api/exchannel/stop` | POST | Stop an external C2 channel |
 
 ### Multi-Operator Support
 
@@ -1296,11 +1314,13 @@ Auto-notifies on: new agent registration, agent death, listener events.
 phantom/
   cmd/
     server/          Server entrypoint
-    agent/           Agent entrypoint
+    agent/           Agent entrypoint (Windows/Linux)
+    agent-dll/       Windows DLL agent (rundll32/regsvr32/sideload)
+    agent-darwin/    macOS agent
     keygen/          RSA keypair generator
     e2etest/         End-to-end test runner
   internal/
-    server/          Core server, config, webhooks
+    server/          Core server, config, webhooks, tunnel
     listener/        HTTP/HTTPS/WS/WSS/DNS/TCP listeners + malleable profiles + SMB pipes
     agent/           Agent manager + builder
     task/            Task dispatcher + queues
@@ -1309,9 +1329,10 @@ phantom/
     db/              SQLite database + repositories
     cli/             CLI shell (readline), tables, reporting
     webui/           Web dashboard (embedded HTML/JS)
+    exchannel/       External C2 channels (Slack, Teams, Gist)
     implant/         Agent: shell, file, screenshot, persist, AD, BOF, evasion,
                      token, keylogger, SOCKS, creds, pivot, staging
-    payloads/        Payload generator (web shells, stagers, macros)
+    payloads/        Payload generator (web shells, stagers, macros, backdoors)
     util/            Shared utilities
   configs/           Server config + malleable profiles
   scripts/           Helper scripts
