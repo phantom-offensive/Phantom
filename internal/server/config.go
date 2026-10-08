@@ -21,6 +21,7 @@ type ServerConfig struct {
 	RSAPublicKey  string `yaml:"rsa_public_key"`
 	DefaultSleep  int    `yaml:"default_sleep"`
 	DefaultJitter int    `yaml:"default_jitter"`
+	StagingToken  string `yaml:"staging_token"`
 }
 
 // ListenerConf holds listener configuration from the config file.

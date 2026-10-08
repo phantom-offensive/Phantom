@@ -89,6 +89,7 @@ func (s *Server) SetupListeners() error {
 			TaskDisp: s.TaskDisp,
 			OnEvent:  s.handleEvent,
 			Database: s.DB,
+			StagingToken: s.Config.Server.StagingToken,
 		}
 
 		var l listener.Listener
@@ -169,6 +170,7 @@ func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string
 		TaskDisp: s.TaskDisp,
 		OnEvent:  s.handleEvent,
 		Database: s.DB,
+		StagingToken: s.Config.Server.StagingToken,
 	}
 
 	var l listener.Listener

