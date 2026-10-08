@@ -157,12 +157,12 @@ func WriteChunk(transferID string, chunkIdx int, data []byte) error {
 }
 
 // GetTransferProgress returns the current state of all transfers.
-func GetTransferProgress() []TransferState {
+func GetTransferProgress() []*TransferState {
 	transferMgr.mu.RLock()
 	defer transferMgr.mu.RUnlock()
-	var result []TransferState
+	var result []*TransferState
 	for _, t := range transferMgr.transfers {
-		result = append(result, *t)
+		result = append(result, t)
 	}
 	return result
 }

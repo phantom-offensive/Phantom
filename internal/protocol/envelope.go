@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/phantom-c2/phantom/internal/crypto"
 )
@@ -71,11 +72,27 @@ func WrapForHTTP(env *Envelope, timestamp int64) ([]byte, error) {
 	return json.Marshal(wrapper)
 }
 
+// MaxClockSkew is the maximum allowed difference between the sender's
+// timestamp and the receiver's clock before a message is rejected as stale.
+// This bounds replay of captured envelopes.
+const MaxClockSkew = 10 * time.Minute
+
 // UnwrapFromHTTP extracts an Envelope from a JSON HTTP wrapper.
 func UnwrapFromHTTP(body []byte) (*Envelope, error) {
 	var wrapper HTTPWrapper
 	if err := json.Unmarshal(body, &wrapper); err != nil {
 		return nil, err
+	}
+
+	// Reject stale/future timestamps to limit replay of captured envelopes.
+	if wrapper.Timestamp != 0 {
+		skew := time.Since(time.Unix(wrapper.Timestamp, 0))
+		if skew < 0 {
+			skew = -skew
+		}
+		if skew > MaxClockSkew {
+			return nil, errors.New("envelope timestamp outside allowed window")
+		}
 	}
 
 	raw, err := crypto.Base64Decode(wrapper.Data)

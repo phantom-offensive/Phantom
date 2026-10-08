@@ -1925,6 +1925,12 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// escAttr escapes a value for safe interpolation inside a single-quoted JS
+// string that lives in a double-quoted HTML attribute (e.g. onclick='...').
+function escAttr(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 async function sendTermCmd() {
   const input = document.getElementById('term-input');
   const raw = input.value.trim();

@@ -156,7 +156,8 @@ func (wa *WebAuth) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name: "phantom_session", Value: token, Path: "/",
-		MaxAge: 86400, HttpOnly: true,
+		MaxAge: 86400, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		Secure: r.TLS != nil,
 	})
 
 	if contentType == "application/json" {
@@ -174,7 +175,7 @@ func (wa *WebAuth) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		delete(wa.sessions, c.Value)
 		wa.mu.Unlock()
 	}
-	http.SetCookie(w, &http.Cookie{Name: "phantom_session", Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "phantom_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil})
 	http.Redirect(w, r, "/login", 302)
 }
 
