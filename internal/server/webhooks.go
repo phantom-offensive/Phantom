@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -30,6 +31,12 @@ func NewWebhookNotifier(slackURL, discordURL string) *WebhookNotifier {
 		client:     &http.Client{Timeout: 10 * time.Second},
 	}
 }
+
+// SlackURL returns the configured Slack webhook URL.
+func (w *WebhookNotifier) SlackURL() string { return w.slackURL }
+
+// DiscordURL returns the configured Discord webhook URL.
+func (w *WebhookNotifier) DiscordURL() string { return w.discordURL }
 
 // NotifyAgentRegistered sends a notification when a new agent checks in.
 func (w *WebhookNotifier) NotifyAgentRegistered(name, os, hostname, username, ip string) {
@@ -99,4 +106,36 @@ func truncate(s string, maxLen int) string {
 		return s[:maxLen] + "..."
 	}
 	return s
+}
+
+// webhookStatePath is where the webhook config is persisted.
+const webhookStatePath = "data/webhook.json"
+
+// SaveWebhook persists the webhook URLs to disk.
+func SaveWebhook(slackURL, discordURL string) error {
+	if err := os.MkdirAll("data", 0755); err != nil {
+		return err
+	}
+	cfg := WebhookConfig{SlackURL: slackURL, DiscordURL: discordURL, Enabled: slackURL != "" || discordURL != ""}
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(webhookStatePath, data, 0600)
+}
+
+// LoadWebhook loads a persisted webhook notifier, or nil if none is configured.
+func LoadWebhook() *WebhookNotifier {
+	data, err := os.ReadFile(webhookStatePath)
+	if err != nil {
+		return nil
+	}
+	var cfg WebhookConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil
+	}
+	if cfg.SlackURL == "" && cfg.DiscordURL == "" {
+		return nil
+	}
+	return NewWebhookNotifier(cfg.SlackURL, cfg.DiscordURL)
 }

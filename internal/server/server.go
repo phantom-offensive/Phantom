@@ -63,6 +63,8 @@ func New(cfg *Config) (*Server, error) {
 		ExChannels:  exchannel.NewRegistry(),
 	}
 
+	s.Webhook = LoadWebhook()
+
 	return s, nil
 }
 
@@ -77,18 +79,18 @@ func (s *Server) SetupListeners() error {
 		}
 
 		cfg := listener.ListenerConfig{
-			ID:       uuid.New().String(),
-			Name:     lc.Name,
-			Type:     lc.Type,
-			BindAddr: lc.Bind,
-			Profile:  profile,
-			TLSCert:  lc.TLSCert,
-			TLSKey:   lc.TLSKey,
-			PrivKey:  s.PrivKey,
-			AgentMgr: s.AgentMgr,
-			TaskDisp: s.TaskDisp,
-			OnEvent:  s.handleEvent,
-			Database: s.DB,
+			ID:           uuid.New().String(),
+			Name:         lc.Name,
+			Type:         lc.Type,
+			BindAddr:     lc.Bind,
+			Profile:      profile,
+			TLSCert:      lc.TLSCert,
+			TLSKey:       lc.TLSKey,
+			PrivKey:      s.PrivKey,
+			AgentMgr:     s.AgentMgr,
+			TaskDisp:     s.TaskDisp,
+			OnEvent:      s.handleEvent,
+			Database:     s.DB,
 			StagingToken: s.Config.Server.StagingToken,
 		}
 
@@ -158,18 +160,18 @@ func (s *Server) CreateListener(name, typ, bind, profile, tlsCert, tlsKey string
 	}
 
 	cfg := listener.ListenerConfig{
-		ID:       uuid.New().String(),
-		Name:     name,
-		Type:     typ,
-		BindAddr: bind,
-		Profile:  prof,
-		TLSCert:  tlsCert,
-		TLSKey:   tlsKey,
-		PrivKey:  s.PrivKey,
-		AgentMgr: s.AgentMgr,
-		TaskDisp: s.TaskDisp,
-		OnEvent:  s.handleEvent,
-		Database: s.DB,
+		ID:           uuid.New().String(),
+		Name:         name,
+		Type:         typ,
+		BindAddr:     bind,
+		Profile:      prof,
+		TLSCert:      tlsCert,
+		TLSKey:       tlsKey,
+		PrivKey:      s.PrivKey,
+		AgentMgr:     s.AgentMgr,
+		TaskDisp:     s.TaskDisp,
+		OnEvent:      s.handleEvent,
+		Database:     s.DB,
 		StagingToken: s.Config.Server.StagingToken,
 	}
 
@@ -212,6 +214,16 @@ func (s *Server) RegisterExChannel(ch exchannel.Channel) {
 }
 
 // handleEvent processes events from listeners and other components.
+// SetWebhook configures and persists the webhook notifier.
+func (s *Server) SetWebhook(slackURL, discordURL string) error {
+	if slackURL == "" && discordURL == "" {
+		s.Webhook = nil
+		return SaveWebhook("", "")
+	}
+	s.Webhook = NewWebhookNotifier(slackURL, discordURL)
+	return SaveWebhook(slackURL, discordURL)
+}
+
 func (s *Server) handleEvent(event string, args ...interface{}) {
 	msg := fmt.Sprintf("[%s]", event)
 	for _, a := range args {
@@ -221,5 +233,22 @@ func (s *Server) handleEvent(event string, args ...interface{}) {
 
 	if s.OnEvent != nil {
 		s.OnEvent(event, args...)
+	}
+
+	if s.Webhook != nil {
+		switch event {
+		case "agent_register":
+			if len(args) >= 5 {
+				s.Webhook.NotifyAgentRegistered(fmt.Sprint(args[0]), fmt.Sprint(args[1]), fmt.Sprint(args[2]), fmt.Sprint(args[3]), fmt.Sprint(args[4]))
+			}
+		case "listener_start":
+			if len(args) >= 3 {
+				s.Webhook.NotifyListenerEvent("start", fmt.Sprint(args[0]), fmt.Sprint(args[2]))
+			}
+		case "listener_stop":
+			if len(args) >= 1 {
+				s.Webhook.NotifyListenerEvent("stop", fmt.Sprint(args[0]), "")
+			}
+		}
 	}
 }
