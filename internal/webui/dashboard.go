@@ -556,6 +556,7 @@ tr.clickable { cursor: pointer; }
     <button class="sidebar-btn" onclick="nav('audit')" title="Audit Log">📝<span class="sb-label">Audit</span></button>
     <button class="sidebar-btn" onclick="nav('events')" title="Events">📜<span class="sb-label">Events</span></button>
     <button class="sidebar-btn" onclick="nav('settings')" title="Settings">⚙️<span class="sb-label">Settings</span></button>
+    <button class="sidebar-btn" onclick="nav('diagnostics')" title="Diagnostics">🩺<span class="sb-label">Diagnostics</span></button>
     <div class="sidebar-divider"></div>
     <button class="sidebar-btn" onclick="nav('docs')" title="Documentation">📖<span class="sb-label">Docs</span></button>
     <div style="flex:1"></div>
@@ -1580,6 +1581,20 @@ make debug      # console + test harness</pre>
     </div>
 
     <!-- ══════ SETTINGS ══════ -->
+    <!-- ══════ DIAGNOSTICS ══════ -->
+    <div id="p-diagnostics" class="page">
+      <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+          <h3><span>🩺</span> System Diagnostics</h3>
+          <button class="qbtn" onclick="loadDiagnostics()" style="font-size:11px">Run Checks</button>
+        </div>
+        <div class="card-body">
+          <div id="diag-summary" style="display:flex;gap:10px;margin-bottom:16px"></div>
+          <div id="diag-groups" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="p-settings" class="page">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 
@@ -4558,6 +4573,34 @@ async function bulkRemoveDead() {
     await fetch('/api/agent/remove', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.dataset.id})});
   }
   refreshAll();
+}
+
+// ──── Diagnostics ────
+async function loadDiagnostics() {
+  const groupsEl = document.getElementById('diag-groups');
+  const summaryEl = document.getElementById('diag-summary');
+  groupsEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted)">Running diagnostics...</div>';
+  summaryEl.innerHTML = '';
+  try {
+    const resp = await fetch('/api/diagnostics');
+    const data = await resp.json();
+    const s = data.summary || {};
+    const chip = (label, val, color) => '<div style="flex:1;text-align:center;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius)"><div style="font-size:24px;font-weight:700;color:'+color+'">'+val+'</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">'+label+'</div></div>';
+    summaryEl.innerHTML = chip('Passed', s.passed||0, '#10b981') + chip('Warnings', s.warnings||0, '#f59e0b') + chip('Failed', s.failed||0, '#ef4444') + chip('Total', s.total||0, 'var(--text-primary)');
+    let html = '';
+    for (const g of (data.groups||[])) {
+      html += '<div class="card" style="margin:0"><div class="card-header"><h3 style="font-size:13px">'+escHtml(g.name)+'</h3></div><div class="card-body" style="padding:10px 14px">';
+      for (const c of (g.checks||[])) {
+        const ic = c.status==='pass' ? '✅' : c.status==='warn' ? '⚠️' : '❌';
+        const col = c.status==='pass' ? 'var(--green)' : c.status==='warn' ? '#f59e0b' : 'var(--red)';
+        html += '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><div><span style="margin-right:6px">'+ic+'</span><span style="font-weight:600">'+escHtml(c.name)+'</span></div><div style="color:'+col+';font-family:monospace;text-align:right;word-break:break-all">'+escHtml(c.value)+'</div></div>';
+      }
+      html += '</div></div>';
+    }
+    groupsEl.innerHTML = html || '<div style="grid-column:1/-1;color:var(--text-muted);text-align:center;padding:20px">No data</div>';
+  } catch(e) {
+    groupsEl.innerHTML = '<div style="grid-column:1/-1;color:var(--red);text-align:center;padding:20px">Diagnostics failed: '+escHtml(e.message)+'</div>';
+  }
 }
 
 // ──── Report Generator ────
