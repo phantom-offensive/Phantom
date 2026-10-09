@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -2024,6 +2025,12 @@ func (sh *Shell) cmdBOF(args []string) {
 	Info("BOF size: %d bytes", len(data))
 }
 
+// looksBinary reports whether task output is binary (rather than text), so the
+// CLI can avoid dumping raw bytes (e.g. screenshots) to the terminal.
+func looksBinary(data []byte) bool {
+	return bytes.IndexByte(data, 0) >= 0
+}
+
 // onEvent handles real-time events from the server.
 func (sh *Shell) onEvent(event string, args ...interface{}) {
 	timestamp := time.Now().Format("15:04:05")
@@ -2066,6 +2073,9 @@ func (sh *Shell) onEvent(event string, args ...interface{}) {
 				if result.Error != "" {
 					fmt.Printf("  %s[-] Error: %s%s\n", colorRed, result.Error, colorReset)
 					sh.logOutput("Error: " + result.Error)
+				} else if looksBinary(result.Output) {
+					fmt.Printf("  %s[+] Binary output (%d bytes) — check the Loot tab%s\n", colorCyan, len(result.Output), colorReset)
+					sh.logOutput("[binary output]")
 				} else {
 					output := string(result.Output)
 					lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
