@@ -145,7 +145,7 @@ func InjectShellcodeThreadHijack(shellcode []byte) error {
 	return fmt.Errorf("all thread hijack candidates failed")
 }
 
-// ── Thread hijacking via remote thread enumeration (MalDev Module 36) ──
+// ── Thread hijacking via remote thread enumeration ──
 
 const (
 	TH32CS_SNAPTHREAD = 0x00000004
@@ -171,7 +171,7 @@ type THREADENTRY32 struct {
 }
 
 // findProcessFold returns the PID of the first process matching name,
-// case-insensitively (mirrors lstrcmpiW used in the MalDev module).
+// case-insensitively.
 func findProcessFold(name string) (uint32, error) {
 	const TH32CS_SNAPPROCESS = 0x00000002
 
