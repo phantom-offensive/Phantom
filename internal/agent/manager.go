@@ -36,11 +36,29 @@ func NewManager(database *db.Database, defaultSleep, defaultJitter int) *Manager
 func (m *Manager) Register(req *protocol.RegisterRequest, sessionKey []byte, externalIP, listenerID string) (*db.Agent, error) {
 	now := time.Now()
 
-	// Intentionally do NOT deduplicate on hostname+username. A matching
-	// re-registration would otherwise overwrite the existing agent's session
-	// key, allowing a third party that reuses a known hostname/username to
-	// hijack a live agent's task stream. Every registration gets a fresh agent
-	// entry (name collisions are suffixed below).
+	// Deduplicate on the stable implant ID. Unlike hostname+username (which are
+	// attacker-controllable), the implant ID is a random value persisted on the
+	// target's filesystem, so reusing it is safe and prevents duplicate agent
+	// entries across re-registrations. If no implant ID is present, fall
+	// through to creating a fresh entry.
+	if req.ImplantID != "" {
+		if existing, _ := m.database.GetAgentByImplantID(req.ImplantID); existing != nil {
+			existing.ExternalIP = externalIP
+			existing.InternalIP = req.InternalIP
+			existing.PID = req.PID
+			existing.ProcessName = req.ProcessName
+			existing.Arch = req.Arch
+			existing.LastSeen = now
+			existing.Status = protocol.AgentActive
+			existing.ListenerID = listenerID
+			_ = m.database.UpdateAgent(existing)
+
+			m.mu.Lock()
+			m.sessionKeys[existing.ID] = sessionKey
+			m.mu.Unlock()
+			return existing, nil
+		}
+	}
 
 	// New agent — generate ID and name
 	agentID := uuid.New().String()
@@ -74,6 +92,7 @@ func (m *Manager) Register(req *protocol.RegisterRequest, sessionKey []byte, ext
 		LastSeen:    now,
 		Status:      protocol.AgentActive,
 		ListenerID:  listenerID,
+		ImplantID:   req.ImplantID,
 	}
 
 	if err := m.database.InsertAgent(agent); err != nil {

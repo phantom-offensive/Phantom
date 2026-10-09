@@ -23,16 +23,17 @@ type Agent struct {
 	LastSeen    time.Time
 	Status      string
 	ListenerID  string
+	ImplantID   string
 	Tags        string // comma-separated tag list
 }
 
 // InsertAgent adds a new agent record.
 func (db *Database) InsertAgent(a *Agent) error {
 	_, err := db.conn.Exec(`
-		INSERT INTO agents (id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, tags)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agents (id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, implant_id, tags)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.ID, a.Name, a.ExternalIP, a.InternalIP, a.Hostname, a.Username, a.OS, a.Arch,
-		a.PID, a.ProcessName, a.Sleep, a.Jitter, a.FirstSeen, a.LastSeen, a.Status, a.ListenerID, a.Tags,
+		a.PID, a.ProcessName, a.Sleep, a.Jitter, a.FirstSeen, a.LastSeen, a.Status, a.ListenerID, a.ImplantID, a.Tags,
 	)
 	return err
 }
@@ -40,9 +41,9 @@ func (db *Database) InsertAgent(a *Agent) error {
 // GetAgent retrieves an agent by ID.
 func (db *Database) GetAgent(id string) (*Agent, error) {
 	a := &Agent{}
-	err := db.conn.QueryRow(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, COALESCE(tags,'') FROM agents WHERE id = ?`, id).
+	err := db.conn.QueryRow(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, implant_id, COALESCE(tags,'') FROM agents WHERE id = ?`, id).
 		Scan(&a.ID, &a.Name, &a.ExternalIP, &a.InternalIP, &a.Hostname, &a.Username, &a.OS, &a.Arch,
-			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.Tags)
+			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.ImplantID, &a.Tags)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -64,9 +65,23 @@ func (db *Database) GetAgentByHostnameUser(hostname, username string) (*Agent, e
 // GetAgentByName retrieves an agent by name.
 func (db *Database) GetAgentByName(name string) (*Agent, error) {
 	a := &Agent{}
-	err := db.conn.QueryRow(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, COALESCE(tags,'') FROM agents WHERE name = ?`, name).
+	err := db.conn.QueryRow(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, implant_id, COALESCE(tags,'') FROM agents WHERE name = ?`, name).
 		Scan(&a.ID, &a.Name, &a.ExternalIP, &a.InternalIP, &a.Hostname, &a.Username, &a.OS, &a.Arch,
-			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.Tags)
+			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.ImplantID, &a.Tags)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return a, err
+}
+
+// GetAgentByImplantID finds an existing agent by its stable implant ID.
+// Used to deduplicate re-registrations of the same implant without trusting
+// attacker-controllable hostname/username fields.
+func (db *Database) GetAgentByImplantID(implantID string) (*Agent, error) {
+	a := &Agent{}
+	err := db.conn.QueryRow(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, implant_id, COALESCE(tags,'') FROM agents WHERE implant_id = ? ORDER BY last_seen DESC LIMIT 1`, implantID).
+		Scan(&a.ID, &a.Name, &a.ExternalIP, &a.InternalIP, &a.Hostname, &a.Username, &a.OS, &a.Arch,
+			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.ImplantID, &a.Tags)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -75,7 +90,7 @@ func (db *Database) GetAgentByName(name string) (*Agent, error) {
 
 // ListAgents returns all agents.
 func (db *Database) ListAgents() ([]*Agent, error) {
-	rows, err := db.conn.Query(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, COALESCE(tags,'') FROM agents ORDER BY last_seen DESC`)
+	rows, err := db.conn.Query(`SELECT id, name, external_ip, internal_ip, hostname, username, os, arch, pid, process_name, sleep, jitter, first_seen, last_seen, status, listener_id, implant_id, COALESCE(tags,'') FROM agents ORDER BY last_seen DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +100,7 @@ func (db *Database) ListAgents() ([]*Agent, error) {
 	for rows.Next() {
 		a := &Agent{}
 		if err := rows.Scan(&a.ID, &a.Name, &a.ExternalIP, &a.InternalIP, &a.Hostname, &a.Username, &a.OS, &a.Arch,
-			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.Tags); err != nil {
+			&a.PID, &a.ProcessName, &a.Sleep, &a.Jitter, &a.FirstSeen, &a.LastSeen, &a.Status, &a.ListenerID, &a.ImplantID, &a.Tags); err != nil {
 			return nil, err
 		}
 		agents = append(agents, a)
