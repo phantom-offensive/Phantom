@@ -22,6 +22,7 @@ type BuildConfig struct {
 	Sleep       int
 	Jitter      int
 	KillDate    string // Optional: "2026-12-31"
+	WorkingTime string // Optional: "08:00-18:00"
 	ServerPub   *rsa.PublicKey
 	OutputDir   string
 	Obfuscate   bool // Use garble
@@ -98,6 +99,9 @@ func BuildAgent(cfg BuildConfig) (*BuildResult, error) {
 
 	if cfg.KillDate != "" {
 		ldflags += fmt.Sprintf(" -X '%s.KillDate=%s'", module, cfg.KillDate)
+	}
+	if cfg.WorkingTime != "" {
+		ldflags += fmt.Sprintf(" -X '%s.WorkingTime=%s'", module, cfg.WorkingTime)
 	}
 	if pubKeyB64 != "" {
 		ldflags += fmt.Sprintf(" -X '%s.ServerPubKey=%s'", module, pubKeyB64)

