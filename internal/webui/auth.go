@@ -212,17 +212,17 @@ const loginPageHTML = `<!DOCTYPE html><html><head>
 <title>Phantom C2 — Login</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0e1a;color:#e8ecf4;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-card{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.5)}
-.login-card h1{text-align:center;font-size:24px;color:#a78bfa;margin-bottom:6px}
+body{background:radial-gradient(800px 500px at 85% -10%,rgba(139,92,246,0.18),transparent 60%),radial-gradient(700px 500px at -10% 20%,rgba(34,211,238,0.12),transparent 55%),#05070f;color:#eef1f8;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:rgba(14,20,36,0.85);border:1px solid #273154;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 12px 48px rgba(0,0,0,0.6),0 0 40px rgba(139,92,246,0.12);backdrop-filter:blur(10px)}
+.login-card h1{text-align:center;font-size:24px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 .login-card p{text-align:center;color:#6b7280;font-size:13px;margin-bottom:24px}
 .login-card .icon{text-align:center;font-size:48px;margin-bottom:16px}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
 .field input{width:100%;padding:11px 14px;background:#0a0e1a;border:1px solid #2a3050;border-radius:8px;color:#e8ecf4;font-size:14px;outline:none}
 .field input:focus{border-color:#7c3aed}
-.btn{width:100%;padding:12px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px}
-.btn:hover{background:#6d28d9}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9 55%,#22d3ee);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:0 4px 20px rgba(139,92,246,0.35)}
+.btn:hover{filter:brightness(1.12)}
 .error{background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;text-align:center;display:none}
 </style></head><body>
 <div class="login-card">
@@ -242,17 +242,17 @@ const loginPageHTMLError = `<!DOCTYPE html><html><head>
 <title>Phantom C2 — Login</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0e1a;color:#e8ecf4;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-card{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.5)}
-.login-card h1{text-align:center;font-size:24px;color:#a78bfa;margin-bottom:6px}
+body{background:radial-gradient(800px 500px at 85% -10%,rgba(139,92,246,0.18),transparent 60%),radial-gradient(700px 500px at -10% 20%,rgba(34,211,238,0.12),transparent 55%),#05070f;color:#eef1f8;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:rgba(14,20,36,0.85);border:1px solid #273154;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 12px 48px rgba(0,0,0,0.6),0 0 40px rgba(139,92,246,0.12);backdrop-filter:blur(10px)}
+.login-card h1{text-align:center;font-size:24px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 .login-card p{text-align:center;color:#6b7280;font-size:13px;margin-bottom:24px}
 .login-card .icon{text-align:center;font-size:48px;margin-bottom:16px}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
 .field input{width:100%;padding:11px 14px;background:#0a0e1a;border:1px solid #2a3050;border-radius:8px;color:#e8ecf4;font-size:14px;outline:none}
 .field input:focus{border-color:#7c3aed}
-.btn{width:100%;padding:12px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px}
-.btn:hover{background:#6d28d9}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9 55%,#22d3ee);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:0 4px 20px rgba(139,92,246,0.35)}
+.btn:hover{filter:brightness(1.12)}
 .error{background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;text-align:center}
 </style></head><body>
 <div class="login-card">
