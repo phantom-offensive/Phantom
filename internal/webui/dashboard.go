@@ -162,19 +162,19 @@ body {
 /* ══════ LAYOUT ══════ */
 .app { display: flex; height: calc(100vh - 52px); margin-top: 52px; }
 .sidebar {
-  width: 82px; background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(10,14,26,0.95) 100%);
+  width: 96px; background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(10,14,26,0.95) 100%);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 2px;
   overflow-y: auto;
 }
 .sidebar-btn {
-  width: 68px; padding: 8px 4px 6px; border-radius: 10px; border: none; cursor: pointer;
+  width: 80px; padding: 9px 4px 7px; border-radius: 10px; border: none; cursor: pointer;
   background: transparent; color: var(--text-muted); font-size: 24px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 3px; transition: all 0.2s; position: relative;
 }
 .sidebar-btn .sb-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
 }
 .sidebar-btn:hover { background: var(--bg-hover); color: var(--text-primary); transform: scale(1.05); }
 .sidebar-btn.active {
@@ -4764,14 +4764,14 @@ async function generateReport() {
 
 // ──── Theme Presets ────
 const themePresets = {
-  dark: {name:'Phantom Dark',bg:'#0a0e1a',secondary:'#111827',accent:'#7c3aed',accentLight:'#a78bfa',text:'#e8ecf4'},
-  light: {name:'Light',bg:'#f0f2f5',secondary:'#ffffff',accent:'#7c3aed',accentLight:'#6d28d9',text:'#1f2937'},
-  cobalt: {name:'Cobalt Strike',bg:'#0c1021',secondary:'#141a2e',accent:'#3b82f6',accentLight:'#60a5fa',text:'#c8d6e5'},
-  mythic: {name:'Mythic Dark',bg:'#1a1a2e',secondary:'#16213e',accent:'#e94560',accentLight:'#ff6b81',text:'#eaeaea'},
-  hacker: {name:'Hacker Green',bg:'#0a0a0a',secondary:'#111111',accent:'#00ff41',accentLight:'#39ff14',text:'#00ff41'},
-  ocean: {name:'Ocean',bg:'#04101f',secondary:'#081826',accent:'#38bdf8',accentLight:'#7dd3fc',text:'#e6f1fb'},
-  ember: {name:'Ember',bg:'#170a06',secondary:'#201009',accent:'#fb923c',accentLight:'#fdba74',text:'#fbece4'},
-  rose:  {name:'Rose',bg:'#160810',secondary:'#200a14',accent:'#f472b6',accentLight:'#f9a8d4',text:'#fceaf2'},
+  dark:   {name:'Phantom', bg:'#07030f', secondary:'#0d0618', accent:'#a855f7', accentLight:'#d8b4fe', text:'#f0edff'},
+  abyss:  {name:'Abyss',   bg:'#020617', secondary:'#0a0f1e', accent:'#38bdf8', accentLight:'#7dd3fc', text:'#e8f4ff'},
+  neon:   {name:'Neon',    bg:'#030712', secondary:'#0b1020', accent:'#22d3ee', accentLight:'#67e8f9', text:'#e6fbff'},
+  blood:  {name:'Blood',   bg:'#0c0205', secondary:'#160608', accent:'#f43f5e', accentLight:'#fda4af', text:'#fff0f2'},
+  toxic:  {name:'Toxic',   bg:'#050a05', secondary:'#0b140b', accent:'#4ade80', accentLight:'#86efac', text:'#ecfdf0'},
+  gold:   {name:'Gold',    bg:'#0d0803', secondary:'#161006', accent:'#f59e0b', accentLight:'#fcd34d', text:'#fff8e8'},
+  sunset: {name:'Sunset',  bg:'#12060a', secondary:'#1c0a10', accent:'#fb923c', accentLight:'#fdba74', text:'#fff2ea'},
+  light:  {name:'Light',   bg:'#f0f2f5', secondary:'#ffffff', accent:'#7c3aed', accentLight:'#6d28d9', text:'#1f2937'},
 };
 
 function applyThemePreset(preset) {
@@ -5162,7 +5162,7 @@ async function exportData() {
 }
 
 // ──── Theme Toggle ────
-const presetOrder = ['dark','light','cobalt','mythic','hacker'];
+const presetOrder = ['dark','abyss','neon','blood','toxic','gold','sunset','light'];
 let currentPresetIdx = 0;
 
 function toggleTheme() {
