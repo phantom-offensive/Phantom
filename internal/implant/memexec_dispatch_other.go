@@ -15,3 +15,7 @@ func injectShellcodeRemoteCrossPlatform(pid uint32, shellcode []byte) error {
 func injectEarlyBirdCrossPlatform(shellcode []byte) error {
 	return fmt.Errorf("Early Bird APC injection is Windows-only")
 }
+
+func injectThreadHijackCrossPlatform(shellcode []byte) error {
+	return fmt.Errorf("thread hijacking is Windows-only")
+}
