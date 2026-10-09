@@ -1635,6 +1635,15 @@ make debug      # console + test harness</pre>
     <div id="p-settings" class="page">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 
+        <!-- Appearance -->
+        <div class="card">
+          <div class="card-header"><h3><span>🎨</span> Appearance</h3></div>
+          <div class="card-body padded">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Choose a color theme.</p>
+            <div id="theme-swatches" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+          </div>
+        </div>
+
         <!-- Webhook Notifications -->
         <div class="card">
           <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
@@ -1823,7 +1832,7 @@ function nav(page) {
   const btn = event ? event.target.closest('.sidebar-btn') : null;
   if (btn) btn.classList.add('active');
   if (page === 'terminal') document.getElementById('term-input').focus();
-  if (page === 'settings') loadWebhook();
+  if (page === 'settings') { loadWebhook(); renderThemeSwatches(); }
 }
 
 // ──── Helpers ────
@@ -4760,6 +4769,9 @@ const themePresets = {
   cobalt: {name:'Cobalt Strike',bg:'#0c1021',secondary:'#141a2e',accent:'#3b82f6',accentLight:'#60a5fa',text:'#c8d6e5'},
   mythic: {name:'Mythic Dark',bg:'#1a1a2e',secondary:'#16213e',accent:'#e94560',accentLight:'#ff6b81',text:'#eaeaea'},
   hacker: {name:'Hacker Green',bg:'#0a0a0a',secondary:'#111111',accent:'#00ff41',accentLight:'#39ff14',text:'#00ff41'},
+  ocean: {name:'Ocean',bg:'#04101f',secondary:'#081826',accent:'#38bdf8',accentLight:'#7dd3fc',text:'#e6f1fb'},
+  ember: {name:'Ember',bg:'#170a06',secondary:'#201009',accent:'#fb923c',accentLight:'#fdba74',text:'#fbece4'},
+  rose:  {name:'Rose',bg:'#160810',secondary:'#200a14',accent:'#f472b6',accentLight:'#f9a8d4',text:'#fceaf2'},
 };
 
 function applyThemePreset(preset) {
@@ -4778,6 +4790,20 @@ function applyThemePreset(preset) {
   }
   localStorage.setItem('phantom-theme-preset', preset);
   document.getElementById('theme-btn').firstChild.textContent = preset === 'light' ? '☀️' : '🌙';
+  renderThemeSwatches();
+}
+
+function renderThemeSwatches() {
+  const el = document.getElementById('theme-swatches');
+  if (!el) return;
+  const active = localStorage.getItem('phantom-theme-preset') || 'dark';
+  let html = '';
+  for (const [id, t] of Object.entries(themePresets)) {
+    html += '<button onclick="applyThemePreset(\''+id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-input);border:'+(active===id?'2px solid var(--accent)':'1px solid var(--border)')+';border-radius:10px;cursor:pointer;text-align:left">'
+      + '<span style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,'+t.accent+','+t.accentLight+');flex-shrink:0;box-shadow:0 0 12px '+t.accent+'55"></span>'
+      + '<span style="font-size:12px;font-weight:600;color:var(--text-primary)">'+t.name+'</span></button>';
+  }
+  el.innerHTML = html;
 }
 
 // ──── Webhook Config ────

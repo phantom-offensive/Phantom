@@ -16,7 +16,7 @@ import (
 // WebAuth handles authentication for the Web UI.
 type WebAuth struct {
 	mu       sync.RWMutex
-	users    map[string]*WebUser // username -> user
+	users    map[string]*WebUser    // username -> user
 	sessions map[string]*WebSession // token -> session
 }
 
@@ -210,59 +210,87 @@ func randomHex(n int) string {
 const loginPageHTML = `<!DOCTYPE html><html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Phantom C2 — Login</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:radial-gradient(800px 500px at 85% -10%,rgba(139,92,246,0.18),transparent 60%),radial-gradient(700px 500px at -10% 20%,rgba(34,211,238,0.12),transparent 55%),#05070f;color:#eef1f8;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-card{background:rgba(14,20,36,0.85);border:1px solid #273154;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 12px 48px rgba(0,0,0,0.6),0 0 40px rgba(139,92,246,0.12);backdrop-filter:blur(10px)}
-.login-card h1{text-align:center;font-size:24px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.login-card p{text-align:center;color:#6b7280;font-size:13px;margin-bottom:24px}
-.login-card .icon{text-align:center;font-size:48px;margin-bottom:16px}
-.field{margin-bottom:14px}
-.field label{display:block;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
-.field input{width:100%;padding:11px 14px;background:#0a0e1a;border:1px solid #2a3050;border-radius:8px;color:#e8ecf4;font-size:14px;outline:none}
-.field input:focus{border-color:#7c3aed}
-.btn{width:100%;padding:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9 55%,#22d3ee);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:0 4px 20px rgba(139,92,246,0.35)}
-.btn:hover{filter:brightness(1.12)}
-.error{background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;text-align:center;display:none}
-</style></head><body>
-<div class="login-card">
-<div class="icon"><svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg" width="80"><defs><linearGradient id="b2g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a78bfa"/><stop offset="100%" style="stop-color:#6d28d9"/></linearGradient></defs><path d="M50 8 L15 30 L2 28 L8 32 L15 35 L28 38 L42 42 L50 44 L58 42 L72 38 L85 35 L92 32 L98 28 L85 30 Z" fill="url(#b2g)"/><path d="M50 12 L35 28 L50 36 L65 28 Z" fill="rgba(10,14,26,0.4)"/><circle cx="50" cy="26" r="2" fill="#a78bfa" opacity="0.8"/></svg></div>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#05070f;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#eef1f8;overflow:hidden;padding:20px}
+.bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(900px 600px at 85% -10%,rgba(139,92,246,0.22),transparent 60%),radial-gradient(700px 500px at -10% 30%,rgba(34,211,238,0.14),transparent 55%),radial-gradient(600px 500px at 50% 110%,rgba(232,121,249,0.12),transparent 55%),#05070f;animation:drift 18s ease-in-out infinite}
+@keyframes drift{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.card{display:flex;width:100%;max-width:780px;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(139,92,246,0.15);border:1px solid #1c2440;background:rgba(14,20,36,0.92)}
+.brand{flex:1.1;padding:48px 40px;background:linear-gradient(160deg,rgba(139,92,246,0.20),rgba(14,20,36,0.55));display:flex;flex-direction:column;justify-content:center;gap:16px;border-right:1px solid rgba(255,255,255,0.04)}
+.brand .mark{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(232,121,249,0.2));border:1px solid rgba(139,92,246,0.35);box-shadow:0 0 30px rgba(139,92,246,0.25)}
+.brand h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand p{color:#8b96b5;font-size:13px;line-height:1.7;max-width:280px}
+.form{flex:1;padding:48px 40px}
+.form h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.form .sub{color:#556183;font-size:12px;margin-bottom:26px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:#8b96b5;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.field input{width:100%;padding:12px 14px;background:#0a101f;border:1px solid #273154;border-radius:10px;color:#eef1f8;font-size:14px;outline:none;transition:border .2s,box-shadow .2s}
+.field input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.18)}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9 55%,#22d3ee);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(139,92,246,0.35);transition:filter .2s,transform .2s}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.error{background:rgba(244,63,94,0.12);color:#f43f5e;border:1px solid rgba(244,63,94,0.3);padding:11px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:center}
+.foot{text-align:center;margin-top:22px;font-size:11px;color:#556183}
+@media(max-width:640px){.card{flex-direction:column}.brand{padding:30px;border-right:none;border-bottom:1px solid rgba(255,255,255,0.04)}.form{padding:30px}}</style></head><body>
+<div class="bg"></div>
+<div class="card">
+<div class="brand">
+<div class="mark">🛡️</div>
 <h1>Phantom C2</h1>
-<p>Sign in to access the dashboard</p>
+<p>Command &amp; Control for authorized red team operations. Stealth. Precision. Control.</p>
+</div>
+<div class="form">
+<h2>Sign in</h2>
+<div class="sub">Access your operations dashboard</div>
 <form method="POST" action="/login">
 <div class="field"><label>Username</label><input type="text" name="username" autofocus required></div>
 <div class="field"><label>Password</label><input type="password" name="password" required></div>
 <button type="submit" class="btn">Sign In</button>
 </form>
-<p style="margin-top:16px;font-size:11px;color:#4b5563;text-align:center">Phantom C2 Framework</p>
-</div></body></html>`
+<div class="foot">Phantom C2 Framework</div>
+</div>
+</div>
+</body></html>`
 
 const loginPageHTMLError = `<!DOCTYPE html><html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Phantom C2 — Login</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:radial-gradient(800px 500px at 85% -10%,rgba(139,92,246,0.18),transparent 60%),radial-gradient(700px 500px at -10% 20%,rgba(34,211,238,0.12),transparent 55%),#05070f;color:#eef1f8;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-card{background:rgba(14,20,36,0.85);border:1px solid #273154;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 12px 48px rgba(0,0,0,0.6),0 0 40px rgba(139,92,246,0.12);backdrop-filter:blur(10px)}
-.login-card h1{text-align:center;font-size:24px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.login-card p{text-align:center;color:#6b7280;font-size:13px;margin-bottom:24px}
-.login-card .icon{text-align:center;font-size:48px;margin-bottom:16px}
-.field{margin-bottom:14px}
-.field label{display:block;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
-.field input{width:100%;padding:11px 14px;background:#0a0e1a;border:1px solid #2a3050;border-radius:8px;color:#e8ecf4;font-size:14px;outline:none}
-.field input:focus{border-color:#7c3aed}
-.btn{width:100%;padding:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9 55%,#22d3ee);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:0 4px 20px rgba(139,92,246,0.35)}
-.btn:hover{filter:brightness(1.12)}
-.error{background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px;text-align:center}
-</style></head><body>
-<div class="login-card">
-<div class="icon"><svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg" width="80"><defs><linearGradient id="b2g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a78bfa"/><stop offset="100%" style="stop-color:#6d28d9"/></linearGradient></defs><path d="M50 8 L15 30 L2 28 L8 32 L15 35 L28 38 L42 42 L50 44 L58 42 L72 38 L85 35 L92 32 L98 28 L85 30 Z" fill="url(#b2g)"/><path d="M50 12 L35 28 L50 36 L65 28 Z" fill="rgba(10,14,26,0.4)"/><circle cx="50" cy="26" r="2" fill="#a78bfa" opacity="0.8"/></svg></div>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#05070f;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#eef1f8;overflow:hidden;padding:20px}
+.bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(900px 600px at 85% -10%,rgba(139,92,246,0.22),transparent 60%),radial-gradient(700px 500px at -10% 30%,rgba(34,211,238,0.14),transparent 55%),radial-gradient(600px 500px at 50% 110%,rgba(232,121,249,0.12),transparent 55%),#05070f;animation:drift 18s ease-in-out infinite}
+@keyframes drift{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.card{display:flex;width:100%;max-width:780px;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(139,92,246,0.15);border:1px solid #1c2440;background:rgba(14,20,36,0.92)}
+.brand{flex:1.1;padding:48px 40px;background:linear-gradient(160deg,rgba(139,92,246,0.20),rgba(14,20,36,0.55));display:flex;flex-direction:column;justify-content:center;gap:16px;border-right:1px solid rgba(255,255,255,0.04)}
+.brand .mark{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(232,121,249,0.2));border:1px solid rgba(139,92,246,0.35);box-shadow:0 0 30px rgba(139,92,246,0.25)}
+.brand h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand p{color:#8b96b5;font-size:13px;line-height:1.7;max-width:280px}
+.form{flex:1;padding:48px 40px}
+.form h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.form .sub{color:#556183;font-size:12px;margin-bottom:26px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:#8b96b5;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.field input{width:100%;padding:12px 14px;background:#0a101f;border:1px solid #273154;border-radius:10px;color:#eef1f8;font-size:14px;outline:none;transition:border .2s,box-shadow .2s}
+.field input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.18)}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9 55%,#22d3ee);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(139,92,246,0.35);transition:filter .2s,transform .2s}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.error{background:rgba(244,63,94,0.12);color:#f43f5e;border:1px solid rgba(244,63,94,0.3);padding:11px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:center}
+.foot{text-align:center;margin-top:22px;font-size:11px;color:#556183}
+@media(max-width:640px){.card{flex-direction:column}.brand{padding:30px;border-right:none;border-bottom:1px solid rgba(255,255,255,0.04)}.form{padding:30px}}</style></head><body>
+<div class="bg"></div>
+<div class="card">
+<div class="brand">
+<div class="mark">🛡️</div>
 <h1>Phantom C2</h1>
-<p>Sign in to access the dashboard</p>
-<div class="error">Invalid username or password</div>
-<form method="POST" action="/login">
+<p>Command &amp; Control for authorized red team operations. Stealth. Precision. Control.</p>
+</div>
+<div class="form">
+<h2>Sign in</h2>
+<div class="sub">Access your operations dashboard</div>
+<div class="error">Invalid username or password</div><form method="POST" action="/login">
 <div class="field"><label>Username</label><input type="text" name="username" autofocus required></div>
 <div class="field"><label>Password</label><input type="password" name="password" required></div>
 <button type="submit" class="btn">Sign In</button>
 </form>
-</div></body></html>`
+<div class="foot">Phantom C2 Framework</div>
+</div>
+</div>
+</body></html>`
