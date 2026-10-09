@@ -40,12 +40,12 @@ type DiagnosticsResult struct {
 
 // handleDiagnostics runs the full system health check and returns it as JSON.
 func (w *WebUI) handleDiagnostics(rw http.ResponseWriter, r *http.Request) {
-	result := collectDiagnostics(w.server)
+	result := collectDiagnostics(w.server, w.bindAddr)
 	rw.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(rw).Encode(result)
 }
 
-func collectDiagnostics(srv *server.Server) DiagnosticsResult {
+func collectDiagnostics(srv *server.Server, webUIBind string) DiagnosticsResult {
 	var res DiagnosticsResult
 	groups := []DiagGroup{}
 
@@ -108,27 +108,58 @@ func collectDiagnostics(srv *server.Server) DiagnosticsResult {
 
 	// ── Network ──
 	netGrp := DiagGroup{Name: "Network"}
-	ports := []struct{ name, addr string }{
-		{"HTTP (8080)", "0.0.0.0:8080"},
-		{"HTTPS (443)", "0.0.0.0:443"},
-		{"DNS (53)", "0.0.0.0:53"},
-		{"Web UI (3000)", "0.0.0.0:3000"},
+
+	// Build the set of ports Phantom itself is already listening on so we
+	// do not report our own listeners as conflicts.
+	phantomPorts := map[string]bool{}
+	if srv != nil {
+		for _, l := range srv.ListenerMgr.List() {
+			if l.IsRunning() {
+				addr := l.GetBindAddr()
+				port := addr
+				if strings.Contains(addr, ":") {
+					if _, p, err := net.SplitHostPort(addr); err == nil {
+						port = p
+					}
+				}
+				phantomPorts[port] = true
+			}
+		}
+	}
+	if webUIBind != "" {
+		port := webUIBind
+		if strings.Contains(webUIBind, ":") {
+			if _, p, err := net.SplitHostPort(webUIBind); err == nil {
+				port = p
+			}
+		}
+		phantomPorts[port] = true
+	}
+
+	ports := []struct{ name, addr, port string }{
+		{"HTTP", "0.0.0.0:8080", "8080"},
+		{"HTTPS", "0.0.0.0:443", "443"},
+		{"DNS", "0.0.0.0:53", "53"},
+		{"Web UI", "0.0.0.0:3000", "3000"},
 	}
 	for _, p := range ports {
+		if phantomPorts[p.port] {
+			netGrp.Checks = append(netGrp.Checks, DiagCheck{p.name + " (" + p.port + ")", "Phantom is listening", "pass"})
+			continue
+		}
 		ln, err := net.Listen("tcp", p.addr)
 		if err != nil {
 			msg := err.Error()
-			status := "fail"
+			status := "warn"
 			if strings.Contains(msg, "permission denied") {
 				msg = "Permission denied (needs sudo for ports < 1024)"
-				status = "warn"
 			} else if strings.Contains(msg, "address already in use") {
-				msg = "Port already in use — check for other services"
+				msg = "In use by another service"
 			}
-			netGrp.Checks = append(netGrp.Checks, DiagCheck{p.name, msg, status})
+			netGrp.Checks = append(netGrp.Checks, DiagCheck{p.name + " (" + p.port + ")", msg, status})
 		} else {
 			ln.Close()
-			netGrp.Checks = append(netGrp.Checks, DiagCheck{p.name, "Available", "pass"})
+			netGrp.Checks = append(netGrp.Checks, DiagCheck{p.name + " (" + p.port + ")", "Available", "pass"})
 		}
 	}
 	conn, err := net.DialTimeout("tcp", "8.8.8.8:53", 3*time.Second)
