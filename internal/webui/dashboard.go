@@ -557,6 +557,7 @@ tr.clickable { cursor: pointer; }
     <button class="sidebar-btn" onclick="nav('events')" title="Events">📜<span class="sb-label">Events</span></button>
     <button class="sidebar-btn" onclick="nav('settings')" title="Settings">⚙️<span class="sb-label">Settings</span></button>
     <button class="sidebar-btn" onclick="nav('diagnostics')" title="Diagnostics">🩺<span class="sb-label">Diagnostics</span></button>
+    <button class="sidebar-btn" onclick="nav('redirector')" title="Redirector">🔄<span class="sb-label">Redirector</span></button>
     <div class="sidebar-divider"></div>
     <button class="sidebar-btn" onclick="nav('docs')" title="Documentation">📖<span class="sb-label">Docs</span></button>
     <div style="flex:1"></div>
@@ -1581,6 +1582,42 @@ make debug      # console + test harness</pre>
     </div>
 
     <!-- ══════ SETTINGS ══════ -->
+    <!-- ══════ REDIRECTOR ══════ -->
+    <div id="p-redirector" class="page">
+      <div class="card">
+        <div class="card-header"><h3><span>🔄</span> Redirector Generator</h3></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div>
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Public Domain</label>
+              <input type="text" id="redir-domain" placeholder="updates.example.com" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">C2 Host (internal)</label>
+              <input type="text" id="redir-host" placeholder="10.0.0.5" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">C2 Port</label>
+              <input type="number" id="redir-c2port" value="8080" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Redirector Port</label>
+              <input type="number" id="redir-port" value="443" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Profile (optional)</label>
+              <input type="text" id="redir-profile" placeholder="default" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace;box-sizing:border-box">
+            </div>
+            <div style="display:flex;align-items:flex-end;padding-bottom:9px">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-primary)"><input type="checkbox" id="redir-le"> Let's Encrypt</label>
+            </div>
+          </div>
+          <button class="qbtn" onclick="generateRedirector()" style="font-size:12px;margin-bottom:14px">Generate Configs</button>
+          <pre id="redir-output" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:14px;overflow-x:auto;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;min-height:100px;color:var(--text-primary)">Generated configs will appear here.</pre>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════ DIAGNOSTICS ══════ -->
     <div id="p-diagnostics" class="page">
       <div class="card">
@@ -4573,6 +4610,31 @@ async function bulkRemoveDead() {
     await fetch('/api/agent/remove', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.dataset.id})});
   }
   refreshAll();
+}
+
+// ──── Redirector ────
+async function generateRedirector() {
+  const out = document.getElementById('redir-output');
+  out.textContent = 'Generating redirector configs...';
+  const body = {
+    domain: document.getElementById('redir-domain').value.trim(),
+    c2_host: document.getElementById('redir-host').value.trim(),
+    c2_port: document.getElementById('redir-c2port').value,
+    redir_port: document.getElementById('redir-port').value,
+    profile: document.getElementById('redir-profile').value.trim(),
+    lets_encrypt: document.getElementById('redir-le').checked
+  };
+  try {
+    const resp = await fetch('/api/redirector', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const data = await resp.json();
+    if (data.success) {
+      out.textContent = data.message + '\n\n' + data.output;
+    } else {
+      out.textContent = 'Error: ' + (data.message || 'unknown');
+    }
+  } catch(e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
 }
 
 // ──── Diagnostics ────
