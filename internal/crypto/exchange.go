@@ -45,9 +45,24 @@ func PackKeyExchange(serverPubKey *rsa.PublicKey, sessionKey []byte, payload []b
 	return out, nil
 }
 
-// UnpackKeyExchange parses a hybrid registration blob, returning the AES
-// session key and the decrypted registration payload.
+// UnpackKeyExchange parses a registration blob, returning the AES session key
+// and the decrypted registration payload. It supports both the legacy format
+// (a single RSA-OAEP blob of [AES key][payload], used by PhantomImplant) and
+// the hybrid format ([2-byte rsaLen][rsaBlob][aesBlob]).
 func UnpackKeyExchange(serverPrivKey *rsa.PrivateKey, encrypted []byte) (sessionKey []byte, payload []byte, err error) {
+	// Legacy format: RSA ciphertext is exactly one key-size block.
+	if len(encrypted) == serverPrivKey.Size() {
+		blob, derr := RSADecrypt(serverPrivKey, encrypted)
+		if derr != nil {
+			return nil, nil, derr
+		}
+		if len(blob) < AESKeySize {
+			return nil, nil, errors.New("decrypted blob too short to contain AES key")
+		}
+		return blob[:AESKeySize], blob[AESKeySize:], nil
+	}
+
+	// Hybrid format.
 	if len(encrypted) < 2 {
 		return nil, nil, errors.New("key exchange blob too short")
 	}
