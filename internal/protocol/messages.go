@@ -9,6 +9,7 @@ type RegisterRequest struct {
 	PID         int    `msgpack:"pid"`
 	ProcessName string `msgpack:"process_name"`
 	InternalIP  string `msgpack:"internal_ip"`
+	ImplantID   string `msgpack:"implant_id"`
 }
 
 // RegisterResponse is returned by the server after successful registration.

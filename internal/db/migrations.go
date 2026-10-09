@@ -29,7 +29,8 @@ func (db *Database) migrate() error {
 			first_seen   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			last_seen    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			status       TEXT NOT NULL DEFAULT 'active',
-			listener_id  TEXT NOT NULL DEFAULT ''
+			listener_id  TEXT NOT NULL DEFAULT '',
+			implant_id   TEXT NOT NULL DEFAULT ''
 		)`,
 
 		`CREATE TABLE IF NOT EXISTS tasks (
@@ -106,6 +107,7 @@ func (db *Database) migrate() error {
 
 		// v2 migrations — safe to re-run (ALTER TABLE is idempotent via IGNORE)
 		`ALTER TABLE agents ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE agents ADD COLUMN implant_id TEXT NOT NULL DEFAULT ''`,
 	}
 
 	for _, m := range migrations {

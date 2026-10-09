@@ -64,6 +64,7 @@ func (t *DNSTransport) Register(sysinfo SysInfo) error {
 		PID:         sysinfo.PID,
 		ProcessName: sysinfo.ProcessName,
 		InternalIP:  sysinfo.InternalIP,
+		ImplantID:   ImplantID(),
 	}
 
 	payload, err := protocol.Marshal(regReq)
