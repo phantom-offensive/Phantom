@@ -133,16 +133,10 @@ func (l *TCPListener) handleConn(conn net.Conn) {
 	switch env.Type {
 	case protocol.MsgRegisterRequest:
 		// Handle registration
-		payload, err := crypto.RSADecrypt(l.privKey, env.Payload)
+		sessionKey, regPayload, err := crypto.UnpackKeyExchange(l.privKey, env.Payload)
 		if err != nil {
 			return
 		}
-
-		if len(payload) < 32 {
-			return
-		}
-		sessionKey := payload[:32]
-		regPayload := payload[32:]
 
 		var regReq protocol.RegisterRequest
 		if err := protocol.Unmarshal(regPayload, &regReq); err != nil {
