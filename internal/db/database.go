@@ -22,15 +22,27 @@ func Open(path string) (*Database, error) {
 		return nil, fmt.Errorf("create db directory: %w", err)
 	}
 
-	conn, err := sql.Open("sqlite", path+"?_journal_mode=WAL&_busy_timeout=5000")
+	conn, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	// Enable foreign keys
-	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("enable foreign keys: %w", err)
+	// SQLite only allows one writer at a time; serialize access to avoid
+	// SQLITE_BUSY under concurrent check-in/audit/task writes.
+	conn.SetMaxOpenConns(1)
+
+	// Enable foreign keys, WAL journaling and a busy timeout so concurrent
+	// access waits briefly instead of failing immediately.
+	pragmas := []string{
+		"PRAGMA foreign_keys = ON",
+		"PRAGMA busy_timeout = 5000",
+		"PRAGMA journal_mode = WAL",
+	}
+	for _, p := range pragmas {
+		if _, err := conn.Exec(p); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("apply %s: %w", p, err)
+		}
 	}
 
 	db := &Database{conn: conn}

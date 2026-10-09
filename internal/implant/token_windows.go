@@ -187,7 +187,7 @@ func MakeToken(domain, username, password string) ([]byte, error) {
 
 // GetCurrentTokenInfo returns information about the current thread token.
 func GetCurrentTokenInfo() ([]byte, error) {
-	output, _ := ExecuteShell([]string{"whoami /all"})
+	output, _ := ExecuteShell([]string{`C:\Windows\System32\whoami.exe /all`})
 	return output, nil
 }
 
