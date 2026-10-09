@@ -1058,6 +1058,18 @@ tr.clickable { cursor: pointer; }
                 </div>
               </div>
 
+              <!-- Kill Date + Working Time -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div>
+                  <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Kill Date (optional)</label>
+                  <input type="date" id="pl-killdate" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px">
+                </div>
+                <div>
+                  <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Working Time (optional)</label>
+                  <input type="text" id="pl-workingtime" placeholder="08:00-18:00" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:13px;font-family:monospace">
+                </div>
+              </div>
+
               <!-- App template (hidden) -->
               <div id="pl-app-row" style="margin-bottom:12px;display:none">
                 <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">App Template</label>
@@ -3158,6 +3170,8 @@ async function generatePayload() {
   const url = document.getElementById('pl-url').value;
   const sleep = parseInt(document.getElementById('pl-sleep').value) || 10;
   const jitter = parseInt(document.getElementById('pl-jitter').value) || 20;
+  const killDate = document.getElementById('pl-killdate').value;
+  const workingTime = document.getElementById('pl-workingtime').value.trim();
   const appTemplate = document.getElementById('pl-app-template').value;
   const obfuscateLevel = (document.querySelector('input[name="pl-obfuscation"]:checked') || {}).value || 'none';
 
@@ -3181,6 +3195,8 @@ async function generatePayload() {
         listener_url: url,
         sleep: sleep,
         jitter: jitter,
+        kill_date: killDate,
+        working_time: workingTime,
         app_template: appTemplate,
         obfuscate_level: obfuscateLevel
       })

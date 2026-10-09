@@ -141,3 +141,52 @@ func CheckKillDate(killDate string) bool {
 
 	return time.Now().After(t)
 }
+
+// CheckWorkingTime returns true if the current time is OUTSIDE the configured
+// working-hours window (i.e. the agent should not beacon right now).
+// Format: "HH:MM-HH:MM" (24h), e.g. "08:00-18:00". Empty disables the check.
+func CheckWorkingTime(workingTime string) bool {
+	if workingTime == "" {
+		return false
+	}
+	parts := strings.SplitN(workingTime, "-", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	start, err1 := time.Parse("15:04", strings.TrimSpace(parts[0]))
+	end, err2 := time.Parse("15:04", strings.TrimSpace(parts[1]))
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	now := time.Now()
+	nowMin := now.Hour()*60 + now.Minute()
+	startMin := start.Hour()*60 + start.Minute()
+	endMin := end.Hour()*60 + end.Minute()
+	if startMin < endMin {
+		return nowMin < startMin || nowMin >= endMin
+	}
+	// Overnight window (e.g. 22:00-06:00)
+	return nowMin < startMin && nowMin >= endMin
+}
+
+// SleepUntilWorkingHours sleeps until the start of the next working window.
+// No-op if the schedule is disabled or malformed.
+func SleepUntilWorkingHours(workingTime string) {
+	if workingTime == "" {
+		return
+	}
+	parts := strings.SplitN(workingTime, "-", 2)
+	if len(parts) != 2 {
+		return
+	}
+	start, err := time.Parse("15:04", strings.TrimSpace(parts[0]))
+	if err != nil {
+		return
+	}
+	now := time.Now()
+	startToday := time.Date(now.Year(), now.Month(), now.Day(), start.Hour(), start.Minute(), 0, 0, now.Location())
+	if !startToday.After(now) {
+		startToday = startToday.Add(24 * time.Hour)
+	}
+	time.Sleep(time.Until(startToday))
+}
