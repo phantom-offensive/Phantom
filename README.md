@@ -75,7 +75,7 @@
 **Interface**
 - **Dual interface** — choose CLI, Web UI, or both on startup
 - **Operator authentication** — first-run setup + masked password login
-- **Web UI dashboard** — Cobalt Strike/Mythic-inspired with light/dark theme toggle
+- **Web UI dashboard** — 8 color themes (Phantom, Abyss, Neon, Blood, Toxic, Gold, Sunset, Light) with picker
 - **CLI shell** — styled prompt with session recording and real-time event notifications
 - **Keyboard shortcuts** — Alt+1-9 tab switching, `/` to focus terminal
 
@@ -170,7 +170,7 @@
 - **API key authentication** — generate keys for scripting/automation (X-API-Key header)
 
 **Web UI (Full Feature Parity with CLI)**
-- **3-color theme** — violet + cyan + red only; light/dark toggle with persistence
+- **8 color themes** — Phantom, Abyss, Neon, Blood, Toxic, Gold, Sunset, Light (picker in Settings)
 - **Compact agent rows** — status dot, OS icon, host/user/IP/last-seen all in one line
 - **Labeled sidebar icons** — all tabs with icons and labels
 - **Dashboard** — real-time stats, beacon graphs, network topology, engagement timer
@@ -187,7 +187,7 @@
 - **File browser** — OS-adaptive (dir/ls), clickable folders, Up/Refresh navigation
 - **Credential manager** — add/view/remove harvested credentials with type tagging
 - **Loot viewer** — browse captured output by type (creds, files, screenshots, keylogs)
-- **Pivot map** — canvas network graph showing agents grouped by subnet
+- **Pivot map** — glowing node graph with OS icons, network chips, and rich agent labels
 - **IOC dashboard** — tracks files dropped, network connections, processes, persistence
 - **Session replay** — replay any agent's full command history with timestamps
 - **Command templates** — 6 built-in templates (Initial Enum, AD Enum, etc.) with one-click Run All
@@ -199,6 +199,10 @@
 - **Export data** — download full engagement data as JSON
 - **SOCKS proxy** — start/stop C2-tunneled SOCKS from the terminal tab
 - **Sleep/jitter control** — adjust beacon intervals from the Web UI
+- **WorkingTime + KillDate** — schedule beaconing hours and agent self-destruct from the payload form
+- **Diagnostics page** — one-click system health check (config, DB, network, listeners, build tools)
+- **Redirector generator** — nginx/Apache/Cloudflare/Caddy/socat/iptables configs from the UI
+- **Webhook config** — Slack/Discord URLs managed from Settings (server-side, persisted)
 - **Multi-operator** — concurrent CLI + Web UI sessions
 
 **Operations**
@@ -245,7 +249,7 @@ bash scripts/generate_certs.sh
 make server
 
 # Step 8: Start Phantom
-./build/phantom-server --config configs/server.yaml
+./build/phantom-server --config configs/server.yaml --mode both
 ```
 
 ### Windows
@@ -279,19 +283,19 @@ go run ./cmd/keygen -out configs/
 go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server
 
 # Step 8: Start Phantom
-.\build\phantom-server.exe --config configs\server.yaml
+.\build\phantom-server.exe --config configs\server.yaml --mode both
 ```
 
 ### Quick Install (One-liner)
 
 **Linux:**
 ```bash
-git clone https://github.com/phantom-offensive/Phantom.git && cd Phantom && go mod tidy && go run ./cmd/keygen -out configs/ && make server && ./build/phantom-server --config configs/server.yaml
+git clone https://github.com/phantom-offensive/Phantom.git && cd Phantom && go mod tidy && go run ./cmd/keygen -out configs/ && make server && ./build/phantom-server --config configs/server.yaml --mode both
 ```
 
 **Windows (PowerShell):**
 ```powershell
-git clone https://github.com/phantom-offensive/Phantom.git; cd Phantom; go mod tidy; go run ./cmd/keygen -out configs/; go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server; .\build\phantom-server.exe --config configs\server.yaml
+git clone https://github.com/phantom-offensive/Phantom.git; cd Phantom; go mod tidy; go run ./cmd/keygen -out configs/; go build -ldflags "-s -w" -o build\phantom-server.exe ./cmd/server; .\build\phantom-server.exe --config configs\server.yaml --mode both
 ```
 
 ### Docker (Recommended)
@@ -329,8 +333,12 @@ the CLI entirely and use the Web UI at http://localhost:3000.
 ### Starting the Server
 
 ```bash
-./build/phantom-server --config configs/server.yaml
+./build/phantom-server --config configs/server.yaml --mode both
 ```
+
+Modes: `--mode both` (CLI + Web UI, recommended), `--mode web` (Web UI only), or
+`--mode cli` (CLI only). Add `--headless` to skip the operator login prompt for
+background/daemon starts.
 
 You will see:
 
@@ -341,7 +349,7 @@ You will see:
  /_/   \____/  /_/ |_/_/|_/  /_/   \____//_/  /_/
 
   [::] Phantom C2 Framework — Red Team Operations
-  [::] Version: dev
+  [::] Version: 1.0.2
 
   [*] Loading configuration from configs/server.yaml
   [*] Initializing server...
@@ -368,6 +376,13 @@ You will see:
   remove <name|id>               Remove a dead agent
   loot [agent]                   View captured loot
   events                         View event log
+  doctor                         Run system diagnostics
+  version                        Show version
+  report <md|csv|all>            Generate engagement report
+  webui                          Show Web UI URL
+  webhook <type> <url>           Configure Slack/Discord notifications
+  redirector <domain> <ip>       Generate redirector configs
+  exchannel <type> ...           Manage External C2 channels
   clear                          Clear screen
   help                           Show this help
   exit                           Shutdown and exit
@@ -393,7 +408,7 @@ You will see:
       dc-prod\admin
 
   phantom [silent-falcon] > ad-help
-  (shows all 22 AD commands)
+  (shows all 24 AD commands)
 
   phantom [silent-falcon] > ad-enum-users
   phantom [silent-falcon] > ad-kerberoast
