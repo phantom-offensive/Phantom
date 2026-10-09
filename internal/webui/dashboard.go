@@ -1635,6 +1635,26 @@ make debug      # console + test harness</pre>
     <div id="p-settings" class="page">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 
+        <!-- Webhook Notifications -->
+        <div class="card">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3><span>🔔</span> Webhook Notifications</h3>
+            <button class="qbtn" onclick="testWebhook()" style="font-size:11px">Test</button>
+          </div>
+          <div class="card-body padded">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Slack/Discord notifications for agent registration and listener events. Persisted server-side.</p>
+            <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Slack Webhook URL</label>
+            <input id="webhook-slack" placeholder="https://hooks.slack.com/services/..." style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:12px">
+            <label style="display:block;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Discord Webhook URL</label>
+            <input id="webhook-discord" placeholder="https://discord.com/api/webhooks/..." style="width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;font-family:monospace;box-sizing:border-box">
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="qbtn" onclick="saveWebhook()" style="font-size:12px">Save</button>
+              <button class="qbtn" onclick="clearWebhook()" style="font-size:12px">Clear</button>
+            </div>
+            <div id="webhook-status" style="margin-top:10px;font-size:12px"></div>
+          </div>
+        </div>
+
         <!-- API Keys -->
         <div class="card">
           <div class="card-header"><h3><span>🔐</span> API Keys</h3></div>
@@ -1803,6 +1823,7 @@ function nav(page) {
   const btn = event ? event.target.closest('.sidebar-btn') : null;
   if (btn) btn.classList.add('active');
   if (page === 'terminal') document.getElementById('term-input').focus();
+  if (page === 'settings') loadWebhook();
 }
 
 // ──── Helpers ────
@@ -4610,6 +4631,43 @@ async function bulkRemoveDead() {
     await fetch('/api/agent/remove', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:c.dataset.id})});
   }
   refreshAll();
+}
+
+// ──── Webhook ────
+async function loadWebhook() {
+  try {
+    const resp = await fetch('/api/webhook');
+    const data = await resp.json();
+    document.getElementById('webhook-slack').value = data.slack_url || '';
+    document.getElementById('webhook-discord').value = data.discord_url || '';
+  } catch(e) {}
+}
+async function saveWebhook() {
+  const slack = document.getElementById('webhook-slack').value.trim();
+  const discord = document.getElementById('webhook-discord').value.trim();
+  const st = document.getElementById('webhook-status');
+  try {
+    const resp = await fetch('/api/webhook', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slack_url:slack, discord_url:discord})});
+    const data = await resp.json();
+    st.innerHTML = data.success ? '<span style="color:var(--green)">'+escHtml(data.message)+'</span>' : '<span style="color:var(--red)">'+escHtml(data.message)+'</span>';
+  } catch(e) {
+    st.innerHTML = '<span style="color:var(--red)">Request failed: '+escHtml(e.message)+'</span>';
+  }
+}
+async function testWebhook() {
+  const st = document.getElementById('webhook-status');
+  try {
+    const resp = await fetch('/api/webhook/test', {method:'POST'});
+    const data = await resp.json();
+    st.innerHTML = data.success ? '<span style="color:var(--green)">'+escHtml(data.message)+'</span>' : '<span style="color:var(--red)">'+escHtml(data.message)+'</span>';
+  } catch(e) {
+    st.innerHTML = '<span style="color:var(--red)">Request failed: '+escHtml(e.message)+'</span>';
+  }
+}
+async function clearWebhook() {
+  document.getElementById('webhook-slack').value = '';
+  document.getElementById('webhook-discord').value = '';
+  await saveWebhook();
 }
 
 // ──── Redirector ────

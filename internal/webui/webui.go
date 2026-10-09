@@ -111,6 +111,8 @@ func (w *WebUI) Start() error {
 	mux.HandleFunc("/api/processlist", w.auth.AuthMiddleware(w.handleProcessList))
 	mux.HandleFunc("/api/diagnostics", w.auth.AuthMiddleware(w.handleDiagnostics))
 	mux.HandleFunc("/api/redirector", w.auth.AuthMiddleware(w.handleRedirectorGenerate))
+	mux.HandleFunc("/api/webhook", w.auth.AuthMiddleware(w.handleWebhook))
+	mux.HandleFunc("/api/webhook/test", w.auth.AuthMiddleware(w.handleWebhookTest))
 
 	// External C2 channel management (auth required)
 	mux.HandleFunc("/api/exchannel/list", w.auth.AuthMiddleware(w.handleExChannelList))
