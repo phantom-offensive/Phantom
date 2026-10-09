@@ -25,6 +25,8 @@ phantom-agent
 
 # Database
 data/*.db
+data/*.db-wal
+data/*.db-shm
 
 # Runtime logs and sessions
 logs/
