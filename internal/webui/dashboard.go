@@ -3686,33 +3686,61 @@ function drawPivotGraph() {
   const canvas = document.getElementById('pivot-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  canvas.width = canvas.offsetWidth * 2;
-  canvas.height = 500 * 2;
-  ctx.scale(2, 2);
-  const W = canvas.offsetWidth, H = 500;
+  const cssW = canvas.offsetWidth || 900;
+  const H = 560;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssW * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cssW;
   ctx.clearRect(0, 0, W, H);
 
+  const cssv = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const accent = cssv('--accent-light') || '#a78bfa';
+  const accentDim = cssv('--accent') || '#7c3aed';
+  const textColor = cssv('--text-primary') || '#e8ecf4';
+  const muted = cssv('--text-muted') || '#556183';
+  const border = cssv('--border') || '#1c2440';
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 24) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 24) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
   if (!window._cachedAgents || window._cachedAgents.length === 0) {
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
-    ctx.font = '14px "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
+    ctx.fillStyle = muted; ctx.font = '14px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('No agents connected — deploy agents to see the pivot map', W/2, H/2);
     return;
   }
 
   const agents = window._cachedAgents;
-  const c2x = W/2, c2y = 50;
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-light').trim() || '#a78bfa';
-  const green = '#10b981', red = '#ef4444', yellow = '#f59e0b', muted = '#5a6580';
-  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#e8ecf4';
+  const c2x = W/2, c2y = 46;
 
-  // Draw C2 server
-  ctx.fillStyle = accent;
-  ctx.beginPath(); ctx.arc(c2x, c2y, 22, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('C2', c2x, c2y+5);
-  ctx.fillStyle = textColor; ctx.font = '10px sans-serif'; ctx.fillText('Phantom C2', c2x, c2y+38);
+  // Legend
+  const legend = [['#10b981','Active'],['#f59e0b','Dormant'],['#ef4444','Dead']];
+  let lx = 16;
+  legend.forEach(([c, label]) => {
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(lx, 20, 6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = muted; ctx.font = '10px "Segoe UI", sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(label, lx + 10, 24);
+    lx += 74;
+  });
 
-  // Group agents by network
+  // C2 node
+  const c2grad = ctx.createRadialGradient(c2x, c2y, 4, c2x, c2y, 30);
+  c2grad.addColorStop(0, accent); c2grad.addColorStop(1, accentDim);
+  ctx.save();
+  ctx.shadowColor = accent; ctx.shadowBlur = 26;
+  ctx.fillStyle = c2grad; ctx.beginPath(); ctx.arc(c2x, c2y, 24, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#0b0f1a'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('C2', c2x, c2y+4);
+  ctx.fillStyle = textColor; ctx.font = 'bold 10px "Segoe UI", sans-serif';
+  ctx.fillText('PHANTOM', c2x, c2y + 40);
+
+  // Group by /24 network
   const networks = {};
   agents.forEach(a => {
     const ip = a.ip || '0.0.0.0';
@@ -3722,46 +3750,83 @@ function drawPivotGraph() {
   });
 
   const netKeys = Object.keys(networks);
-  const netSpacing = W / (netKeys.length + 1);
+  const cols = Math.min(netKeys.length, 3);
+  const netW = W / cols;
+  const netH = Math.max(210, ...netKeys.map(k => networks[k].length * 82 + 60));
 
   netKeys.forEach((net, ni) => {
-    const nx = netSpacing * (ni + 1);
-    const ny = 140;
+    const col = ni % cols;
+    const row = Math.floor(ni / cols);
+    const nx = netW * col + netW/2;
+    const ny = 120 + row * (netH + 22);
 
-    // Network label
-    ctx.fillStyle = yellow;
+    // Curved edge C2 -> network
+    const ctrlY = (c2y + ny) / 2;
+    ctx.strokeStyle = accentDim; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.65;
+    ctx.beginPath(); ctx.moveTo(c2x, c2y + 24);
+    ctx.bezierCurveTo(c2x, ctrlY, nx, ctrlY, nx, ny - 24);
+    ctx.stroke(); ctx.globalAlpha = 1;
+
+    // Network chip
     ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(net, nx, ny - 10);
+    const chipW = ctx.measureText(net).width + 22;
+    ctx.fillStyle = 'rgba(10,14,26,0.9)';
+    ctx.strokeStyle = accentDim; ctx.lineWidth = 1;
+    roundRect(ctx, nx - chipW/2, ny - 26, chipW, 22, 11);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = accent; ctx.fillText(net, nx, ny - 11);
 
-    // Network box
-    const boxH = Math.max(120, networks[net].length * 70 + 30);
-    ctx.strokeStyle = muted; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
-    ctx.strokeRect(nx - 80, ny, 160, boxH);
-    ctx.setLineDash([]);
+    // Network container
+    const boxH = networks[net].length * 82 + 44;
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    ctx.strokeStyle = border; ctx.lineWidth = 1;
+    roundRect(ctx, nx - netW/2 + 14, ny, netW - 28, boxH, 14);
+    ctx.fill(); ctx.stroke();
 
-    // Line from C2 to network
-    ctx.strokeStyle = accent; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(c2x, c2y+22); ctx.lineTo(nx, ny); ctx.stroke();
-
-    // Agents in network
+    // Agents
     networks[net].forEach((a, ai) => {
-      const ax = nx, ay = ny + 35 + ai * 65;
-      const color = a.status === 'active' ? green : red;
+      const ax = nx, ay = ny + 36 + ai * 82;
+      const color = a.status === 'active' ? '#10b981' : a.status === 'dormant' ? '#f59e0b' : '#ef4444';
 
-      // Agent node
-      ctx.fillStyle = color;
-      ctx.beginPath(); ctx.arc(ax, ay, 16, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(a.os === 'windows' ? 'W' : 'L', ax, ay+4);
+      ctx.save();
+      if (a.status === 'active') { ctx.shadowColor = '#10b981'; ctx.shadowBlur = 16; }
 
-      // Agent label
-      ctx.fillStyle = textColor; ctx.font = 'bold 10px sans-serif';
-      ctx.fillText(a.name, ax, ay + 30);
+      // halo ring
+      ctx.fillStyle = color + '22';
+      ctx.beginPath(); ctx.arc(ax, ay, 24, 0, Math.PI*2); ctx.fill();
+
+      // node body
+      const g = ctx.createRadialGradient(ax-6, ay-6, 2, ax, ay, 18);
+      g.addColorStop(0, color); g.addColorStop(1, color + '99');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(ax, ay, 18, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // OS icon
+      const osIcon = {windows:'🪟',linux:'🐧',darwin:'🍎',android:'📱',ios:'🍎'}[a.os] || '💻';
+      ctx.font = '13px "Segoe UI Emoji", "Segoe UI", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(osIcon, ax, ay + 4);
+
+      // labels
+      ctx.fillStyle = textColor; ctx.font = 'bold 11px "Segoe UI", sans-serif';
+      ctx.fillText(a.name, ax, ay + 34);
       ctx.fillStyle = muted; ctx.font = '9px monospace';
-      ctx.fillText(a.ip + ' | ' + a.hostname, ax, ay + 42);
+      ctx.fillText((a.username || '?') + '@' + (a.hostname || '?'), ax, ay + 47);
+      ctx.fillText(a.ip + '  ·  ' + (a.last_seen || ''), ax, ay + 60);
     });
   });
 }
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 
 // ──── IOC Dashboard ────
 function updateIOC() {
