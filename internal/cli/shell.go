@@ -67,6 +67,24 @@ type Shell struct {
 }
 
 // NewShell creates a new CLI shell.
+// osLabel returns a friendly display name for an agent OS value.
+func osLabel(os string) string {
+	switch os {
+	case "linux":
+		return "Linux"
+	case "windows":
+		return "Windows"
+	case "darwin":
+		return "macOS"
+	case "android":
+		return "Android"
+	case "ios":
+		return "iOS"
+	default:
+		return os
+	}
+}
+
 func NewShell(srv *server.Server, operator string) *Shell {
 	return &Shell{
 		server:   srv,
@@ -594,10 +612,7 @@ func (sh *Shell) cmdAgents() {
 	t := NewTable("ID", "Name", "OS", "Hostname", "User", "IP", "Sleep", "Last Seen", "Status")
 	t.Title = title
 	for _, a := range agents {
-		osArch := a.OS
-		if a.Arch != "" {
-			osArch = a.OS
-		}
+		osArch := osLabel(a.OS)
 		t.AddRow(
 			util.ShortID(a.ID),
 			a.Name,
@@ -676,7 +691,7 @@ func (sh *Shell) cmdInteract(args []string) {
 		colorViolet, colorReset)
 	fmt.Printf("  %s║%s  %s%-42s%s %s║%s\n",
 		colorViolet, colorReset,
-		colorGrayDim, fmt.Sprintf("%s@%s  (%s/%s)", agent.Username, agent.Hostname, agent.OS, agent.Arch), colorReset,
+		colorGrayDim, fmt.Sprintf("%s@%s  (%s/%s)", agent.Username, agent.Hostname, osLabel(agent.OS), agent.Arch), colorReset,
 		colorViolet, colorReset)
 	fmt.Printf("  %s║%s  IP  %s%-18s%s Sleep %s%ds/%d%%%s  %s%s %s%-6s%s %s║%s\n",
 		colorViolet, colorReset,
@@ -1561,7 +1576,7 @@ func (sh *Shell) cmdAgentInfo() {
 	fmt.Printf("  %s%s  ID%s          %s%s%s\n", colorBold, colorDim, colorReset, colorPurple, a.ID, colorReset)
 	fmt.Printf("  %s%s  Hostname%s    %s%s%s\n", colorBold, colorDim, colorReset, colorWhite, a.Hostname, colorReset)
 	fmt.Printf("  %s%s  Username%s    %s%s%s\n", colorBold, colorDim, colorReset, colorWhite, a.Username, colorReset)
-	fmt.Printf("  %s%s  OS / Arch%s   %s%s / %s%s\n", colorBold, colorDim, colorReset, colorCyan, a.OS, a.Arch, colorReset)
+	fmt.Printf("  %s%s  OS / Arch%s   %s%s / %s%s\n", colorBold, colorDim, colorReset, colorCyan, osLabel(a.OS), a.Arch, colorReset)
 	fmt.Printf("  %s%s  Process%s     %s%s%s (PID %d)\n", colorBold, colorDim, colorReset, colorWhite, a.ProcessName, colorReset, a.PID)
 	fmt.Printf("  %s%s  Internal%s    %s%s%s\n", colorBold, colorDim, colorReset, colorCyan, a.InternalIP, colorReset)
 	fmt.Printf("  %s%s  External%s    %s%s%s\n", colorBold, colorDim, colorReset, colorCyan, a.ExternalIP, colorReset)
