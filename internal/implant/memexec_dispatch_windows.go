@@ -13,3 +13,7 @@ func injectShellcodeRemoteCrossPlatform(pid uint32, shellcode []byte) error {
 func injectEarlyBirdCrossPlatform(shellcode []byte) error {
 	return InjectShellcodeEarlyBird(shellcode)
 }
+
+func injectThreadHijackCrossPlatform(shellcode []byte) error {
+	return InjectShellcodeThreadHijack(shellcode)
+}
