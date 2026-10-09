@@ -17,3 +17,7 @@ func injectEarlyBirdCrossPlatform(shellcode []byte) error {
 func injectThreadHijackCrossPlatform(shellcode []byte) error {
 	return InjectShellcodeThreadHijack(shellcode)
 }
+
+func injectThreadHijackEnumCrossPlatform(processName string, shellcode []byte) error {
+	return ThreadHijackRemoteEnum(processName, shellcode)
+}

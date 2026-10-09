@@ -19,3 +19,7 @@ func injectEarlyBirdCrossPlatform(shellcode []byte) error {
 func injectThreadHijackCrossPlatform(shellcode []byte) error {
 	return fmt.Errorf("thread hijacking is Windows-only")
 }
+
+func injectThreadHijackEnumCrossPlatform(processName string, shellcode []byte) error {
+	return fmt.Errorf("thread hijacking is Windows-only")
+}
