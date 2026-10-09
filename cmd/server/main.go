@@ -69,6 +69,8 @@ func main() {
 		if !auth.IsSetup() {
 			auth.Setup("operator", "phantom")
 			cli.Info("Default operator account created (operator/phantom)")
+		} else {
+			_ = auth.LoadCredentials()
 		}
 	} else if !auth.IsSetup() {
 		// First run — create credentials
@@ -249,7 +251,7 @@ func main() {
 		cli.Info("Type 'help' for available commands")
 		cli.Info("Tip: type 'webui' to also start the Web UI")
 		fmt.Println()
-		shell := cli.NewShell(srv)
+		shell := cli.NewShell(srv, auth.GetUsername())
 		shell.Run()
 
 	case "web", "2":
@@ -298,7 +300,7 @@ func main() {
 		fmt.Println()
 
 		// Start CLI in foreground
-		shell := cli.NewShell(srv)
+		shell := cli.NewShell(srv, auth.GetUsername())
 		shell.Run()
 
 	default:

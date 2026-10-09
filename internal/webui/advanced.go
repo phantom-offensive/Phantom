@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/phantom-c2/phantom/internal/audit"
 	"github.com/phantom-c2/phantom/internal/implant"
 	"github.com/phantom-c2/phantom/internal/protocol"
 	"github.com/phantom-c2/phantom/internal/util"
@@ -528,42 +529,8 @@ func GetAutoTasks() []AutoTask {
 //  OPERATOR AUDIT LOG
 // ══════════════════════════════════════════
 
-var (
-	auditLog   []AuditEntry
-	auditLogMu sync.Mutex
-)
-
-type AuditEntry struct {
-	Time     string `json:"time"`
-	Operator string `json:"operator"`
-	Agent    string `json:"agent"`
-	Action   string `json:"action"`
-	Detail   string `json:"detail"`
-}
-
-func AddAuditEntry(operator, agent, action, detail string) {
-	auditLogMu.Lock()
-	defer auditLogMu.Unlock()
-	auditLog = append(auditLog, AuditEntry{
-		Time:     time.Now().Format("15:04:05"),
-		Operator: operator,
-		Agent:    agent,
-		Action:   action,
-		Detail:   detail,
-	})
-	// Keep last 500 entries
-	if len(auditLog) > 500 {
-		auditLog = auditLog[len(auditLog)-500:]
-	}
-}
-
 func (w *WebUI) handleAuditLog(rw http.ResponseWriter, r *http.Request) {
-	auditLogMu.Lock()
-	defer auditLogMu.Unlock()
-	if auditLog == nil {
-		auditLog = []AuditEntry{}
-	}
-	writeJSON(rw, auditLog)
+	writeJSON(rw, audit.List())
 }
 
 // ══════════════════════════════════════════
