@@ -160,7 +160,7 @@ func WriteChunk(transferID string, chunkIdx int, data []byte) error {
 func GetTransferProgress() []*TransferState {
 	transferMgr.mu.RLock()
 	defer transferMgr.mu.RUnlock()
-	var result []*TransferState
+	result := make([]*TransferState, 0, len(transferMgr.transfers))
 	for _, t := range transferMgr.transfers {
 		result = append(result, t)
 	}
