@@ -216,7 +216,8 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 @keyframes drift{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 .card{display:flex;width:100%;max-width:780px;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(139,92,246,0.15);border:1px solid #1c2440;background:rgba(14,20,36,0.92)}
 .brand{flex:1.1;padding:48px 40px;background:linear-gradient(160deg,rgba(139,92,246,0.20),rgba(14,20,36,0.55));display:flex;flex-direction:column;justify-content:center;gap:16px;border-right:1px solid rgba(255,255,255,0.04)}
-.brand .mark{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(232,121,249,0.2));border:1px solid rgba(139,92,246,0.35);box-shadow:0 0 30px rgba(139,92,246,0.25)}
+.brand .mark{display:block;margin:0 0 6px;filter:drop-shadow(0 0 24px rgba(139,92,246,0.35))}
+.brand .mark svg{width:100%;max-width:250px;height:auto;display:block}
 .brand h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .brand p{color:#8b96b5;font-size:13px;line-height:1.7;max-width:280px}
 .form{flex:1;padding:48px 40px}
@@ -234,7 +235,7 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 <div class="bg"></div>
 <div class="card">
 <div class="brand">
-<div class="mark">🛡️</div>
+<div class="mark"><svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="b2g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="55%" stop-color="#e879f9"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs><path d="M130 10 L232 78 L206 92 L158 84 L144 74 L132 88 L130 80 L128 88 L116 74 L102 84 L54 92 L28 78 Z" fill="url(#b2g)" opacity="0.95"/><path d="M130 18 L204 80 L150 74 L130 66 Z" fill="rgba(10,14,26,0.35)"/><circle cx="130" cy="54" r="3" fill="#a5f3fc" opacity="0.9"/></svg></div>
 <h1>Phantom C2</h1>
 <p>Command &amp; Control for authorized red team operations. Stealth. Precision. Control.</p>
 </div>
@@ -260,7 +261,8 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 @keyframes drift{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 .card{display:flex;width:100%;max-width:780px;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(139,92,246,0.15);border:1px solid #1c2440;background:rgba(14,20,36,0.92)}
 .brand{flex:1.1;padding:48px 40px;background:linear-gradient(160deg,rgba(139,92,246,0.20),rgba(14,20,36,0.55));display:flex;flex-direction:column;justify-content:center;gap:16px;border-right:1px solid rgba(255,255,255,0.04)}
-.brand .mark{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;background:linear-gradient(135deg,rgba(139,92,246,0.3),rgba(232,121,249,0.2));border:1px solid rgba(139,92,246,0.35);box-shadow:0 0 30px rgba(139,92,246,0.25)}
+.brand .mark{display:block;margin:0 0 6px;filter:drop-shadow(0 0 24px rgba(139,92,246,0.35))}
+.brand .mark svg{width:100%;max-width:250px;height:auto;display:block}
 .brand h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,#c4b5fd,#e879f9 55%,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .brand p{color:#8b96b5;font-size:13px;line-height:1.7;max-width:280px}
 .form{flex:1;padding:48px 40px}
@@ -278,7 +280,7 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 <div class="bg"></div>
 <div class="card">
 <div class="brand">
-<div class="mark">🛡️</div>
+<div class="mark"><svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="b2g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="55%" stop-color="#e879f9"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient></defs><path d="M130 10 L232 78 L206 92 L158 84 L144 74 L132 88 L130 80 L128 88 L116 74 L102 84 L54 92 L28 78 Z" fill="url(#b2g)" opacity="0.95"/><path d="M130 18 L204 80 L150 74 L130 66 Z" fill="rgba(10,14,26,0.35)"/><circle cx="130" cy="54" r="3" fill="#a5f3fc" opacity="0.9"/></svg></div>
 <h1>Phantom C2</h1>
 <p>Command &amp; Control for authorized red team operations. Stealth. Precision. Control.</p>
 </div>
