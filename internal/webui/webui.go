@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/phantom-c2/phantom/internal/audit"
 	"github.com/phantom-c2/phantom/internal/protocol"
 	"github.com/phantom-c2/phantom/internal/server"
 	"github.com/phantom-c2/phantom/internal/util"
@@ -465,7 +466,7 @@ func (w *WebUI) handleAPICommand(rw http.ResponseWriter, r *http.Request) {
 	if session != nil {
 		operator = session.Username
 	}
-	AddAuditEntry(operator, agent.Name, protocol.TaskTypeName(taskType), req.Command+" "+req.Args)
+	audit.Add(operator, agent.Name, protocol.TaskTypeName(taskType), req.Command+" "+req.Args)
 
 	writeJSON(rw, map[string]string{
 		"status":  "queued",

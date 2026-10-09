@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/peterh/liner"
 	"github.com/phantom-c2/phantom/internal/agent"
+	"github.com/phantom-c2/phantom/internal/audit"
 	"github.com/phantom-c2/phantom/internal/listener"
 	"github.com/phantom-c2/phantom/internal/webui"
 	"github.com/phantom-c2/phantom/internal/db"
@@ -62,14 +63,16 @@ type Shell struct {
 	activeAgent *db.Agent // currently interacting agent
 	running     bool
 	sessionLog  *os.File  // session recording
+	operator    string    // operator username for audit logging
 }
 
 // NewShell creates a new CLI shell.
-func NewShell(srv *server.Server) *Shell {
+func NewShell(srv *server.Server, operator string) *Shell {
 	return &Shell{
-		server:  srv,
-		scanner: bufio.NewScanner(os.Stdin),
-		running: true,
+		server:   srv,
+		scanner:  bufio.NewScanner(os.Stdin),
+		running:  true,
+		operator: operator,
 	}
 }
 
@@ -1575,6 +1578,7 @@ func (sh *Shell) queueTask(taskType uint8, args []string, data []byte) {
 		Error("Failed to create task: %v", err)
 		return
 	}
+	audit.Add(sh.operator, sh.activeAgent.Name, protocol.TaskTypeName(taskType), strings.Join(args, " "))
 	Success("Task queued (ID: %s) — waiting for agent check-in...", util.ShortID(task.ID))
 }
 
