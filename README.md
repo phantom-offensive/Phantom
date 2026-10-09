@@ -119,7 +119,7 @@
 - **In-memory BOF** — COFF parser (Windows), memfd_create (Linux), 55+ BOF catalog
 - **.NET assembly execution** — in-memory via PowerShell reflection (Seatbelt, Rubeus, SharpHound, Certify, etc.)
 - **Shellcode execution** — VirtualAlloc/mmap, zero disk footprint
-- **Process injection** — CreateRemoteThread or Early Bird APC (`inject earlybird`)
+- **Process injection** — CreateRemoteThread, Early Bird APC (`inject earlybird`), and thread hijacking (`inject hijack`, `inject hijack-enum`)
 - **24 AD commands** — enumeration, Kerberoasting, DCSync, ADCS, lateral movement
 
 **Initial Access**
@@ -418,6 +418,8 @@ You will see:
 | `shellcode <file>` | Execute raw shellcode in-memory |
 | `inject <pid> <file>` | Inject shellcode into remote process (CreateRemoteThread) |
 | `inject earlybird <file>` | Inject via Early Bird APC (pre-EDR-hook, OPSEC-safe) |
+| `inject hijack <file>` | Thread hijack a suspended process's main thread (no remote thread) |
+| `inject hijack-enum <process> <file>` | Thread hijack an existing process via thread enumeration |
 | `ad-*` | Active Directory commands (type `ad-help`) |
 | `token <cmd>` | Token manipulation (steal/make/revert/impersonate) |
 | `keylog <seconds>` | Start keylogger |
@@ -481,7 +483,7 @@ lateral winrm-spawn <target> <user> <pass> <stager_url>
 | BOF Execution | In-memory COFF loader (55+ catalog) | memfd_create | N/A |
 | .NET Assembly | In-memory via reflection | N/A | N/A |
 | Shellcode Execution | VirtualAlloc + CreateThread | mmap RWX | mmap RWX |
-| Process Injection | CreateRemoteThread / Early Bird APC | N/A | N/A |
+| Process Injection | CreateRemoteThread / Early Bird APC / Thread Hijacking | N/A | N/A |
 | Sandbox Detection | Yes | Yes | Yes (Frida, lldb, Instruments.app) |
 | Lateral Movement | wmiexec, winrm, psexec, pth | ssh | ssh |
 | Credential Harvest | browser, WiFi, clipboard, SSH, RDP, vault | ssh-keys, cloud-keys | Keychain, WiFi, browser, SSH, AWS, history |
