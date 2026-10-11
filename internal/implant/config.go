@@ -11,6 +11,7 @@ var (
 	JitterPercent = "20"
 	KillDate      = "" // Optional: YYYY-MM-DD format, agent self-terminates after this date
 	WorkingTime   = "" // Optional: "HH:MM-HH:MM" (24h) — agent only beacons within this window
+	StagingToken  = "" // Optional: staging token for /api/v1/update authorization
 	ServerPubKey  = "" // Base64-encoded RSA public key (embedded at compile time)
 	RunAsService  = "" // Set to "true" to run as Windows service
 	FrontDomain   = "" // CDN domain for SNI-based domain fronting (e.g., "cdn.microsoft.com")
