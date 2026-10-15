@@ -58,7 +58,11 @@ func LoadConfig(path string) (*Config, error) {
 		},
 	}
 
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	// Expand environment variables (e.g. ${STAGING_TOKEN}) so secrets are not
+	// stored in the committed config file.
+	expanded := os.ExpandEnv(string(data))
+
+	if err := yaml.Unmarshal([]byte(expanded), cfg); err != nil {
 		return nil, err
 	}
 

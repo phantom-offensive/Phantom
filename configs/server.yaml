@@ -16,7 +16,8 @@ server:
   default_jitter: 20
 
   # Shared token required by staging endpoints (/api/v1/update, /app/download)
-  staging_token: "***REMOVED***"
+  # Set via environment variable: STAGING_TOKEN
+  staging_token: "${STAGING_TOKEN}"
 
 # Default listener configuration
 listeners:
