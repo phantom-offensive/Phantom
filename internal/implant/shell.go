@@ -58,3 +58,33 @@ func ChangeDirectory(path string) ([]byte, error) {
 	wd, _ := getwd()
 	return []byte("Changed directory to: " + wd), nil
 }
+
+// RunPowerShell executes a PowerShell script directly (no cmd.exe shell),
+// avoiding cmd.exe quoting issues with complex scripts that contain double
+// quotes and parentheses.
+func RunPowerShell(script string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), shellTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	output := stdout.Bytes()
+	if stderr.Len() > 0 {
+		if len(output) > 0 {
+			output = append(output, '\n')
+		}
+		output = append(output, stderr.Bytes()...)
+	}
+
+	if err != nil && len(output) == 0 {
+		return []byte(err.Error()), err
+	}
+
+	return output, nil
+}

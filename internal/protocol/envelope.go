@@ -75,7 +75,7 @@ func WrapForHTTP(env *Envelope, timestamp int64) ([]byte, error) {
 // MaxClockSkew is the maximum allowed difference between the sender's
 // timestamp and the receiver's clock before a message is rejected as stale.
 // This bounds replay of captured envelopes.
-const MaxClockSkew = 10 * time.Minute
+const MaxClockSkew = 4 * time.Hour
 
 // UnwrapFromHTTP extracts an Envelope from a JSON HTTP wrapper.
 func UnwrapFromHTTP(body []byte) (*Envelope, error) {
