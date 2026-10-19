@@ -34,7 +34,7 @@ func CaptureScreenshot() ([]byte, error) {
 func screenshotWindows(outPath string) error {
 	psScript := `Add-Type -AssemblyName System.Windows.Forms;Add-Type -AssemblyName System.Drawing;$s=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds;$b=New-Object System.Drawing.Bitmap($s.Width,$s.Height);$g=[System.Drawing.Graphics]::FromImage($b);$g.CopyFromScreen($s.Location,[System.Drawing.Point]::Empty,$s.Size);$b.Save('` + outPath + `');$g.Dispose();$b.Dispose()`
 
-	_, err := ExecuteShell([]string{"powershell -WindowStyle Hidden -Command " + psScript})
+	_, err := RunPowerShell(psScript)
 	return err
 }
 

