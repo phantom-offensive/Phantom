@@ -118,9 +118,10 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 
 		// Check in and get tasks
 		tasks, err := imp.transport.CheckIn(imp.results)
-		imp.results = nil // Clear sent results
 
 		if err != nil {
+			// Keep imp.results queued so they are retried on the next
+			// successful check-in (previously they were dropped on any failure).
 			failCount++
 			// After 3 consecutive failures the server session key is likely gone
 			// (e.g. server restarted). Clear session state and re-register so we
@@ -150,6 +151,8 @@ func Run(serverURL string, serverPub *rsa.PublicKey, sleepSec, jitterPct int, ki
 			SleepWithJitter(int(backoff.Seconds()), imp.jitter)
 			continue
 		}
+		// Check-in succeeded — results were delivered, clear them.
+		imp.results = nil
 		failCount = 0 // Reset on success
 
 		// Execute tasks
