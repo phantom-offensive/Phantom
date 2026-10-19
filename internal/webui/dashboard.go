@@ -346,6 +346,26 @@ tr.clickable { cursor: pointer; }
 .term-output { color: #c8d0e8; white-space: pre-wrap; word-break: break-all; }
 .term-dim { color: #3a4060; }
 
+/* Fancy terminal hero banner */
+.term-hero { text-align: center; padding: 6px 0 10px; }
+.term-hero-title {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 22px; font-weight: 800; letter-spacing: 3px;
+  background: linear-gradient(120deg, var(--violet-light), var(--cyan) 55%, var(--fuchsia));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 16px rgba(139,92,246,0.35));
+}
+.term-hero-sub {
+  font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--cyan); opacity: 0.7; margin-top: 3px;
+}
+.term-hero-rule {
+  height: 1px; margin: 12px 4px 0;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.45;
+}
+
 /* Highlight patterns in output */
 .term-ip    { color: var(--cyan-bright); font-weight: 600; }
 .term-flag  { color: #ffd700; font-weight: 700; text-shadow: 0 0 10px rgba(255,215,0,0.4); }
@@ -752,25 +772,12 @@ tr.clickable { cursor: pointer; }
           <span class="term-title" id="term-title">Phantom C2 — Select an agent to begin</span>
         </div>
         <div class="term-body" id="term-body">
-          <div class="term-dim">┌─────────────────────────────────────────────────────┐</div>
-          <div><span class="term-dim">│</span>  <span class="term-prompt" style="margin:0;text-shadow:none">PHANTOM C2</span> <span class="term-dim">— Interactive Terminal                   │</span></div>
-          <div class="term-dim">└─────────────────────────────────────────────────────┘</div>
-          <div style="margin-top:10px"><span class="term-dim">→ </span><span class="term-output">Select an agent above, then type </span><span class="term-info">help</span><span class="term-output"> for all commands.</span></div>
-          <div style="margin-top:10px;margin-bottom:4px"><span class="term-info">⚡</span> <span class="term-output" style="color:#4a5080;font-size:12px">Quick reference</span></div>
-          <div style="font-size:12px;color:#2e3555;line-height:2">
-            <span class="term-info">shell</span><span style="color:#2e3555"> &lt;cmd&gt;</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">sysinfo</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">ifconfig</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">ps</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">screenshot</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">download</span><span style="color:#2e3555"> &lt;path&gt;</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">creds</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">persist</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">evasion</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">socks</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">pivot</span>
-            <span style="color:#1e2440"> · </span><span class="term-info">ad-*</span>
+          <div class="term-hero">
+            <div class="term-hero-title">PHANTOM&nbsp;C2</div>
+            <div class="term-hero-sub">Interactive Terminal</div>
+            <div class="term-hero-rule"></div>
           </div>
+          <div style="margin-top:10px;text-align:center"><span class="term-dim">→ </span><span class="term-output">Select an agent above, then type </span><span class="term-info">help</span><span class="term-output"> for all commands.</span></div>
           <div>&nbsp;</div>
         </div>
         <div class="term-input-row">
@@ -4829,6 +4836,7 @@ async function generateReport() {
 
 // ──── Theme Presets ────
 const themePresets = {
+  graphite:{name:'Graphite', bg:'#151515', secondary:'#1b1b1b', accent:'#89CFF0', accentLight:'#b8e0f5', text:'#E0E0E0'},
   dark:   {name:'Phantom', bg:'#07030f', secondary:'#0d0618', accent:'#a855f7', accentLight:'#d8b4fe', text:'#f0edff'},
   abyss:  {name:'Abyss',   bg:'#020617', secondary:'#0a0f1e', accent:'#38bdf8', accentLight:'#7dd3fc', text:'#e8f4ff'},
   neon:   {name:'Neon',    bg:'#030712', secondary:'#0b1020', accent:'#22d3ee', accentLight:'#67e8f9', text:'#e6fbff'},
@@ -4861,7 +4869,7 @@ function applyThemePreset(preset) {
 function renderThemeSwatches() {
   const el = document.getElementById('theme-swatches');
   if (!el) return;
-  const active = localStorage.getItem('phantom-theme-preset') || 'dark';
+  const active = localStorage.getItem('phantom-theme-preset') || 'graphite';
   let html = '';
   for (const [id, t] of Object.entries(themePresets)) {
     html += '<button onclick="applyThemePreset(\''+id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-input);border:'+(active===id?'2px solid var(--accent)':'1px solid var(--border)')+';border-radius:10px;cursor:pointer;text-align:left">'
@@ -5227,7 +5235,7 @@ async function exportData() {
 }
 
 // ──── Theme Toggle ────
-const presetOrder = ['dark','abyss','neon','blood','toxic','gold','sunset','light'];
+const presetOrder = ['graphite','dark','abyss','neon','blood','toxic','gold','sunset','light'];
 let currentPresetIdx = 0;
 
 function toggleTheme() {
@@ -5236,7 +5244,7 @@ function toggleTheme() {
 }
 // Load saved theme
 (function() {
-  const saved = localStorage.getItem('phantom-theme-preset') || 'dark';
+  const saved = localStorage.getItem('phantom-theme-preset') || 'graphite';
   const idx = presetOrder.indexOf(saved);
   if (idx >= 0) currentPresetIdx = idx;
   applyThemePreset(saved);
