@@ -294,7 +294,7 @@ func findOnHost(name string) string {
 
 func adDCSync(args []string) ([]byte, error) {
 	if len(args) == 0 {
-		return []byte("Usage: ad-dcsync <DOMAIN/user>\nExample: ad-dcsync DIGITALSHIELD/krbtgt\nRequires Domain Admin or Replication rights"), nil
+		return []byte("Usage: ad-dcsync <DOMAIN/user>\nExample: ad-dcsync CORP/krbtgt\nRequires Domain Admin or Replication rights"), nil
 	}
 	if runtime.GOOS == "windows" {
 		// DCSync is performed by Mimikatz. Fail with actionable guidance

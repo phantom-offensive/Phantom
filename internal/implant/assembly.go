@@ -41,7 +41,7 @@ Common Assemblies:
 Usage:
   assembly Seatbelt.exe -group=all
   assembly Rubeus.exe kerberoast
-  assembly SharpHound.exe -c All -d digitalshield.local`), nil
+  assembly SharpHound.exe -c All -d corp.local`), nil
 	}
 
 	if len(args) > 0 && args[0] == "list" {

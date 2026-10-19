@@ -27,7 +27,7 @@ func ExecuteInitAccess(args []string) ([]byte, error) {
 	switch cmd {
 	case "portscan":
 		if len(args) < 3 {
-			return nil, fmt.Errorf("usage: initaccess portscan <target> <ports>\nExample: initaccess portscan 192.168.1.139 22,80,443,445,3389,5985")
+			return nil, fmt.Errorf("usage: initaccess portscan <target> <ports>\nExample: initaccess portscan 10.0.0.5 22,80,443,445,3389,5985")
 		}
 		return portScan(args[1], args[2])
 	case "spray":
@@ -57,7 +57,7 @@ func ExecuteInitAccess(args []string) ([]byte, error) {
 		return vulnScan(args[1])
 	case "netdiscover":
 		if len(args) < 2 {
-			return nil, fmt.Errorf("usage: initaccess netdiscover <cidr>\nExample: initaccess netdiscover 192.168.1.0/24")
+			return nil, fmt.Errorf("usage: initaccess netdiscover <cidr>\nExample: initaccess netdiscover 10.0.0.0/24")
 		}
 		return netDiscover(args[1])
 	default:

