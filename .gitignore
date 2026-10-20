@@ -63,6 +63,9 @@ configs/.phantom_creds
 # Environment / secrets — never commit
 deployments/redirector/.env
 
+# Local redirector landing page (site-specific branding — keep out of VCS)
+deployments/redirector/site/
+
 # Lab/CTF artifacts — never commit
 *.ccache
 *.pvk
