@@ -9,7 +9,7 @@ import urllib.request
 import sys
 import os
 
-C2 = "http://192.168.1.72:8080"
+C2 = "https://YOUR_C2_DOMAIN"
 AGENT_ID = "e4314a94-31ab-42a8-9fc4-5f6e6ef3b9a3"
 SIM = "67073574-46B9-4336-9514-EB3CB13A3ECE"
 LOG = "/tmp/ios_agent.log"
