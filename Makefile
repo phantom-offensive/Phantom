@@ -11,6 +11,7 @@ SLEEP        ?= 10
 JITTER       ?= 20
 FRONT_DOMAIN ?=
 HOST_HEADER  ?=
+TLS_INSECURE ?=
 SERVER_PUBKEY := $(shell openssl rsa -pubin -in configs/server.pub -outform DER 2>/dev/null | base64 -w0)
 STAGING_TOKEN ?= $(shell sed -n 's/^[[:space:]]*staging_token:[[:space:]]*"\([^"]*\)".*/\1/p' configs/server.yaml | head -1)
 
@@ -36,7 +37,8 @@ agent-windows: ## Cross-compile Windows/amd64 agent
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
 	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
 	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
-	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)' \
+	  -X '$(MODULE)/internal/implant.TLSInsecure=$(TLS_INSECURE)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe"
 
@@ -51,7 +53,8 @@ agent-linux: ## Cross-compile Linux/amd64 agent
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
 	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
 	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
-	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)' \
+	  -X '$(MODULE)/internal/implant.TLSInsecure=$(TLS_INSECURE)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64 ./cmd/agent
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_linux_amd64"
 
@@ -66,7 +69,8 @@ agent-darwin: ## Cross-compile macOS/amd64 agent
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
 	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
 	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
-	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)' \
+	  -X '$(MODULE)/internal/implant.TLSInsecure=$(TLS_INSECURE)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_darwin_amd64 ./cmd/agent-darwin
 	@echo "[+] Agent built: $(AGENT_DIR)/$(AGENT_BIN)_darwin_amd64"
 
@@ -79,7 +83,8 @@ agent-garble-windows: ## Obfuscated Windows agent via garble
 	  -ldflags "$(LDFLAGS) \
 	  -X '$(MODULE)/internal/implant.ListenerURL=$(LISTENER_URL)' \
 	  -X '$(MODULE)/internal/implant.SleepSeconds=$(SLEEP)' \
-	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)'" \
+	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
+	  -X '$(MODULE)/internal/implant.TLSInsecure=$(TLS_INSECURE)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64_garbled.exe ./cmd/agent
 	@echo "[+] Obfuscated agent built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64_garbled.exe"
 
@@ -95,7 +100,8 @@ agent-dll: ## Cross-compile Windows DLL agent (rundll32/regsvr32/sideload)
 	  -X '$(MODULE)/internal/implant.JitterPercent=$(JITTER)' \
 	  -X '$(MODULE)/internal/implant.ServerPubKey=$(SERVER_PUBKEY)' \
 	  -X '$(MODULE)/internal/implant.FrontDomain=$(FRONT_DOMAIN)' \
-	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)'" \
+	  -X '$(MODULE)/internal/implant.HostHeader=$(HOST_HEADER)' \
+	  -X '$(MODULE)/internal/implant.TLSInsecure=$(TLS_INSECURE)'" \
 	  -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll ./cmd/agent-dll
 	@echo "[+] DLL built: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.dll"
 
