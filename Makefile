@@ -108,15 +108,9 @@ agent-dll: ## Cross-compile Windows DLL agent (rundll32/regsvr32/sideload)
 .PHONY: agent-shellcode
 agent-shellcode: agent-windows ## Generate PIC shellcode from Windows agent via Donut
 	@echo "[*] Generating shellcode from Windows agent..."
-	@if ! command -v donut >/dev/null 2>&1; then \
-		echo "[-] donut not found. Install: go install github.com/wabzsy/gonut/cmd/donut@latest"; \
-		echo "    Or: pip3 install donut-shellcode && donut --help"; \
-		exit 1; \
-	fi
+	@python3 -c "import donut" 2>/dev/null || (echo "[-] donut-shellcode not installed: pip3 install donut-shellcode"; exit 1)
 	@mkdir -p $(AGENT_DIR)
-	donut -i $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe \
-	      -o $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin \
-	      -a 2 -b 1 -e 3 -z 2
+	@python3 -c "import donut; sc=donut.create(file='$(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.exe', arch=2, entropy=3, compress=2); open('$(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin','wb').write(sc)"
 	@echo "[+] Shellcode: $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin"
 	@ls -lh $(AGENT_DIR)/$(AGENT_BIN)_windows_amd64.bin
 
