@@ -1,13 +1,20 @@
+# Phantom C2 — Caddy Redirector (Docker deployment)
+# Traffic shape: /api/v1/*, /api/v2/*, /cdn-cgi/*, /common/oauth2/*, /v1.0/*, /connect/*, /app/* -> Phantom C2 upstream
+# Everything else -> static decoy site from ./site (served for the www domain only)
+
 www.{$C2_DOMAIN} {
+    # OPSEC: JSON logs for review; switch to `output discard` in production
     log {
         output stdout
         format json
     }
 
-    @c2 path /api/v1/* /cdn-cgi/* /common/oauth2/* /app/*
+    # C2 profile paths -> forward to the Phantom listener
+    # C2_UPSTREAM is optional in .env (defaults to the Docker host gateway)
+    @c2 path /api/v1/* /api/v2/* /cdn-cgi/* /common/oauth2/* /v1.0/* /connect/* /app/*
 
     handle @c2 {
-        reverse_proxy 172.17.0.1:8080 {
+        reverse_proxy {$C2_UPSTREAM:172.17.0.1:8080} {
             header_up X-Real-IP {remote_host}
             transport http {
                 read_timeout 120s
@@ -15,15 +22,23 @@ www.{$C2_DOMAIN} {
         }
     }
 
+    # Decoy: static site for everyone else
     handle {
-        header -Server
-        header -X-Powered-By
-        respond "<html><body><h1>Digital Shield HQ</h1><p>All systems operational.</p></body></html>" 200
+        root * /srv
+        file_server
+    }
+
+    # Strip backend/server headers + set a plausible security posture
+    header {
+        -Server
+        -X-Powered-By
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
     }
 }
 
-# HTTP → HTTPS redirect
+# HTTP -> HTTPS redirect
 http://www.{$C2_DOMAIN} {
     redir https://{host}{uri} permanent
 }
-

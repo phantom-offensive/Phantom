@@ -9,12 +9,12 @@ import (
 
 // RedirectorConfig holds settings for generating redirector configurations.
 type RedirectorConfig struct {
-	C2Host       string // Internal C2 server IP/hostname
-	C2Port       string // C2 listener port
-	RedirDomain  string // Public-facing domain
-	RedirPort    string // Public-facing port (usually 443)
-	ProfileName  string // Which HTTP profile to use
-	LetsEncrypt  bool   // Auto-generate Let's Encrypt cert commands
+	C2Host      string // Internal C2 server IP/hostname
+	C2Port      string // C2 listener port
+	RedirDomain string // Public-facing domain
+	RedirPort   string // Public-facing port (usually 443)
+	ProfileName string // Which HTTP profile to use
+	LetsEncrypt bool   // Auto-generate Let's Encrypt cert commands
 }
 
 // GenerateRedirectorConfigs creates configuration files for various redirector types.
@@ -98,7 +98,7 @@ server {
 
     # ── C2 Traffic (forward to Phantom server) ──
     # Forward specific URIs that match the C2 profile
-    location ~ ^/(api/v1/|cdn-cgi/|common/oauth2/) {
+    location ~ ^/(api/v1/|api/v2/|cdn-cgi/|common/oauth2/|v1.0/|connect/|app/) {
         proxy_pass http://%s:%s;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -255,7 +255,7 @@ async function handleRequest(request) {
   const path = url.pathname;
 
   // Only forward C2 paths to the backend
-  const c2Paths = ['/api/v1/', '/cdn-cgi/', '/common/oauth2/'];
+  const c2Paths = ['/api/v1/', '/api/v2/', '/cdn-cgi/', '/common/oauth2/', '/v1.0/', '/connect/', '/app/'];
   const isC2 = c2Paths.some(p => path.startsWith(p));
 
   if (isC2) {
@@ -384,33 +384,41 @@ func generateCaddyConfig(cfg RedirectorConfig, dir string) (string, error) {
 # Run:     caddy run --config Caddyfile
 #
 # Caddy automatically gets and renews Let's Encrypt certificates!
+# Traffic shape: profile paths -> C2; everything else -> decoy.
 
 %s {
-    # C2 endpoints → forward to Phantom server
-    reverse_proxy /api/v1/* %s:%s
-    reverse_proxy /cdn-cgi/* %s:%s
-    reverse_proxy /common/oauth2/* %s:%s
+    # C2 profile paths -> forward to the Phantom server
+    @c2 path /api/v1/* /api/v2/* /cdn-cgi/* /common/oauth2/* /v1.0/* /connect/* /app/*
 
-    # Everything else → decoy (Caddy already rejects wrong Host via server_name)
-    respond "<!DOCTYPE html><html><body><h1>Welcome</h1></body></html>" 200
-
-    # Strip backend headers that reveal the C2
-    header {
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        -Server
-        -X-Powered-By
+    handle @c2 {
+        reverse_proxy %s:%s {
+            header_up X-Real-IP {remote_host}
+            transport http {
+                read_timeout 120s
+            }
+        }
     }
 
-    # Logging off for OPSEC
+    # Everything else -> decoy (Caddy rejects wrong Host via server_name)
+    handle {
+        respond "<!DOCTYPE html><html><body><h1>Welcome</h1></body></html>" 200
+    }
+
+    # Strip backend headers that reveal the C2 + plausible security posture
+    header {
+        -Server
+        -X-Powered-By
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+    }
+
+    # Logging off for OPSEC (JSON logs are the alternative)
     log {
         output discard
     }
 }
-`, cfg.RedirDomain,
-		cfg.C2Host, cfg.C2Port,
-		cfg.C2Host, cfg.C2Port,
-		cfg.C2Host, cfg.C2Port)
+`, cfg.RedirDomain, cfg.C2Host, cfg.C2Port)
 
 	path := filepath.Join(dir, "Caddyfile")
 	return path, os.WriteFile(path, []byte(config), 0644)
